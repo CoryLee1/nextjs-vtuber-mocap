@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局变量 - 蓝白色系 */
+:root {
+  --vtuber-primary: #3b82f6;
+  --vtuber-secondary: #60a5fa;
+  --vtuber-accent: #06b6d4;
+  --vtuber-light: #f8fafc;
+  --vtuber-white: #ffffff;
+  --vtuber-dark: #0f172a;
+  --vtuber-darker: #020617;
+  --vtuber-text: #1e40af;
+  --vtuber-text-light: #64748b;
+}
+
+/* 基础样式重置 */
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+  background: var(--vtuber-light);
+  color: var(--vtuber-text);
+}
+
+/* Next.js 根元素 */
+#__next {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+/* 全局盒模型 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 移除默认样式 */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Canvas 样式优化 */
+canvas {
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  touch-action: none;
+}
+
+/* 自定义组件样式 */
+.vtuber-button {
+  @apply bg-vtuber-primary hover:bg-vtuber-secondary 
+         transition-all duration-200 
+         text-white font-medium 
+         rounded-lg shadow-lg 
+         hover:shadow-xl 
+         active:scale-95;
+}
+
+.vtuber-panel {
+  @apply bg-white/90 backdrop-blur-md 
+         border border-vtuber-blue-200 
+         rounded-xl shadow-xl;
+}
+
+.vtuber-input {
+  @apply bg-white border border-vtuber-blue-300 
+         rounded-md px-3 py-2 
+         text-vtuber-text placeholder-vtuber-text-light
+         focus:border-vtuber-primary focus:outline-none
+         transition-colors duration-200;
+}
+
+/* 响应式断点 */
+@media (max-width: 768px) {
+  html, body {
+    font-size: 14px;
+  }
+  
+  .vtuber-panel {
+    @apply mx-2;
+  }
+}
+
+/* 自定义滚动条 - 蓝白主题 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vtuber-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vtuber-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vtuber-secondary);
+}
