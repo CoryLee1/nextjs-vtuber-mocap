@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, forwardRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
@@ -149,7 +149,7 @@ const BoneVisualizer = ({ vrm }) => {
     );
 };
 
-export const VRMAvatar = ({
+export const VRMAvatar = forwardRef(({
     modelUrl = '/models/avatar.vrm',
     scale = 1,
     position = [0, 0, 0],
@@ -161,10 +161,11 @@ export const VRMAvatar = ({
         leftArm: { x: 1, y: 1, z: -1 }, 
         rightArm: { x: -1, y: 1, z: -1 },
         leftHand: { x: 1, y: 1, z: -1 },
-        rightHand: { x: -1, y: 1, z: -1 }
+        rightHand: { x: -1, y: 1, z: -1 },
+        neck: { x: -1, y: 1, z: -1 } // 新增脖子设置
     }, // 新增坐标轴设置
     ...props
-}) => {
+}, ref) => {
     console.log('=== VRMAvatar 开始渲染 ===');
     console.log('VRMAvatar: 组件初始化', { modelUrl, scale, position, showBones });
 
@@ -365,13 +366,13 @@ export const VRMAvatar = ({
         // 处理面部关键点
         if (results.faceLandmarks) {
             try {
-                riggedFace.current = Face.solve(results.faceLandmarks, {
-                    runtime: 'mediapipe',
-                    video: videoElement,
-                    imageSize: { width: 640, height: 480 },
-                    smoothBlink: false,
-                    blinkSettings: [0.25, 0.75],
-                });
+            riggedFace.current = Face.solve(results.faceLandmarks, {
+                runtime: 'mediapipe',
+                video: videoElement,
+                imageSize: { width: 640, height: 480 },
+                smoothBlink: false,
+                blinkSettings: [0.25, 0.75],
+            });
             } catch (error) {
                 console.warn('VRMAvatar: Face.solve 错误', error);
             }
@@ -382,9 +383,9 @@ export const VRMAvatar = ({
             try {
                 // 根据参考项目，使用 za 字段作为 3D 数据
                 if (results.za && results.poseLandmarks) {
-                    riggedPose.current = Pose.solve(results.za, results.poseLandmarks, {
-                        runtime: 'mediapipe',
-                        video: videoElement,
+            riggedPose.current = Pose.solve(results.za, results.poseLandmarks, {
+                runtime: 'mediapipe',
+                video: videoElement,
                     });
                     console.log('VRMAvatar: Pose.solve 成功 (使用 za)', riggedPose.current);
                 } else {
@@ -426,7 +427,7 @@ export const VRMAvatar = ({
         if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
             try {
                 // 镜像映射：左手数据控制右手
-                riggedRightHand.current = Hand.solve(results.leftHandLandmarks, 'Right');
+            riggedRightHand.current = Hand.solve(results.leftHandLandmarks, 'Right');
                 handDetectionState.current.hasRightHand = true;
                 console.log('VRMAvatar: 左手检测成功（镜像映射到右手）', riggedRightHand.current);
             } catch (error) {
@@ -440,7 +441,7 @@ export const VRMAvatar = ({
         if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
             try {
                 // 镜像映射：右手数据控制左手
-                riggedLeftHand.current = Hand.solve(results.rightHandLandmarks, 'Left');
+            riggedLeftHand.current = Hand.solve(results.rightHandLandmarks, 'Left');
                 handDetectionState.current.hasLeftHand = true;
                 console.log('VRMAvatar: 右手检测成功（镜像映射到左手）', riggedLeftHand.current);
             } catch (error) {
@@ -581,38 +582,43 @@ export const VRMAvatar = ({
         // 应用面部表情
         if (riggedFace.current) {
             try {
-                // 口型同步
-                const mouthShapes = [
+            // 口型同步
+            const mouthShapes = [
                     { name: 'aa', value: riggedFace.current.mouth?.shape?.A || 0 },
                     { name: 'ih', value: riggedFace.current.mouth?.shape?.I || 0 },
                     { name: 'ee', value: riggedFace.current.mouth?.shape?.E || 0 },
                     { name: 'oh', value: riggedFace.current.mouth?.shape?.O || 0 },
                     { name: 'ou', value: riggedFace.current.mouth?.shape?.U || 0 },
-                ];
+            ];
 
-                mouthShapes.forEach(({ name, value }) => {
-                    lerpExpression(name, value, lerpFactor);
-                });
+            mouthShapes.forEach(({ name, value }) => {
+                lerpExpression(name, value, lerpFactor);
+            });
 
-                // 眨眼同步
+            // 眨眼同步
                 lerpExpression('blinkLeft', 1 - (riggedFace.current.eye?.l || 1), lerpFactor);
                 lerpExpression('blinkRight', 1 - (riggedFace.current.eye?.r || 1), lerpFactor);
 
-                // 头部旋转
-                if (riggedFace.current.head) {
-                    rotateBone('neck', riggedFace.current.head, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
-                }
+            // 头部旋转
+            if (riggedFace.current.head) {
+                    const neckData = {
+                        x: riggedFace.current.head.x * axisSettings.neck.x,
+                        y: riggedFace.current.head.y * axisSettings.neck.y,
+                        z: riggedFace.current.head.z * axisSettings.neck.z,
+                    };
+                    rotateBone('neck', neckData, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
+            }
 
-                // 视线追踪
-                if (lookAtTarget.current && riggedFace.current.pupil) {
-                    vrm.lookAt.target = lookAtTarget.current;
-                    lookAtDestination.current.set(
-                        -2 * riggedFace.current.pupil.x,
-                        2 * riggedFace.current.pupil.y,
-                        0
-                    );
-                    lookAtTarget.current.position.lerp(lookAtDestination.current, delta * ANIMATION_CONFIG.LERP_FACTOR.eye);
-                }
+            // 视线追踪
+            if (lookAtTarget.current && riggedFace.current.pupil) {
+                vrm.lookAt.target = lookAtTarget.current;
+                lookAtDestination.current.set(
+                    -2 * riggedFace.current.pupil.x,
+                    2 * riggedFace.current.pupil.y,
+                    0
+                );
+                lookAtTarget.current.position.lerp(lookAtDestination.current, delta * ANIMATION_CONFIG.LERP_FACTOR.eye);
+            }
             } catch (error) {
                 console.warn('VRMAvatar: 面部表情处理错误', error);
             }
@@ -629,8 +635,8 @@ export const VRMAvatar = ({
             try {
                 // 躯干 - 只移动 spine 和 chest，不移动 hips（根骨骼）
                 if (riggedPose.current.Spine) {
-                    rotateBone('chest', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
-                    rotateBone('spine', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
+            rotateBone('chest', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
+            rotateBone('spine', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
                 }
 
                 // 使用 Kalidokit 的手臂数据 - 只应用检测到的手
@@ -781,7 +787,7 @@ export const VRMAvatar = ({
     });
 
     return (
-        <group {...props}>
+        <group {...props} ref={ref}>
             <primitive
                 object={scene}
                 scale={scale}
@@ -825,6 +831,22 @@ export const VRMAvatar = ({
                     <SimpleArmAxes vrm={vrm} showDebug={showArmAxes} />
                 </>
             )}
+            
+            {/* 调试：显示VRM ref状态 */}
+            {console.log('VRMAvatar: ref状态', { ref: !!ref, vrm: !!vrm, scene: !!scene })}
+            
+            {/* 重要：确保ref指向scene对象 */}
+            {useEffect(() => {
+                if (ref && scene) {
+                    console.log('VRMAvatar: 设置ref到scene对象', { ref: !!ref, scene: !!scene });
+                    // 如果ref是函数，调用它
+                    if (typeof ref === 'function') {
+                        ref(scene);
+                    } else if (ref.current !== undefined) {
+                        ref.current = scene;
+                    }
+                }
+            }, [ref, scene])}
         </group>
     );
-};
+});

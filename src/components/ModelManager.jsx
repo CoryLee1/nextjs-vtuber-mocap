@@ -169,13 +169,13 @@ export const ModelManager = ({ isOpen, onClose, onModelSelect }) => {
                                         model={model}
                                         onDownload={handleModelDownload}
                                         isDownloading={downloadingIds.has(model.id)}
-                                    />
-                                ))}
-                            </div>
+                                />
+                            ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
-    );
+    </div>
+);
 };

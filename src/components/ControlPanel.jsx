@@ -15,7 +15,8 @@ export const ControlPanel = ({
         leftArm: { x: 1, y: 1, z: -1 }, 
         rightArm: { x: -1, y: 1, z: -1 },
         leftHand: { x: 1, y: 1, z: -1 },
-        rightHand: { x: -1, y: 1, z: -1 }
+        rightHand: { x: -1, y: 1, z: -1 },
+        neck: { x: -1, y: 1, z: -1 } // 新增脖子设置
     },
     onAxisAdjustment
 }) => {
@@ -337,6 +338,49 @@ export const ControlPanel = ({
                                         </div>
                                     </div>
 
+                                    {/* 脖子调整 */}
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-400">脖子</div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button
+                                                onClick={() => onAxisAdjustment('neck', 'x', -1)}
+                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            >
+                                                X: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('neck', 'y', -1)}
+                                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                            >
+                                                Y: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('neck', 'z', -1)}
+                                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Z: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('neck', 'x', 1)}
+                                                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                                            >
+                                                X: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('neck', 'y', 1)}
+                                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                            >
+                                                Y: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('neck', 'z', 1)}
+                                                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                                            >
+                                                Z: +
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* 当前设置显示 */}
                                     <div className="text-xs text-gray-400">
                                         <div>当前设置:</div>
@@ -344,6 +388,7 @@ export const ControlPanel = ({
                                         <div>右臂: {JSON.stringify(axisSettings?.rightArm || {})}</div>
                                         <div>左手: {JSON.stringify(axisSettings?.leftHand || {})}</div>
                                         <div>右手: {JSON.stringify(axisSettings?.rightHand || {})}</div>
+                                        <div>脖子: {JSON.stringify(axisSettings?.neck || {})}</div>
                                     </div>
                                 </div>
                             )}

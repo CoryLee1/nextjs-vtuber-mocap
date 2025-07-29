@@ -1,7 +1,8 @@
-import { Suspense, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useState, useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls, Loader } from '@react-three/drei';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
+import { Vector3, MathUtils } from 'three';
 import { CameraWidget } from './CameraWidget';
 import { VRMAvatar } from './VRMAvatar';
 import { UI } from './UI';
@@ -9,6 +10,8 @@ import { ModelManager } from './ModelManager';
 import { ControlPanel } from './ControlPanel';
 import { ArmTestPanel } from './ArmTestPanel'; // 新增：导入调试面板
 import { HandDebugPanel } from './HandDebugPanel'; // 新增：导入手部调试面板
+import { CameraController } from './CameraController'; // 新增：导入相机控制器
+import { CameraControlHint } from './CameraController'; // 新增：导入相机控制提示
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
 
@@ -21,18 +24,28 @@ const LoadingIndicator = () => (
 );
 
 // 场景组件 - 更新以支持调试参数
-const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSettings }) => {
-    console.log('Scene: 渲染场景', { selectedModel, showBones, debugSettings, axisSettings });
+const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSettings, cameraSettings }) => {
+    console.log('Scene: 渲染场景', { selectedModel, showBones, debugSettings, axisSettings, cameraSettings });
+    const vrmRef = useRef();
+    
+    // 添加调试信息
+    useEffect(() => {
+        console.log('Scene: VRM ref状态', { 
+            vrmRef: !!vrmRef.current,
+            cameraSettings: cameraSettings
+        });
+    }, [vrmRef.current, cameraSettings]);
     
     return (
         <>
-            {/* 摄像头控制 */}
-            <OrbitControls
-                enablePan={false}
-                maxPolarAngle={Math.PI / 2}
-                minDistance={2}
-                maxDistance={8}
-                target={[0, 1.5, 0]}
+            {/* 相机控制器 */}
+            <CameraController 
+                vrmRef={vrmRef}
+                enableAutoTrack={cameraSettings.enableAutoTrack}
+                enableUserControl={cameraSettings.enableUserControl}
+                showHint={cameraSettings.showHint}
+                useGameStyle={cameraSettings.useGameStyle}
+                cameraSettings={cameraSettings}
             />
 
             {/* 环境光照 */}
@@ -56,6 +69,7 @@ const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSetti
             <group position-y={0.5}>
                 <Suspense fallback={<LoadingIndicator />}>
                     <VRMAvatar
+                        ref={vrmRef}
                         modelUrl={selectedModel?.url || '/models/AvatarSample_A.vrm'}
                         scale={1}
                         position={[0, -1, 0]}
@@ -109,7 +123,41 @@ export default function VTuberApp() {
         leftArm: { x: 1, y: 1, z: -1 },
         rightArm: { x: -1, y: 1, z: -1 },
         leftHand: { x: 1, y: 1, z: -1 },
-        rightHand: { x: -1, y: 1, z: -1 }
+        rightHand: { x: -1, y: 1, z: -1 },
+        neck: { x: -1, y: 1, z: -1 } // 新增脖子设置
+    });
+    
+    // 新增：相机控制状态
+    const [cameraSettings, setCameraSettings] = useState({
+        enableAutoTrack: true,
+        enableUserControl: true,
+        showHint: true,
+        useGameStyle: true, // 启用游戏风格控制
+        autoTrackSpeed: 0.02,
+        lookAtSmoothFactor: 0.03,
+        swingAmplitude: 2,
+        swingSpeed: 0.0005,
+        dampingFactor: 0.05,
+        rotateSpeed: 0.5,
+        zoomSpeed: 0.8,
+        minDistance: 1.5,
+        maxDistance: 8,
+        // 游戏风格设置
+        rotationSpeed: 3.5,
+        rotationDampening: 10.0,
+        zoomDampening: 6.0,
+        yMinLimit: -40,
+        yMaxLimit: 85,
+        useRightMouseButton: true,
+        useLeftMouseButton: true,
+        useMiddleMouseButton: true,
+        invertY: false,
+        enableBreathing: false,
+        breathingAmplitude: 0.03,
+        breathingFrequency: 0.8,
+        enableCollisionDetection: true,
+        collisionOffset: 0.3,
+        panSmoothing: 10
     });
     
     // 新增：动捕状态
@@ -207,10 +255,34 @@ export default function VTuberApp() {
         }));
     };
 
+    // 新增：处理相机设置调整
+    const handleCameraSettingsChange = (setting, value) => {
+        console.log('VTuberApp: 相机设置调整', { setting, value });
+        setCameraSettings(prev => ({
+            ...prev,
+            [setting]: value
+        }));
+    };
+
+    // 添加调试信息
+    useEffect(() => {
+        console.log('VTuberApp: 相机设置状态', {
+            useGameStyle: cameraSettings.useGameStyle,
+            enableUserControl: cameraSettings.enableUserControl,
+            enableAutoTrack: cameraSettings.enableAutoTrack,
+            useLeftMouseButton: cameraSettings.useLeftMouseButton,
+            useRightMouseButton: cameraSettings.useRightMouseButton,
+            useMiddleMouseButton: cameraSettings.useMiddleMouseButton
+        });
+    }, [cameraSettings]);
+
     return (
         <div className="w-full h-screen relative overflow-hidden bg-gradient-to-br from-vtuber-light via-white to-vtuber-blue-50">
             {/* UI 覆盖层 */}
             <UI />
+
+            {/* 相机控制提示 - 移到Canvas外部 */}
+            <CameraControlHint isVisible={cameraSettings.showHint} />
 
             {/* 新增：调试面板 */}
             <ArmTestPanel 
@@ -234,6 +306,8 @@ export default function VTuberApp() {
                 onToggleArmAxes={setShowArmAxes}
                 axisSettings={axisSettings}
                 onAxisAdjustment={handleAxisAdjustment}
+                cameraSettings={cameraSettings}
+                onCameraSettingsChange={handleCameraSettingsChange}
             />
 
             {/* 摄像头组件 */}
@@ -253,7 +327,7 @@ export default function VTuberApp() {
             <Canvas
                 camera={{
                     position: [0, 2.5, 4],
-                    fov: 40,
+                    fov: 35, // 减小FOV以获得更好的景深效果
                     near: 0.1,
                     far: 1000
                 }}
@@ -264,6 +338,7 @@ export default function VTuberApp() {
                     powerPreference: 'high-performance',
                 }}
                 className="w-full h-full"
+                style={{ pointerEvents: 'auto' }} // 确保鼠标事件可以穿透
             >
                 <color attach="background" args={['#f8fafc']} />
                 <fog attach="fog" args={['#f8fafc', 10, 20]} />
@@ -275,6 +350,7 @@ export default function VTuberApp() {
                     debugSettings={debugSettings}
                     showArmAxes={showArmAxes}
                     axisSettings={axisSettings}
+                    cameraSettings={cameraSettings}
                 />
             </Canvas>
 
