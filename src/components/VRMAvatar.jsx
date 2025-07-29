@@ -10,7 +10,7 @@ import { useSensitivitySettings } from '@/hooks/useSensitivitySettings';
 import { calculateArms, calculateHandIK, smoothArmRotation, isArmVisible, validateHumanRotation } from '@/utils/armCalculator';
 import { useAnimationManager } from '@/utils/animationManager';
 import { ANIMATION_CONFIG } from '@/utils/constants';
-import { CoordinateAxes, ArmDirectionDebugger, DataDisplayPanel } from './DebugHelpers';
+import { CoordinateAxes, ArmDirectionDebugger, DataDisplayPanel, SimpleArmAxes } from './DebugHelpers';
 import { HandDebugPanel } from './HandDebugPanel';
 
 const tmpVec3 = new Vector3();
@@ -156,6 +156,13 @@ export const VRMAvatar = ({
     showBones = false, // 添加骨骼可视化控制
     showDebug = false,  // 添加这个
     testSettings = null, // 添加这个
+    showArmAxes = false, // 新增手臂坐标轴控制
+    axisSettings = { 
+        leftArm: { x: 1, y: 1, z: -1 }, 
+        rightArm: { x: -1, y: 1, z: -1 },
+        leftHand: { x: 1, y: 1, z: -1 },
+        rightHand: { x: -1, y: 1, z: -1 }
+    }, // 新增坐标轴设置
     ...props
 }) => {
     console.log('=== VRMAvatar 开始渲染 ===');
@@ -373,15 +380,24 @@ export const VRMAvatar = ({
         // 处理姿态关键点 - 使用正确的 Kalidokit 格式
         if (results.poseLandmarks && results.poseLandmarks.length > 0) {
             try {
-                // 根据 Kalidokit 文档，需要 3D 和 2D 数据
-                const pose3d = results.pose3d || results.poseLandmarks; // 如果没有 3D 数据，使用 2D 数据
-                const pose2d = results.poseLandmarks;
+                // 根据参考项目，使用 za 字段作为 3D 数据
+                if (results.za && results.poseLandmarks) {
+                    riggedPose.current = Pose.solve(results.za, results.poseLandmarks, {
+                        runtime: 'mediapipe',
+                        video: videoElement,
+                    });
+                    console.log('VRMAvatar: Pose.solve 成功 (使用 za)', riggedPose.current);
+                } else {
+                    // 备用方案：如果没有 za，尝试使用 pose3d
+                    const pose3d = results.pose3d || results.poseLandmarks;
+                    const pose2d = results.poseLandmarks;
 
-                riggedPose.current = Pose.solve(pose3d, pose2d, {
-                    runtime: 'mediapipe',
-                    video: videoElement,
-                });
-                console.log('VRMAvatar: Pose.solve 成功', riggedPose.current);
+                    riggedPose.current = Pose.solve(pose3d, pose2d, {
+                        runtime: 'mediapipe',
+                        video: videoElement,
+                    });
+                    console.log('VRMAvatar: Pose.solve 成功 (使用 pose3d)', riggedPose.current);
+                }
             } catch (error) {
                 console.warn('VRMAvatar: Pose.solve 错误', error);
                 console.log('VRMAvatar: poseLandmarks 数据', results.poseLandmarks);
@@ -400,38 +416,40 @@ export const VRMAvatar = ({
         } else {
             console.log('VRMAvatar: 缺少姿态数据', {
                 hasPoseLandmarks: !!results.poseLandmarks,
-                poseLandmarksLength: results.poseLandmarks?.length
+                poseLandmarksLength: results.poseLandmarks?.length,
+                hasZa: !!results.za,
+                zaLength: results.za?.length
             });
         }
 
-        // 处理手部关键点（直接映射）
+        // 处理手部关键点（镜像效果）
         if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
             try {
-                // 直接映射：左手数据控制左手
-                riggedLeftHand.current = Hand.solve(results.leftHandLandmarks, 'Left');
-                handDetectionState.current.hasLeftHand = true;
-                console.log('VRMAvatar: 左手检测成功（直接映射）', riggedLeftHand.current);
-            } catch (error) {
-                console.warn('VRMAvatar: Hand.solve (left) 错误', error);
-                handDetectionState.current.hasLeftHand = false;
-            }
-        } else {
-            handDetectionState.current.hasLeftHand = false;
-            console.log('VRMAvatar: 未检测到左手');
-        }
-        if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
-            try {
-                // 直接映射：右手数据控制右手
-                riggedRightHand.current = Hand.solve(results.rightHandLandmarks, 'Right');
+                // 镜像映射：左手数据控制右手
+                riggedRightHand.current = Hand.solve(results.leftHandLandmarks, 'Right');
                 handDetectionState.current.hasRightHand = true;
-                console.log('VRMAvatar: 右手检测成功（直接映射）', riggedRightHand.current);
+                console.log('VRMAvatar: 左手检测成功（镜像映射到右手）', riggedRightHand.current);
             } catch (error) {
-                console.warn('VRMAvatar: Hand.solve (right) 错误', error);
+                console.warn('VRMAvatar: Hand.solve (left->right) 错误', error);
                 handDetectionState.current.hasRightHand = false;
             }
         } else {
             handDetectionState.current.hasRightHand = false;
-            console.log('VRMAvatar: 未检测到右手');
+            console.log('VRMAvatar: 未检测到左手（镜像映射到右手）');
+        }
+        if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+            try {
+                // 镜像映射：右手数据控制左手
+                riggedLeftHand.current = Hand.solve(results.rightHandLandmarks, 'Left');
+                handDetectionState.current.hasLeftHand = true;
+                console.log('VRMAvatar: 右手检测成功（镜像映射到左手）', riggedLeftHand.current);
+            } catch (error) {
+                console.warn('VRMAvatar: Hand.solve (right->left) 错误', error);
+                handDetectionState.current.hasLeftHand = false;
+            }
+        } else {
+            handDetectionState.current.hasLeftHand = false;
+            console.log('VRMAvatar: 未检测到右手（镜像映射到左手）');
         }
 
         // 更新手部检测状态
@@ -618,62 +636,62 @@ export const VRMAvatar = ({
                 // 使用 Kalidokit 的手臂数据 - 只应用检测到的手
                 if (riggedPose.current.LeftUpperArm && handDetectionState.current.hasLeftHand) {
                     console.log('VRMAvatar: 应用左手臂数据', riggedPose.current.LeftUpperArm);
-                    const correctedLeftArm = {
-                        x: riggedPose.current.LeftUpperArm.x * settings.armAmplitude,
-                        y: -riggedPose.current.LeftUpperArm.z * settings.armAmplitude, // 翻转Z轴（向前变向前）
-                        z: riggedPose.current.LeftUpperArm.y * settings.armAmplitude, // 交换Y和Z轴
+                    const leftArmData = {
+                        x: riggedPose.current.LeftUpperArm.x * axisSettings.leftArm.x,
+                        y: riggedPose.current.LeftUpperArm.y * axisSettings.leftArm.y,
+                        z: riggedPose.current.LeftUpperArm.z * axisSettings.leftArm.z,
                     };
-                    rotateBone('leftUpperArm', correctedLeftArm, boneLerpFactor * settings.armSpeed);
+                    rotateBone('leftUpperArm', leftArmData, boneLerpFactor * settings.armSpeed);
                 }
                 
                 if (riggedPose.current.LeftLowerArm && handDetectionState.current.hasLeftHand) {
-                    const correctedLeftLowerArm = {
-                        x: riggedPose.current.LeftLowerArm.x * settings.armAmplitude,
-                        y: -riggedPose.current.LeftLowerArm.z * settings.armAmplitude, // 翻转Z轴（向前变向前）
-                        z: riggedPose.current.LeftLowerArm.y * settings.armAmplitude, // 交换Y和Z轴
+                    const leftLowerArmData = {
+                        x: riggedPose.current.LeftLowerArm.x * axisSettings.leftArm.x,
+                        y: riggedPose.current.LeftLowerArm.y * axisSettings.leftArm.y,
+                        z: riggedPose.current.LeftLowerArm.z * axisSettings.leftArm.z,
                     };
-                    rotateBone('leftLowerArm', correctedLeftLowerArm, boneLerpFactor * settings.armSpeed);
+                    rotateBone('leftLowerArm', leftLowerArmData, boneLerpFactor * settings.armSpeed);
                 }
 
                 if (riggedPose.current.RightUpperArm && handDetectionState.current.hasRightHand) {
                     console.log('VRMAvatar: 应用右手臂数据', riggedPose.current.RightUpperArm);
-                    const correctedRightArm = {
-                        x: riggedPose.current.RightUpperArm.x * settings.armAmplitude,
-                        y: -riggedPose.current.RightUpperArm.z * settings.armAmplitude, // 翻转Z轴（向前变向前）
-                        z: riggedPose.current.RightUpperArm.y * settings.armAmplitude, // 交换Y和Z轴
+                    const rightArmData = {
+                        x: riggedPose.current.RightUpperArm.x * axisSettings.rightArm.x,
+                        y: riggedPose.current.RightUpperArm.y * axisSettings.rightArm.y,
+                        z: riggedPose.current.RightUpperArm.z * axisSettings.rightArm.z,
                     };
-                    rotateBone('rightUpperArm', correctedRightArm, boneLerpFactor * settings.armSpeed);
+                    rotateBone('rightUpperArm', rightArmData, boneLerpFactor * settings.armSpeed);
                 }
                 
                 if (riggedPose.current.RightLowerArm && handDetectionState.current.hasRightHand) {
-                    const correctedRightLowerArm = {
-                        x: riggedPose.current.RightLowerArm.x * settings.armAmplitude,
-                        y: -riggedPose.current.RightLowerArm.z * settings.armAmplitude, // 翻转Z轴（向前变向前）
-                        z: riggedPose.current.RightLowerArm.y * settings.armAmplitude, // 交换Y和Z轴
+                    const rightLowerArmData = {
+                        x: riggedPose.current.RightLowerArm.x * axisSettings.rightArm.x,
+                        y: riggedPose.current.RightLowerArm.y * axisSettings.rightArm.y,
+                        z: riggedPose.current.RightLowerArm.z * axisSettings.rightArm.z,
                     };
-                    rotateBone('rightLowerArm', correctedRightLowerArm, boneLerpFactor * settings.armSpeed);
+                    rotateBone('rightLowerArm', rightLowerArmData, boneLerpFactor * settings.armSpeed);
                 }
 
                 // 手部控制 - 只应用检测到的手
                 if (riggedPose.current.LeftHand && riggedLeftHand.current && handDetectionState.current.hasLeftHand) {
                     // 镜像映射：riggedLeftHand 包含右手数据，控制左手
                     const leftHandData = {
-                        x: riggedLeftHand.current.LeftWrist.x * settings.handAmplitude,
-                        y: -riggedLeftHand.current.LeftWrist.z * settings.handAmplitude, // 翻转Z轴（向前变向前）
-                        z: riggedLeftHand.current.LeftWrist.y * settings.handAmplitude, // 交换Y和Z轴
+                        x: -riggedLeftHand.current.LeftWrist.x * axisSettings.leftHand.x, // 翻转X轴（镜像效果）
+                        y: riggedLeftHand.current.LeftWrist.y * axisSettings.leftHand.y, // 直接使用Y轴
+                        z: riggedPose.current.LeftHand.z * axisSettings.leftHand.z, // 使用pose的Z轴
                     };
-                    console.log('VRMAvatar: 应用左手数据（镜像映射）', leftHandData);
+                    console.log('VRMAvatar: 应用左手数据（简化版）', leftHandData);
                     rotateBone('leftHand', leftHandData, boneLerpFactor * settings.handSpeed);
                 }
 
                 if (riggedPose.current.RightHand && riggedRightHand.current && handDetectionState.current.hasRightHand) {
                     // 镜像映射：riggedRightHand 包含左手数据，控制右手
                     const rightHandData = {
-                        x: riggedRightHand.current.RightWrist.x * settings.handAmplitude,
-                        y: -riggedRightHand.current.RightWrist.z * settings.handAmplitude, // 翻转Z轴（向前变向前）
-                        z: riggedRightHand.current.RightWrist.y * settings.handAmplitude, // 交换Y和Z轴
+                        x: -riggedRightHand.current.RightWrist.x * axisSettings.rightHand.x, // 翻转X轴（镜像效果）
+                        y: riggedRightHand.current.RightWrist.y * axisSettings.rightHand.y, // 直接使用Y轴
+                        z: riggedPose.current.RightHand.z * axisSettings.rightHand.z, // 使用pose的Z轴
                     };
-                    console.log('VRMAvatar: 应用右手数据（镜像映射）', rightHandData);
+                    console.log('VRMAvatar: 应用右手数据（简化版）', rightHandData);
                     rotateBone('rightHand', rightHandData, boneLerpFactor * settings.handSpeed);
                 }
 
@@ -710,9 +728,9 @@ export const VRMAvatar = ({
                 leftFingerBones.forEach(({ bone, data }) => {
                     if (data) {
                         const correctedFingerData = {
-                            x: data.x * settings.fingerAmplitude,
-                            y: -data.z * settings.fingerAmplitude, // 翻转Z轴（向前变向前）
-                            z: data.y * settings.fingerAmplitude, // 交换Y和Z轴
+                            x: -data.x, // 翻转X轴（镜像效果），去掉amplitude
+                            y: -data.z, // 翻转Z轴（向前变向前），去掉amplitude
+                            z: data.y, // 交换Y和Z轴，去掉amplitude
                         };
                         rotateBone(bone, correctedFingerData, boneLerpFactor * settings.fingerSpeed);
                     }
@@ -746,9 +764,9 @@ export const VRMAvatar = ({
                 rightFingerBones.forEach(({ bone, data }) => {
                     if (data) {
                         const correctedFingerData = {
-                            x: data.x * settings.fingerAmplitude,
-                            y: -data.z * settings.fingerAmplitude, // 翻转Z轴（向前变向前）
-                            z: data.y * settings.fingerAmplitude, // 交换Y和Z轴
+                            x: -data.x, // 翻转X轴（镜像效果），去掉amplitude
+                            y: -data.z, // 翻转Z轴（向前变向前），去掉amplitude
+                            z: data.y, // 交换Y和Z轴，去掉amplitude
                         };
                         rotateBone(bone, correctedFingerData, boneLerpFactor * settings.fingerSpeed);
                     }
@@ -803,6 +821,8 @@ export const VRMAvatar = ({
                     {testSettings?.showRawData && (
                         <DataDisplayPanel riggedPose={riggedPose} />
                     )}
+                    {/* 手臂坐标轴可视化 */}
+                    <SimpleArmAxes vrm={vrm} showDebug={showArmAxes} />
                 </>
             )}
         </group>

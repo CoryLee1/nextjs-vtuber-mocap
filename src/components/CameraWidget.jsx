@@ -99,7 +99,7 @@ export const CameraWidget = () => {
             // 初始化 Holistic - 使用动态灵敏度设置
             holisticRef.current = new Holistic({
                 locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.4.1633559476/${file}`;
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/${file}`;
                 },
                 // 启用手部检测
                 refineFaceLandmarks: true,
@@ -123,7 +123,9 @@ export const CameraWidget = () => {
             // 设置结果回调
             holisticRef.current.onResults((results) => {
                 drawResults(results);
-                console.log('CameraWidget: MediaPipe 结果', {
+                
+                // 详细的数据类型检查
+                const dataTypeCheck = {
                     hasFaceLandmarks: !!results.faceLandmarks,
                     hasPoseLandmarks: !!results.poseLandmarks,
                     hasLeftHand: !!results.leftHandLandmarks,
@@ -142,7 +144,43 @@ export const CameraWidget = () => {
                     hasZa: !!results.za,
                     eaLength: results.ea?.length,
                     zaLength: results.za?.length,
-                });
+                };
+                
+                // 检查数据格式（2D vs 3D）
+                if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+                    const firstPosePoint = results.poseLandmarks[0];
+                    dataTypeCheck.poseDataFormat = {
+                        hasX: 'x' in firstPosePoint,
+                        hasY: 'y' in firstPosePoint,
+                        hasZ: 'z' in firstPosePoint,
+                        is3D: 'z' in firstPosePoint,
+                        samplePoint: firstPosePoint
+                    };
+                }
+                
+                if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+                    const firstHandPoint = results.leftHandLandmarks[0];
+                    dataTypeCheck.leftHandDataFormat = {
+                        hasX: 'x' in firstHandPoint,
+                        hasY: 'y' in firstHandPoint,
+                        hasZ: 'z' in firstHandPoint,
+                        is3D: 'z' in firstHandPoint,
+                        samplePoint: firstHandPoint
+                    };
+                }
+                
+                if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+                    const firstHandPoint = results.rightHandLandmarks[0];
+                    dataTypeCheck.rightHandDataFormat = {
+                        hasX: 'x' in firstHandPoint,
+                        hasY: 'y' in firstHandPoint,
+                        hasZ: 'z' in firstHandPoint,
+                        is3D: 'z' in firstHandPoint,
+                        samplePoint: firstHandPoint
+                    };
+                }
+                
+                console.log('CameraWidget: MediaPipe 结果和数据类型检查', dataTypeCheck);
                 
                 // 检查手部数据的具体内容
                 if (results.leftHandLandmarks) {

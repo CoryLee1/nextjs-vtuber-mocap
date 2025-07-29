@@ -3,52 +3,51 @@ import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { SensitivityPanel } from './SensitivityPanel';
 import { useSensitivitySettings } from '@/hooks/useSensitivitySettings';
 
-export const ControlPanel = ({ 
-    selectedModel, 
-    onModelChange, 
+export const ControlPanel = ({
+    mocapStatus,
+    onOpenSensitivityPanel,
     onOpenModelManager,
     showBones,
-    onToggleBones
+    onToggleBones,
+    showArmAxes = false,
+    onToggleArmAxes,
+    axisSettings = { 
+        leftArm: { x: 1, y: 1, z: -1 }, 
+        rightArm: { x: -1, y: 1, z: -1 },
+        leftHand: { x: 1, y: 1, z: -1 },
+        rightHand: { x: -1, y: 1, z: -1 }
+    },
+    onAxisAdjustment
 }) => {
     const [isExpanded, setIsExpanded] = useState(true);
+    const [localShowBones, setLocalShowBones] = useState(showBones);
+    const [localShowArmAxes, setLocalShowArmAxes] = useState(showArmAxes);
     const [showSensitivityPanel, setShowSensitivityPanel] = useState(false);
-    const { isCameraActive, videoElement } = useVideoRecognition();
+    const { isCameraActive } = useVideoRecognition();
     const { settings, updateSettings } = useSensitivitySettings();
-    
-    // 动捕状态
-    const [mocapStatus, setMocapStatus] = useState({
-        face: false,
-        pose: false,
-        leftHand: false,
-        rightHand: false
-    });
 
-    // 监听动捕状态变化
+    // 同步外部状态变化
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (videoElement) {
-                // 从 useVideoRecognition 获取实际的检测状态
-                const state = useVideoRecognition.getState();
-                // 这里可以通过全局状态来获取实际的检测状态
-                // 暂时使用模拟数据，后续可以通过事件系统获取真实状态
-                setMocapStatus({
-                    face: true, // 面部通常都能检测到
-                    pose: true, // 姿态通常都能检测到
-                    leftHand: false, // 手部检测不稳定
-                    rightHand: false
-                });
-            } else {
-                setMocapStatus({
-                    face: false,
-                    pose: false,
-                    leftHand: false,
-                    rightHand: false
-                });
-            }
-        }, 1000);
+        setLocalShowBones(showBones);
+    }, [showBones]);
 
-        return () => clearInterval(interval);
-    }, [videoElement]);
+    useEffect(() => {
+        setLocalShowArmAxes(showArmAxes);
+    }, [showArmAxes]);
+
+    // 将状态传递给父组件
+    useEffect(() => {
+        if (onToggleBones) {
+            onToggleBones(localShowBones);
+        }
+    }, [localShowBones, onToggleBones]);
+
+    // 将手臂坐标轴状态传递给父组件
+    useEffect(() => {
+        if (onToggleArmAxes) {
+            onToggleArmAxes(localShowArmAxes);
+        }
+    }, [localShowArmAxes, onToggleArmAxes]);
 
     return (
         <>
@@ -112,7 +111,7 @@ export const ControlPanel = ({
                         <div className="space-y-2">
                             <h4 className="text-xs font-medium text-gray-600">灵敏度调节</h4>
                             <button
-                                onClick={() => setShowSensitivityPanel(true)}
+                                onClick={onOpenSensitivityPanel}
                                 className="w-full px-3 py-1.5 bg-orange-500 text-white text-xs rounded-lg hover:bg-orange-600 transition-colors"
                             >
                                 调节灵敏度
@@ -123,7 +122,7 @@ export const ControlPanel = ({
                         <div className="space-y-2">
                             <h4 className="text-xs font-medium text-gray-600">模型管理</h4>
                             <div className="text-xs text-gray-500 truncate">
-                                当前: {selectedModel ? selectedModel.split('/').pop() : '未选择'}
+                                当前: AvatarSample_A.vrm
                             </div>
                             <button
                                 onClick={onOpenModelManager}
@@ -133,19 +132,227 @@ export const ControlPanel = ({
                             </button>
                         </div>
 
-                        {/* 骨骼可视化 */}
+                        {/* 调试工具 */}
                         <div className="space-y-2">
-                            <h4 className="text-xs font-medium text-gray-600">调试工具</h4>
+                            <h3 className="text-sm font-semibold text-gray-300">调试工具</h3>
+                            
+                            {/* 显示骨骼 */}
                             <button
-                                onClick={onToggleBones}
-                                className={`w-full px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                    showBones 
-                                        ? 'bg-red-500 text-white hover:bg-red-600' 
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                onClick={() => setLocalShowBones(!localShowBones)}
+                                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    localShowBones
+                                        ? 'bg-vtuber-accent text-white'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                 }`}
                             >
-                                {showBones ? '隐藏骨骼' : '显示骨骼'}
+                                {localShowBones ? '隐藏骨骼' : '显示骨骼'}
                             </button>
+
+                            {/* 显示手臂坐标轴 */}
+                            <button
+                                onClick={() => setLocalShowArmAxes(!localShowArmAxes)}
+                                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    localShowArmAxes
+                                        ? 'bg-vtuber-accent text-white'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                }`}
+                            >
+                                {localShowArmAxes ? '隐藏手臂坐标轴' : '显示手臂坐标轴'}
+                            </button>
+
+                            {/* 坐标轴调整UI */}
+                            {localShowArmAxes && (
+                                <div className="mt-3 p-3 bg-gray-800 rounded-lg space-y-3">
+                                    <h4 className="text-xs font-medium text-gray-300">坐标轴调整</h4>
+                                    
+                                    {/* 左手臂调整 */}
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-400">左手臂</div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftArm', 'x', -1)}
+                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            >
+                                                X: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftArm', 'y', -1)}
+                                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                            >
+                                                Y: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftArm', 'z', -1)}
+                                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Z: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftArm', 'x', 1)}
+                                                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                                            >
+                                                X: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftArm', 'y', 1)}
+                                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                            >
+                                                Y: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftArm', 'z', 1)}
+                                                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                                            >
+                                                Z: +
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 右手臂调整 */}
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-400">右手臂</div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightArm', 'x', -1)}
+                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            >
+                                                X: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightArm', 'y', -1)}
+                                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                            >
+                                                Y: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightArm', 'z', -1)}
+                                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Z: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightArm', 'x', 1)}
+                                                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                                            >
+                                                X: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightArm', 'y', 1)}
+                                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                            >
+                                                Y: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightArm', 'z', 1)}
+                                                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                                            >
+                                                Z: +
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 左手调整 */}
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-400">左手</div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftHand', 'x', -1)}
+                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            >
+                                                X: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftHand', 'y', -1)}
+                                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                            >
+                                                Y: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftHand', 'z', -1)}
+                                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Z: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftHand', 'x', 1)}
+                                                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                                            >
+                                                X: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftHand', 'y', 1)}
+                                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                            >
+                                                Y: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('leftHand', 'z', 1)}
+                                                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                                            >
+                                                Z: +
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 右手调整 */}
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-400">右手</div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightHand', 'x', -1)}
+                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            >
+                                                X: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightHand', 'y', -1)}
+                                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                            >
+                                                Y: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightHand', 'z', -1)}
+                                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Z: -
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightHand', 'x', 1)}
+                                                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                                            >
+                                                X: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightHand', 'y', 1)}
+                                                className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                                            >
+                                                Y: +
+                                            </button>
+                                            <button
+                                                onClick={() => onAxisAdjustment('rightHand', 'z', 1)}
+                                                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                                            >
+                                                Z: +
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 当前设置显示 */}
+                                    <div className="text-xs text-gray-400">
+                                        <div>当前设置:</div>
+                                        <div>左臂: {JSON.stringify(axisSettings?.leftArm || {})}</div>
+                                        <div>右臂: {JSON.stringify(axisSettings?.rightArm || {})}</div>
+                                        <div>左手: {JSON.stringify(axisSettings?.leftHand || {})}</div>
+                                        <div>右手: {JSON.stringify(axisSettings?.rightHand || {})}</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="text-xs text-gray-400 space-y-1">
+                                <div>• 开启摄像头以获得完整的动捕体验</div>
+                                <div>• 手臂坐标轴显示肩部、手肘、手腕的XYZ方向</div>
+                                <div>• 红色=X轴(左右)，绿色=Y轴(上下)，蓝色=Z轴(前后)</div>
+                            </div>
                         </div>
 
                         {/* 提示信息 */}
@@ -159,12 +366,12 @@ export const ControlPanel = ({
             </div>
 
             {/* 灵敏度调节面板 */}
-            <SensitivityPanel
+            {/* <SensitivityPanel
                 isOpen={showSensitivityPanel}
                 onClose={() => setShowSensitivityPanel(false)}
                 sensitivitySettings={settings}
                 onSensitivityChange={updateSettings}
-            />
+            /> */}
         </>
     );
 }; 

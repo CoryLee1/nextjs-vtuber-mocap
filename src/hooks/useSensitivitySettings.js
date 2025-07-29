@@ -11,8 +11,8 @@ const DEFAULT_SENSITIVITY_SETTINGS = {
     armAmplitude: 1.4, // 从 1.2 提高到 1.4
     armSpeed: 1.4, // 从 1.2 提高到 1.4
     // 手部响应设置 - 适度提高
-    handAmplitude: 1.2, // 从 1.1 提高到 1.2
-    handSpeed: 1.2, // 从 1.1 提高到 1.2
+    handAmplitude: 1, // 从 1.1 提高到 1.2
+    handSpeed: 1, // 从 1.1 提高到 1.2
     // 手指响应设置 - 适度提高
     fingerAmplitude: 1.2, // 从 1.1 提高到 1.2
     fingerSpeed: 1.2, // 从 1.1 提高到 1.2

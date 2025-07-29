@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Vector3 } from 'three';
+import { Vector3, Object3D, ArrowHelper, Color, CanvasTexture, SpriteMaterial, Sprite } from 'three';
 import { Text } from '@react-three/drei';
 
 // 坐标轴显示组件
@@ -214,4 +214,107 @@ Z: ${rightArm?.z?.toFixed(3) || 'N/A'} (前后)
       </Text>
     </group>
   );
+};
+
+// 简化的手臂坐标轴可视化组件
+export const SimpleArmAxes = ({ vrm, showDebug }) => {
+    const armBones = [
+        'leftShoulder',    // 左肩
+        'leftUpperArm',    // 左上臂
+        'leftLowerArm',    // 左下臂
+        'leftHand',        // 左手腕
+        'rightShoulder',   // 右肩
+        'rightUpperArm',   // 右上臂
+        'rightLowerArm',   // 右下臂
+        'rightHand'        // 右手腕
+    ];
+
+    if (!vrm || !showDebug) return null;
+
+    return (
+        <group>
+            {armBones.map((boneName) => {
+                const bone = vrm.humanoid.getNormalizedBoneNode(boneName);
+                if (!bone) return null;
+
+                const worldPosition = bone.getWorldPosition(new Vector3());
+
+                return (
+                    <group key={boneName} position={worldPosition}>
+                        {/* X轴 - 红色 - 左右方向 */}
+                        <mesh position={[0.06, 0, 0]}>
+                            <boxGeometry args={[0.12, 0.01, 0.01]} />
+                            <meshBasicMaterial color="red" />
+                        </mesh>
+                        <Text
+                            position={[0.08, 0, 0]}
+                            fontSize={0.02}
+                            color="red"
+                            anchorX="left"
+                            anchorY="middle"
+                        >
+                            {boneName} X+
+                        </Text>
+
+                        {/* Y轴 - 绿色 - 上下方向 */}
+                        <mesh position={[0, 0.06, 0]}>
+                            <boxGeometry args={[0.01, 0.12, 0.01]} />
+                            <meshBasicMaterial color="green" />
+                        </mesh>
+                        <Text
+                            position={[0, 0.08, 0]}
+                            fontSize={0.02}
+                            color="green"
+                            anchorX="center"
+                            anchorY="bottom"
+                        >
+                            {boneName} Y+
+                        </Text>
+
+                        {/* Z轴 - 蓝色 - 前后方向 */}
+                        <mesh position={[0, 0, 0.06]}>
+                            <boxGeometry args={[0.01, 0.01, 0.12]} />
+                            <meshBasicMaterial color="blue" />
+                        </mesh>
+                        <Text
+                            position={[0, 0, 0.08]}
+                            fontSize={0.02}
+                            color="blue"
+                            anchorX="center"
+                            anchorY="middle"
+                        >
+                            {boneName} Z+
+                        </Text>
+
+                        {/* 中心点 */}
+                        <mesh position={[0, 0, 0]}>
+                            <sphereGeometry args={[0.005, 8, 8]} />
+                            <meshBasicMaterial color="white" />
+                        </mesh>
+                    </group>
+                );
+            })}
+        </group>
+    );
+};
+
+// 创建文本标签的辅助函数
+const createTextLabel = (text, position, color) => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+
+    context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    context.font = '24px Arial';
+    context.fillText(text, 10, 40);
+
+    const texture = new CanvasTexture(canvas);
+    const material = new SpriteMaterial({ map: texture });
+    const sprite = new Sprite(material);
+    
+    sprite.position.copy(position);
+    sprite.scale.set(0.1, 0.025, 1);
+    
+    return sprite;
 };

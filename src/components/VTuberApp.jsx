@@ -21,8 +21,8 @@ const LoadingIndicator = () => (
 );
 
 // 场景组件 - 更新以支持调试参数
-const Scene = ({ selectedModel, showBones, debugSettings }) => {
-    console.log('Scene: 渲染场景', { selectedModel, showBones, debugSettings });
+const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSettings }) => {
+    console.log('Scene: 渲染场景', { selectedModel, showBones, debugSettings, axisSettings });
     
     return (
         <>
@@ -56,12 +56,14 @@ const Scene = ({ selectedModel, showBones, debugSettings }) => {
             <group position-y={0.5}>
                 <Suspense fallback={<LoadingIndicator />}>
                     <VRMAvatar
-                        modelUrl={selectedModel}
-                        scale={1.2}
-                        position={[0, 0, 0]}
+                        modelUrl={selectedModel?.url || '/models/AvatarSample_A.vrm'}
+                        scale={1}
+                        position={[0, -1, 0]}
                         showBones={showBones}
                         showDebug={debugSettings?.showDebug || false}  // 新增：调试开关
                         testSettings={debugSettings}                   // 新增：调试设置
+                        showArmAxes={showArmAxes} // 新增手臂坐标轴控制
+                        axisSettings={axisSettings} // 新增坐标轴设置
                     />
                 </Suspense>
 
@@ -99,6 +101,24 @@ export default function VTuberApp() {
     
     const [isModelManagerOpen, setIsModelManagerOpen] = useState(false);
     const [showBones, setShowBones] = useState(false);
+    const [showArmAxes, setShowArmAxes] = useState(false); // 新增手臂坐标轴状态
+    const [showSensitivityPanel, setShowSensitivityPanel] = useState(false); // 新增灵敏度面板状态
+    
+    // 新增：坐标轴设置状态
+    const [axisSettings, setAxisSettings] = useState({
+        leftArm: { x: 1, y: 1, z: -1 },
+        rightArm: { x: -1, y: 1, z: -1 },
+        leftHand: { x: 1, y: 1, z: -1 },
+        rightHand: { x: -1, y: 1, z: -1 }
+    });
+    
+    // 新增：动捕状态
+    const [mocapStatus, setMocapStatus] = useState({
+        face: false,
+        pose: false,
+        leftHand: false,
+        rightHand: false
+    });
     
     // 新增：调试设置状态
     const [debugSettings, setDebugSettings] = useState({
@@ -124,16 +144,14 @@ export default function VTuberApp() {
     });
 
     // 处理模型选择
-    const handleModelSelect = (modelUrl) => {
-        console.log('VTuberApp: handleModelSelect 被调用', modelUrl);
-        const allModels = getAllModels();
-        const model = allModels.find(m => m.url === modelUrl);
-        if (model) {
-            console.log('VTuberApp: 找到模型', model.name, model.id);
+    const handleModelSelect = (model) => {
+        console.log('VTuberApp: handleModelSelect 被调用', model);
+        if (model && model.id) {
+            console.log('VTuberApp: 找到模型', model.name, model.url);
             selectModel(model.id);
-            console.log('VTuberApp: 模型已选择', model.name, modelUrl);
+            console.log('VTuberApp: 模型已选择', model.name, model.url);
         } else {
-            console.warn('VTuberApp: 未找到对应的模型', modelUrl);
+            console.warn('VTuberApp: 无效的模型对象', model);
         }
     };
 
@@ -177,6 +195,18 @@ export default function VTuberApp() {
         }
     };
 
+    // 新增：处理坐标轴调整
+    const handleAxisAdjustment = (arm, axis, value) => {
+        console.log('VTuberApp: 坐标轴调整', { arm, axis, value });
+        setAxisSettings(prev => ({
+            ...prev,
+            [arm]: {
+                ...prev[arm],
+                [axis]: value
+            }
+        }));
+    };
+
     return (
         <div className="w-full h-screen relative overflow-hidden bg-gradient-to-br from-vtuber-light via-white to-vtuber-blue-50">
             {/* UI 覆盖层 */}
@@ -194,12 +224,16 @@ export default function VTuberApp() {
             />
 
             {/* 控制面板 */}
-            <ControlPanel 
-                selectedModel={selectedModel.url}
-                onModelChange={handleModelSelect}
-                onOpenModelManager={handleOpenModelManager}
+            <ControlPanel
+                mocapStatus={mocapStatus}
+                onOpenSensitivityPanel={() => setShowSensitivityPanel(true)}
+                onOpenModelManager={() => setIsModelManagerOpen(true)}
                 showBones={showBones}
-                onToggleBones={handleToggleBones}
+                onToggleBones={setShowBones}
+                showArmAxes={showArmAxes}
+                onToggleArmAxes={setShowArmAxes}
+                axisSettings={axisSettings}
+                onAxisAdjustment={handleAxisAdjustment}
             />
 
             {/* 摄像头组件 */}
@@ -236,9 +270,11 @@ export default function VTuberApp() {
 
                 {/* 传递调试设置给场景 */}
                 <Scene 
-                    selectedModel={selectedModel.url} 
+                    selectedModel={selectedModel?.url || '/models/AvatarSample_A.vrm'} 
                     showBones={showBones}
                     debugSettings={debugSettings}
+                    showArmAxes={showArmAxes}
+                    axisSettings={axisSettings}
                 />
             </Canvas>
 
