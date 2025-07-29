@@ -7,6 +7,8 @@ import { VRMAvatar } from './VRMAvatar';
 import { UI } from './UI';
 import { ModelManager } from './ModelManager';
 import { ControlPanel } from './ControlPanel';
+import { ArmTestPanel } from './ArmTestPanel'; // 新增：导入调试面板
+import { HandDebugPanel } from './HandDebugPanel'; // 新增：导入手部调试面板
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
 
@@ -18,9 +20,9 @@ const LoadingIndicator = () => (
     </mesh>
 );
 
-// 场景组件
-const Scene = ({ selectedModel, showBones }) => {
-    console.log('Scene: 渲染场景', { selectedModel, showBones });
+// 场景组件 - 更新以支持调试参数
+const Scene = ({ selectedModel, showBones, debugSettings }) => {
+    console.log('Scene: 渲染场景', { selectedModel, showBones, debugSettings });
     
     return (
         <>
@@ -50,7 +52,7 @@ const Scene = ({ selectedModel, showBones }) => {
             />
             <ambientLight intensity={0.3} />
 
-            {/* VRM 角色 */}
+            {/* VRM 角色 - 传递调试参数 */}
             <group position-y={0.5}>
                 <Suspense fallback={<LoadingIndicator />}>
                     <VRMAvatar
@@ -58,6 +60,8 @@ const Scene = ({ selectedModel, showBones }) => {
                         scale={1.2}
                         position={[0, 0, 0]}
                         showBones={showBones}
+                        showDebug={debugSettings?.showDebug || false}  // 新增：调试开关
+                        testSettings={debugSettings}                   // 新增：调试设置
                     />
                 </Suspense>
 
@@ -94,8 +98,19 @@ export default function VTuberApp() {
     console.log('=== VTuberApp 开始渲染 ===');
     
     const [isModelManagerOpen, setIsModelManagerOpen] = useState(false);
-    const [showBones, setShowBones] = useState(false); // 添加骨骼可视化控制
-    const { getSelectedModel, selectModel, getAllModels } = useModelManager(); // 添加 getAllModels
+    const [showBones, setShowBones] = useState(false);
+    
+    // 新增：调试设置状态
+    const [debugSettings, setDebugSettings] = useState({
+        showDebug: true,      // 默认开启调试
+        showBones: false,
+        showRawData: true,
+        leftArmMultiplier: { x: -1, y: 1, z: -1 },
+        rightArmMultiplier: { x: 1, y: 1, z: -1 },
+        amplitude: 1
+    });
+    
+    const { getSelectedModel, selectModel, getAllModels } = useModelManager();
     
     // 获取当前选中的模型
     const selectedModel = getSelectedModel();
@@ -103,6 +118,7 @@ export default function VTuberApp() {
     console.log('VTuberApp: 当前状态', { 
         isModelManagerOpen, 
         showBones, 
+        debugSettings,
         selectedModel: selectedModel?.name,
         selectedModelUrl: selectedModel?.url 
     });
@@ -110,7 +126,6 @@ export default function VTuberApp() {
     // 处理模型选择
     const handleModelSelect = (modelUrl) => {
         console.log('VTuberApp: handleModelSelect 被调用', modelUrl);
-        // 根据 URL 找到对应的模型 ID
         const allModels = getAllModels();
         const model = allModels.find(m => m.url === modelUrl);
         if (model) {
@@ -141,13 +156,42 @@ export default function VTuberApp() {
             新状态: newShowBones 
         });
         setShowBones(newShowBones);
+        
+        // 同步更新调试设置中的骨骼显示
+        setDebugSettings(prev => ({
+            ...prev,
+            showBones: newShowBones
+        }));
+        
         console.log('VTuberApp: showBones 状态已更新');
+    };
+
+    // 新增：处理调试设置变化
+    const handleDebugSettingsChange = (newSettings) => {
+        console.log('VTuberApp: 调试设置变化', newSettings);
+        setDebugSettings(newSettings);
+        
+        // 同步骨骼显示状态
+        if (newSettings.showBones !== undefined && newSettings.showBones !== showBones) {
+            setShowBones(newSettings.showBones);
+        }
     };
 
     return (
         <div className="w-full h-screen relative overflow-hidden bg-gradient-to-br from-vtuber-light via-white to-vtuber-blue-50">
             {/* UI 覆盖层 */}
             <UI />
+
+            {/* 新增：调试面板 */}
+            <ArmTestPanel 
+                onSettingsChange={handleDebugSettingsChange}
+                initialSettings={debugSettings}
+            />
+
+            {/* 新增：手部调试面板 */}
+            <HandDebugPanel 
+                isVisible={debugSettings.showDebug}
+            />
 
             {/* 控制面板 */}
             <ControlPanel 
@@ -190,13 +234,19 @@ export default function VTuberApp() {
                 <color attach="background" args={['#f8fafc']} />
                 <fog attach="fog" args={['#f8fafc', 10, 20]} />
 
-                <Scene selectedModel={selectedModel.url} showBones={showBones} />
+                {/* 传递调试设置给场景 */}
+                <Scene 
+                    selectedModel={selectedModel.url} 
+                    showBones={showBones}
+                    debugSettings={debugSettings}
+                />
             </Canvas>
 
-            {/* 版权信息 */}
+            {/* 版权信息 - 显示调试状态 */}
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10">
                 <p className="text-vtuber-text-light text-xs">
-                    Powered by Next.js + Three.js + MediaPipe
+                    Powered by Next.js + Three.js + MediaPipe 
+                    {debugSettings.showDebug && <span className="text-orange-500"> | 🔧 调试模式</span>}
                 </p>
             </div>
         </div>

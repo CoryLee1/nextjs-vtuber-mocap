@@ -24,6 +24,16 @@ export const useVideoRecognition = create((set) => ({
   // 清理错误
   clearError: () => set({ error: null }),
   
+  // 手部调试状态
+  handDebugInfo: {
+    leftHandDetected: false,
+    rightHandDetected: false,
+    leftHandData: null,
+    rightHandData: null,
+    mappingInfo: ''
+  },
+  setHandDebugInfo: (handDebugInfo) => set({ handDebugInfo }),
+  
   // 重置所有状态
   reset: () => set({
     videoElement: null,
@@ -31,5 +41,12 @@ export const useVideoRecognition = create((set) => ({
     isCameraActive: false,
     isProcessing: false,
     error: null,
+    handDebugInfo: {
+      leftHandDetected: false,
+      rightHandDetected: false,
+      leftHandData: null,
+      rightHandData: null,
+      mappingInfo: ''
+    }
   }),
 }));
