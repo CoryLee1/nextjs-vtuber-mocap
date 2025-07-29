@@ -65,7 +65,7 @@ const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSetti
             />
             <ambientLight intensity={0.3} />
 
-            {/* VRM 角色 - 传递调试参数 */}
+            {/* VRM 角色 */}
             <group position-y={0.5}>
                 <Suspense fallback={<LoadingIndicator />}>
                     <VRMAvatar
@@ -74,27 +74,27 @@ const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSetti
                         scale={1}
                         position={[0, -1, 0]}
                         showBones={showBones}
-                        showDebug={debugSettings?.showDebug || false}  // 新增：调试开关
-                        testSettings={debugSettings}                   // 新增：调试设置
-                        showArmAxes={showArmAxes} // 新增手臂坐标轴控制
-                        axisSettings={axisSettings} // 新增坐标轴设置
+                        showDebug={debugSettings?.showDebug || false}
+                        testSettings={debugSettings}
+                        showArmAxes={showArmAxes}
+                        axisSettings={axisSettings}
                     />
                 </Suspense>
-
-                {/* 地面 */}
-                <mesh
-                    rotation={[-Math.PI / 2, 0, 0]}
-                    position={[0, -0.5, 0]}
-                    receiveShadow
-                >
-                    <planeGeometry args={[10, 10]} />
-                    <meshStandardMaterial
-                        color="#f8fafc"
-                        transparent
-                        opacity={0.3}
-                    />
-                </mesh>
             </group>
+
+            {/* 地面 */}
+            <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, -0.5, 0]}
+                receiveShadow
+            >
+                <planeGeometry args={[10, 10]} />
+                <meshStandardMaterial
+                    color="#f8fafc"
+                    transparent
+                    opacity={0.3}
+                />
+            </mesh>
 
             {/* 后处理效果 */}
             <EffectComposer>
@@ -338,7 +338,22 @@ export default function VTuberApp() {
                     powerPreference: 'high-performance',
                 }}
                 className="w-full h-full"
-                style={{ pointerEvents: 'auto' }} // 确保鼠标事件可以穿透
+                style={{
+                    pointerEvents: 'auto', // 确保可以接收鼠标事件
+                    touchAction: 'none' // 防止触摸设备上的默认行为
+                }}
+                events={() => ({
+                    priority: 1,
+                    enabled: true,
+                    compute: (event, state) => {
+                        // 确保事件正确传播
+                        state.pointer.set(
+                            (event.clientX / state.size.width) * 2 - 1,
+                            -(event.clientY / state.size.height) * 2 + 1
+                        );
+                        state.raycaster.setFromCamera(state.pointer, state.camera);
+                    }
+                })}
             >
                 <color attach="background" args={['#f8fafc']} />
                 <fog attach="fog" args={['#f8fafc', 10, 20]} />

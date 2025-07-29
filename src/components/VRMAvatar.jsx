@@ -553,26 +553,16 @@ export const VRMAvatar = forwardRef(({
             if (shouldPlayIdle(hasHandDetection)) {
                 // 没有检测到手时，平滑过渡到idle动画
                 const animationState = getAnimationState();
-                console.log('VRMAvatar: 检查idle动画状态', {
-                    hasHandDetection,
-                    animationState,
-                    shouldPlayIdle: shouldPlayIdle(hasHandDetection)
-                });
-
+                
                 if (!animationState.isPlayingIdle && !animationState.isTransitioning && animationState.hasMixer) {
-                    console.log('VRMAvatar: 切换到idle动画 - 未检测到手部', {
-                        hasHandDetection,
-                        animationState
-                    });
+                    // 只在状态变化时记录
+                    console.log('VRMAvatar: 切换到idle动画 - 未检测到手部');
                 }
             } else {
                 // 检测到手时，停止idle动画，使用动捕数据
                 const animationState = getAnimationState();
                 if (animationState.isPlayingIdle) {
-                    console.log('VRMAvatar: 切换到动捕模式 - 检测到手部', {
-                        hasHandDetection,
-                        animationState
-                    });
+                    console.log('VRMAvatar: 切换到动捕模式 - 检测到手部');
                 }
             }
         } catch (error) {
@@ -609,7 +599,8 @@ export const VRMAvatar = forwardRef(({
                     rotateBone('neck', neckData, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
             }
 
-            // 视线追踪
+            // 视线追踪 - 暂时禁用
+            /*
             if (lookAtTarget.current && riggedFace.current.pupil) {
                 vrm.lookAt.target = lookAtTarget.current;
                 lookAtDestination.current.set(
@@ -619,6 +610,7 @@ export const VRMAvatar = forwardRef(({
                 );
                 lookAtTarget.current.position.lerp(lookAtDestination.current, delta * ANIMATION_CONFIG.LERP_FACTOR.eye);
             }
+            */
             } catch (error) {
                 console.warn('VRMAvatar: 面部表情处理错误', error);
             }
@@ -706,7 +698,7 @@ export const VRMAvatar = forwardRef(({
             }
         } else {
             // 没有手部检测时，不应用动捕数据，让idle动画控制
-            console.log('VRMAvatar: 未检测到手部，使用idle动画', { hasHandDetection });
+            // console.log('VRMAvatar: 未检测到手部，使用idle动画', { hasHandDetection });
         }
 
         // 手部详细控制 - 只在有手部检测时应用
@@ -797,14 +789,8 @@ export const VRMAvatar = forwardRef(({
             {/* 原有的骨骼可视化 */}
             {(() => {
                 const shouldRender = vrm && showBones;
-                console.log('VRMAvatar: 渲染条件检查', {
-                    vrv: !!vrm,
-                    showBones,
-                    shouldRender
-                });
                 return shouldRender ? (
                     <>
-                        {console.log('VRMAvatar: 渲染骨骼可视化组件', { vrm: !!vrm, showBones })}
                         <BoneVisualizer vrm={vrm} />
                         {/* 添加一个测试立方体来确认组件被渲染 */}
                         <mesh position={[0, 2, 0]}>
@@ -831,9 +817,6 @@ export const VRMAvatar = forwardRef(({
                     <SimpleArmAxes vrm={vrm} showDebug={showArmAxes} />
                 </>
             )}
-            
-            {/* 调试：显示VRM ref状态 */}
-            {console.log('VRMAvatar: ref状态', { ref: !!ref, vrm: !!vrm, scene: !!scene })}
             
             {/* 重要：确保ref指向scene对象 */}
             {useEffect(() => {
