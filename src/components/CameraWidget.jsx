@@ -11,6 +11,40 @@ import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useSensitivitySettings } from '@/hooks/useSensitivitySettings';
 import { MEDIAPIPE_CONFIG, CAMERA_CONFIG } from '@/utils/constants';
 
+// 计算眼睛纵横比 (Eye Aspect Ratio)
+const calculateEyeAspectRatio = (landmarks, eyeIndices) => {
+    if (!landmarks || landmarks.length < 468) return 1;
+    
+    // 计算眼睛的垂直和水平距离
+    const verticalDistances = [];
+    const horizontalDistances = [];
+    
+    // 计算垂直距离（上下眼睑之间的距离）
+    for (let i = 0; i < eyeIndices.length - 1; i += 2) {
+        const top = landmarks[eyeIndices[i]];
+        const bottom = landmarks[eyeIndices[i + 1]];
+        const distance = Math.sqrt(
+            Math.pow(top.x - bottom.x, 2) + 
+            Math.pow(top.y - bottom.y, 2)
+        );
+        verticalDistances.push(distance);
+    }
+    
+    // 计算水平距离（眼睛的宽度）
+    const leftMost = landmarks[eyeIndices[0]];
+    const rightMost = landmarks[eyeIndices[eyeIndices.length - 1]];
+    const horizontalDistance = Math.sqrt(
+        Math.pow(leftMost.x - rightMost.x, 2) + 
+        Math.pow(leftMost.y - rightMost.y, 2)
+    );
+    
+    // 计算平均垂直距离
+    const avgVerticalDistance = verticalDistances.reduce((sum, dist) => sum + dist, 0) / verticalDistances.length;
+    
+    // 返回眼睛纵横比 (EAR)
+    return avgVerticalDistance / horizontalDistance;
+};
+
 export const CameraWidget = () => {
     const [isStarted, setIsStarted] = useState(false);
     const videoRef = useRef();
@@ -124,6 +158,31 @@ export const CameraWidget = () => {
             holisticRef.current.onResults((results) => {
                 drawResults(results);
                 
+                // 眨眼检测 - 使用FaceMesh的眼睛关键点
+                let blinkData = { leftEye: 1, rightEye: 1 };
+                if (results.faceLandmarks && results.faceLandmarks.length >= 468) {
+                    // FaceMesh的眼睛关键点索引
+                    const LEFT_EYE_INDICES = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398];
+                    const RIGHT_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+                    
+                    // 计算左眼闭合程度
+                    const leftEyeHeight = calculateEyeAspectRatio(results.faceLandmarks, LEFT_EYE_INDICES);
+                    const rightEyeHeight = calculateEyeAspectRatio(results.faceLandmarks, RIGHT_EYE_INDICES);
+                    
+                    // 标准化眨眼值（0=完全闭合，1=完全睁开）
+                    blinkData = {
+                        leftEye: Math.max(0, Math.min(1, leftEyeHeight / 0.3)), // 0.3是正常睁眼时的EAR值
+                        rightEye: Math.max(0, Math.min(1, rightEyeHeight / 0.3))
+                    };
+                    
+                    console.log('CameraWidget: 眨眼检测', {
+                        leftEye: blinkData.leftEye.toFixed(3),
+                        rightEye: blinkData.rightEye.toFixed(3),
+                        leftEyeHeight: leftEyeHeight.toFixed(4),
+                        rightEyeHeight: rightEyeHeight.toFixed(4)
+                    });
+                }
+                
                 // 详细的数据类型检查
                 const dataTypeCheck = {
                     hasFaceLandmarks: !!results.faceLandmarks,
@@ -144,6 +203,8 @@ export const CameraWidget = () => {
                     hasZa: !!results.za,
                     eaLength: results.ea?.length,
                     zaLength: results.za?.length,
+                    // 添加眨眼数据
+                    blinkData
                 };
                 
                 // 检查数据格式（2D vs 3D）
@@ -194,7 +255,12 @@ export const CameraWidget = () => {
                 const { resultsCallback } = useVideoRecognition.getState();
                 if (resultsCallback) {
                     console.log('CameraWidget: 调用 resultsCallback');
-                    resultsCallback(results);
+                    // 将眨眼数据添加到结果中
+                    const resultsWithBlink = {
+                        ...results,
+                        blinkData
+                    };
+                    resultsCallback(resultsWithBlink);
                 } else {
                     console.warn('CameraWidget: resultsCallback 未设置');
                 }

@@ -12,6 +12,7 @@ import { ArmTestPanel } from './ArmTestPanel'; // 新增：导入调试面板
 import { HandDebugPanel } from './HandDebugPanel'; // 新增：导入手部调试面板
 import { CameraController } from './CameraController'; // 新增：导入相机控制器
 import { CameraControlHint } from './CameraController'; // 新增：导入相机控制提示
+import { SmoothSettingsPanel } from './SmoothSettingsPanel'; // 新增：导入平滑设置面板
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
 
@@ -117,6 +118,7 @@ export default function VTuberApp() {
     const [showBones, setShowBones] = useState(false);
     const [showArmAxes, setShowArmAxes] = useState(false); // 新增手臂坐标轴状态
     const [showSensitivityPanel, setShowSensitivityPanel] = useState(false); // 新增灵敏度面板状态
+    const [showSmoothSettingsPanel, setShowSmoothSettingsPanel] = useState(false); // 新增平滑设置面板状态
     
     // 新增：坐标轴设置状态
     const [axisSettings, setAxisSettings] = useState({
@@ -295,10 +297,17 @@ export default function VTuberApp() {
                 isVisible={debugSettings.showDebug}
             />
 
+            {/* 新增：平滑设置面板 */}
+            <SmoothSettingsPanel 
+                isVisible={showSmoothSettingsPanel}
+                onClose={() => setShowSmoothSettingsPanel(false)}
+            />
+
             {/* 控制面板 */}
             <ControlPanel
                 mocapStatus={mocapStatus}
                 onOpenSensitivityPanel={() => setShowSensitivityPanel(true)}
+                onOpenSmoothSettingsPanel={() => setShowSmoothSettingsPanel(true)}
                 onOpenModelManager={() => setIsModelManagerOpen(true)}
                 showBones={showBones}
                 onToggleBones={setShowBones}
@@ -326,10 +335,10 @@ export default function VTuberApp() {
             {/* 主 3D 场景 */}
             <Canvas
                 camera={{
-                    position: [0, 2.5, 4],
+                    position: [0, -2, 3],
                     fov: 35, // 减小FOV以获得更好的景深效果
                     near: 0.1,
-                    far: 1000
+                    far: 10000
                 }}
                 shadows
                 gl={{

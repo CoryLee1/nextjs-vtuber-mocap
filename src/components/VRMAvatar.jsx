@@ -257,6 +257,7 @@ export const VRMAvatar = forwardRef(({
     const riggedPose = useRef();
     const riggedLeftHand = useRef();
     const riggedRightHand = useRef();
+    const blinkData = useRef({ leftEye: 1, rightEye: 1 }); // 添加眨眼数据引用
 
     // 手部检测状态
     const handDetectionState = useRef({
@@ -457,6 +458,12 @@ export const VRMAvatar = forwardRef(({
         handDetectionState.current.hasHandDetection =
             handDetectionState.current.hasLeftHand || handDetectionState.current.hasRightHand;
 
+        // 更新眨眼数据
+        if (results.blinkData) {
+            blinkData.current = results.blinkData;
+            console.log('VRMAvatar: 更新眨眼数据', blinkData.current);
+        }
+
         // 更新手部调试信息
         const debugInfo = {
             leftHandDetected: handDetectionState.current.hasLeftHand,
@@ -585,18 +592,31 @@ export const VRMAvatar = forwardRef(({
                 lerpExpression(name, value, lerpFactor);
             });
 
-            // 眨眼同步
+            // 眨眼同步 - 使用FaceMesh的眨眼检测
+            if (blinkData.current) {
+                // 使用FaceMesh检测的眨眼数据
+                lerpExpression('blinkLeft', 1 - blinkData.current.leftEye, lerpFactor);
+                lerpExpression('blinkRight', 1 - blinkData.current.rightEye, lerpFactor);
+                console.log('VRMAvatar: 使用FaceMesh眨眼数据', {
+                    leftEye: blinkData.current.leftEye.toFixed(3),
+                    rightEye: blinkData.current.rightEye.toFixed(3)
+                });
+            } else if (riggedFace.current) {
+                // 备用：使用Kalidokit的眨眼数据
                 lerpExpression('blinkLeft', 1 - (riggedFace.current.eye?.l || 1), lerpFactor);
                 lerpExpression('blinkRight', 1 - (riggedFace.current.eye?.r || 1), lerpFactor);
+            }
 
             // 头部旋转
             if (riggedFace.current.head) {
-                    const neckData = {
-                        x: riggedFace.current.head.x * axisSettings.neck.x,
-                        y: riggedFace.current.head.y * axisSettings.neck.y,
-                        z: riggedFace.current.head.z * axisSettings.neck.z,
-                    };
-                    rotateBone('neck', neckData, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
+                const rawNeckData = {
+                    x: riggedFace.current.head.x * axisSettings.neck.x,
+                    y: riggedFace.current.head.y * axisSettings.neck.y,
+                    z: riggedFace.current.head.z * axisSettings.neck.z,
+                };
+                
+                // 直接应用，不使用平滑
+                rotateBone('neck', rawNeckData, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
             }
 
             // 视线追踪 - 暂时禁用
@@ -634,63 +654,61 @@ export const VRMAvatar = forwardRef(({
                 // 使用 Kalidokit 的手臂数据 - 只应用检测到的手
                 if (riggedPose.current.LeftUpperArm && handDetectionState.current.hasLeftHand) {
                     console.log('VRMAvatar: 应用左手臂数据', riggedPose.current.LeftUpperArm);
-                    const leftArmData = {
+                    const rawLeftArmData = {
                         x: riggedPose.current.LeftUpperArm.x * axisSettings.leftArm.x,
                         y: riggedPose.current.LeftUpperArm.y * axisSettings.leftArm.y,
                         z: riggedPose.current.LeftUpperArm.z * axisSettings.leftArm.z,
                     };
-                    rotateBone('leftUpperArm', leftArmData, boneLerpFactor * settings.armSpeed);
+                    rotateBone('leftUpperArm', rawLeftArmData, boneLerpFactor * settings.armSpeed);
                 }
                 
                 if (riggedPose.current.LeftLowerArm && handDetectionState.current.hasLeftHand) {
-                    const leftLowerArmData = {
+                    const rawLeftLowerArmData = {
                         x: riggedPose.current.LeftLowerArm.x * axisSettings.leftArm.x,
                         y: riggedPose.current.LeftLowerArm.y * axisSettings.leftArm.y,
                         z: riggedPose.current.LeftLowerArm.z * axisSettings.leftArm.z,
                     };
-                    rotateBone('leftLowerArm', leftLowerArmData, boneLerpFactor * settings.armSpeed);
+                    rotateBone('leftLowerArm', rawLeftLowerArmData, boneLerpFactor * settings.armSpeed);
                 }
 
                 if (riggedPose.current.RightUpperArm && handDetectionState.current.hasRightHand) {
                     console.log('VRMAvatar: 应用右手臂数据', riggedPose.current.RightUpperArm);
-                    const rightArmData = {
+                    const rawRightArmData = {
                         x: riggedPose.current.RightUpperArm.x * axisSettings.rightArm.x,
                         y: riggedPose.current.RightUpperArm.y * axisSettings.rightArm.y,
                         z: riggedPose.current.RightUpperArm.z * axisSettings.rightArm.z,
                     };
-                    rotateBone('rightUpperArm', rightArmData, boneLerpFactor * settings.armSpeed);
+                    rotateBone('rightUpperArm', rawRightArmData, boneLerpFactor * settings.armSpeed);
                 }
                 
                 if (riggedPose.current.RightLowerArm && handDetectionState.current.hasRightHand) {
-                    const rightLowerArmData = {
+                    const rawRightLowerArmData = {
                         x: riggedPose.current.RightLowerArm.x * axisSettings.rightArm.x,
                         y: riggedPose.current.RightLowerArm.y * axisSettings.rightArm.y,
                         z: riggedPose.current.RightLowerArm.z * axisSettings.rightArm.z,
                     };
-                    rotateBone('rightLowerArm', rightLowerArmData, boneLerpFactor * settings.armSpeed);
+                    rotateBone('rightLowerArm', rawRightLowerArmData, boneLerpFactor * settings.armSpeed);
                 }
 
                 // 手部控制 - 只应用检测到的手
                 if (riggedPose.current.LeftHand && riggedLeftHand.current && handDetectionState.current.hasLeftHand) {
                     // 镜像映射：riggedLeftHand 包含右手数据，控制左手
-                    const leftHandData = {
+                    const rawLeftHandData = {
                         x: -riggedLeftHand.current.LeftWrist.x * axisSettings.leftHand.x, // 翻转X轴（镜像效果）
                         y: riggedLeftHand.current.LeftWrist.y * axisSettings.leftHand.y, // 直接使用Y轴
                         z: riggedPose.current.LeftHand.z * axisSettings.leftHand.z, // 使用pose的Z轴
                     };
-                    console.log('VRMAvatar: 应用左手数据（简化版）', leftHandData);
-                    rotateBone('leftHand', leftHandData, boneLerpFactor * settings.handSpeed);
+                    rotateBone('leftHand', rawLeftHandData, boneLerpFactor * settings.handSpeed);
                 }
 
                 if (riggedPose.current.RightHand && riggedRightHand.current && handDetectionState.current.hasRightHand) {
                     // 镜像映射：riggedRightHand 包含左手数据，控制右手
-                    const rightHandData = {
+                    const rawRightHandData = {
                         x: -riggedRightHand.current.RightWrist.x * axisSettings.rightHand.x, // 翻转X轴（镜像效果）
                         y: riggedRightHand.current.RightWrist.y * axisSettings.rightHand.y, // 直接使用Y轴
                         z: riggedPose.current.RightHand.z * axisSettings.rightHand.z, // 使用pose的Z轴
                     };
-                    console.log('VRMAvatar: 应用右手数据（简化版）', rightHandData);
-                    rotateBone('rightHand', rightHandData, boneLerpFactor * settings.handSpeed);
+                    rotateBone('rightHand', rawRightHandData, boneLerpFactor * settings.handSpeed);
                 }
 
             } catch (error) {
@@ -725,12 +743,14 @@ export const VRMAvatar = forwardRef(({
 
                 leftFingerBones.forEach(({ bone, data }) => {
                     if (data) {
-                        const correctedFingerData = {
+                        const rawFingerData = {
                             x: -data.x, // 翻转X轴（镜像效果），去掉amplitude
                             y: -data.z, // 翻转Z轴（向前变向前），去掉amplitude
                             z: data.y, // 交换Y和Z轴，去掉amplitude
                         };
-                        rotateBone(bone, correctedFingerData, boneLerpFactor * settings.fingerSpeed);
+                        
+                        // 应用平滑效果 - 使用较小的阻尼值让手指更敏感
+                        rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
                     }
                 });
             } catch (error) {
@@ -761,12 +781,14 @@ export const VRMAvatar = forwardRef(({
 
                 rightFingerBones.forEach(({ bone, data }) => {
                     if (data) {
-                        const correctedFingerData = {
+                        const rawFingerData = {
                             x: -data.x, // 翻转X轴（镜像效果），去掉amplitude
                             y: -data.z, // 翻转Z轴（向前变向前），去掉amplitude
                             z: data.y, // 交换Y和Z轴，去掉amplitude
                         };
-                        rotateBone(bone, correctedFingerData, boneLerpFactor * settings.fingerSpeed);
+                        
+                        // 应用平滑效果 - 使用较小的阻尼值让手指更敏感
+                        rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
                     }
                 });
             } catch (error) {

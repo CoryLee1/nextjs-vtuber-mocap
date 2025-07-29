@@ -7,6 +7,7 @@ export const ControlPanel = ({
     mocapStatus,
     onOpenSensitivityPanel,
     onOpenModelManager,
+    onOpenSmoothSettingsPanel, // 新增：平滑设置面板打开函数
     showBones,
     onToggleBones,
     showArmAxes = false,
@@ -116,6 +117,12 @@ export const ControlPanel = ({
                                 className="w-full px-3 py-1.5 bg-orange-500 text-white text-xs rounded-lg hover:bg-orange-600 transition-colors"
                             >
                                 调节灵敏度
+                            </button>
+                            <button
+                                onClick={onOpenSmoothSettingsPanel}
+                                className="w-full px-3 py-1.5 bg-purple-500 text-white text-xs rounded-lg hover:bg-purple-600 transition-colors"
+                            >
+                                平滑参数设置
                             </button>
                         </div>
 
