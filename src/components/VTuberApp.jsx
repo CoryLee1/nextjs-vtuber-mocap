@@ -7,6 +7,7 @@ import { CameraWidget } from './CameraWidget';
 import { VRMAvatar } from './VRMAvatar';
 import { UI } from './UI';
 import { ModelManager } from './ModelManager';
+import { AnimationLibrary } from './AnimationLibrary'; // 新增：导入动画库
 import { ControlPanel } from './ControlPanel';
 import { ArmTestPanel } from './ArmTestPanel'; // 新增：导入调试面板
 import { HandDebugPanel } from './HandDebugPanel'; // 新增：导入手部调试面板
@@ -15,6 +16,7 @@ import { CameraControlHint } from './CameraController'; // 新增：导入相机
 import { SmoothSettingsPanel } from './SmoothSettingsPanel'; // 新增：导入平滑设置面板
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
+import { useAnimationLibrary } from '@/hooks/useAnimationLibrary'; // 新增：导入动画库Hook
 
 // 3D 加载指示器组件
 const LoadingIndicator = () => (
@@ -25,8 +27,20 @@ const LoadingIndicator = () => (
 );
 
 // 场景组件 - 更新以支持调试参数
-const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSettings, cameraSettings }) => {
-    console.log('Scene: 渲染场景', { selectedModel, showBones, debugSettings, axisSettings, cameraSettings });
+const Scene = ({ selectedModel, selectedAnimation, showBones, debugSettings, showArmAxes, axisSettings, cameraSettings }) => {
+    console.log('Scene: 渲染场景', { selectedModel, selectedAnimation, showBones, debugSettings, axisSettings, cameraSettings });
+    console.log('Scene: selectedModel详情', { 
+        hasSelectedModel: !!selectedModel,
+        modelName: selectedModel?.name,
+        modelUrl: selectedModel?.url,
+        modelId: selectedModel?.id
+    });
+    console.log('Scene: selectedAnimation详情', { 
+        hasSelectedAnimation: !!selectedAnimation,
+        animationName: selectedAnimation?.name,
+        animationUrl: selectedAnimation?.url,
+        animationId: selectedAnimation?.id
+    });
     const vrmRef = useRef();
     
     // 添加调试信息
@@ -72,6 +86,7 @@ const Scene = ({ selectedModel, showBones, debugSettings, showArmAxes, axisSetti
                     <VRMAvatar
                         ref={vrmRef}
                         modelUrl={selectedModel?.url || '/models/AvatarSample_A.vrm'}
+                        animationUrl={selectedAnimation?.url || '/models/animations/Idle.fbx'}
                         scale={1}
                         position={[0, -1, 0]}
                         showBones={showBones}
@@ -119,6 +134,7 @@ export default function VTuberApp() {
     const [showArmAxes, setShowArmAxes] = useState(false); // 新增手臂坐标轴状态
     const [showSensitivityPanel, setShowSensitivityPanel] = useState(false); // 新增灵敏度面板状态
     const [showSmoothSettingsPanel, setShowSmoothSettingsPanel] = useState(false); // 新增平滑设置面板状态
+    const [isAnimationLibraryOpen, setIsAnimationLibraryOpen] = useState(false); // 新增动画库状态
     
     // 新增：坐标轴设置状态
     const [axisSettings, setAxisSettings] = useState({
@@ -182,15 +198,27 @@ export default function VTuberApp() {
     
     const { getSelectedModel, selectModel, getAllModels } = useModelManager();
     
+    // 新增：动画库管理
+    const { 
+        getSelectedAnimation, 
+        selectAnimation, 
+        getAllAnimations 
+    } = useAnimationLibrary();
+    
     // 获取当前选中的模型
     const selectedModel = getSelectedModel();
+    
+    // 新增：获取当前选中的动画
+    const selectedAnimation = getSelectedAnimation();
     
     console.log('VTuberApp: 当前状态', { 
         isModelManagerOpen, 
         showBones, 
         debugSettings,
         selectedModel: selectedModel?.name,
-        selectedModelUrl: selectedModel?.url 
+        selectedModelUrl: selectedModel?.url,
+        selectedAnimation: selectedAnimation?.name,
+        selectedAnimationUrl: selectedAnimation?.url
     });
 
     // 处理模型选择
@@ -200,8 +228,22 @@ export default function VTuberApp() {
             console.log('VTuberApp: 找到模型', model.name, model.url);
             selectModel(model.id);
             console.log('VTuberApp: 模型已选择', model.name, model.url);
+            console.log('VTuberApp: 当前selectedModel状态', getSelectedModel());
         } else {
             console.warn('VTuberApp: 无效的模型对象', model);
+        }
+    };
+
+    // 新增：处理动画选择
+    const handleAnimationSelect = (animation) => {
+        console.log('VTuberApp: handleAnimationSelect 被调用', animation);
+        if (animation && animation.id) {
+            console.log('VTuberApp: 找到动画', animation.name, animation.url);
+            selectAnimation(animation);
+            console.log('VTuberApp: 动画已选择', animation.name, animation.url);
+            console.log('VTuberApp: 当前selectedAnimation状态', getSelectedAnimation());
+        } else {
+            console.warn('VTuberApp: 无效的动画对象', animation);
         }
     };
 
@@ -213,6 +255,16 @@ export default function VTuberApp() {
     // 关闭模型管理器
     const handleCloseModelManager = () => {
         setIsModelManagerOpen(false);
+    };
+
+    // 新增：打开动画库
+    const handleOpenAnimationLibrary = () => {
+        setIsAnimationLibraryOpen(true);
+    };
+
+    // 新增：关闭动画库
+    const handleCloseAnimationLibrary = () => {
+        setIsAnimationLibraryOpen(false);
     };
 
     // 切换骨骼可视化
@@ -309,6 +361,8 @@ export default function VTuberApp() {
                 onOpenSensitivityPanel={() => setShowSensitivityPanel(true)}
                 onOpenSmoothSettingsPanel={() => setShowSmoothSettingsPanel(true)}
                 onOpenModelManager={() => setIsModelManagerOpen(true)}
+                onOpenAnimationLibrary={() => setIsAnimationLibraryOpen(true)}
+                selectedAnimation={selectedAnimation}
                 showBones={showBones}
                 onToggleBones={setShowBones}
                 showArmAxes={showArmAxes}
@@ -327,6 +381,13 @@ export default function VTuberApp() {
                 isOpen={isModelManagerOpen}
                 onClose={handleCloseModelManager}
                 onModelSelect={handleModelSelect}
+            />
+
+            {/* 新增：动画库 */}
+            <AnimationLibrary
+                isOpen={isAnimationLibraryOpen}
+                onClose={handleCloseAnimationLibrary}
+                onAnimationSelect={handleAnimationSelect}
             />
 
             {/* Loader */}
@@ -369,7 +430,8 @@ export default function VTuberApp() {
 
                 {/* 传递调试设置给场景 */}
                 <Scene 
-                    selectedModel={selectedModel?.url || '/models/AvatarSample_A.vrm'} 
+                    selectedModel={selectedModel} 
+                    selectedAnimation={selectedAnimation}
                     showBones={showBones}
                     debugSettings={debugSettings}
                     showArmAxes={showArmAxes}

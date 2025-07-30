@@ -24,7 +24,7 @@ export const ModelManager = ({ isOpen, onClose, onModelSelect }) => {
     const handleModelSelect = (model) => {
         console.log('ModelManager: handleModelSelect 被调用', model.name, model.url);
         selectModel(model.id);
-        onModelSelect(model.url);
+        onModelSelect(model); // 传递完整的model对象
         console.log('ModelManager: 模型选择完成');
     };
 
@@ -32,7 +32,7 @@ export const ModelManager = ({ isOpen, onClose, onModelSelect }) => {
     const handleFileUpload = async (file) => {
         try {
             const newModel = await uploadModel(file);
-            onModelSelect(newModel.url);
+            onModelSelect(newModel); // 传递完整的model对象
         } catch (error) {
             // 错误已在 hook 中处理
         }
@@ -42,7 +42,7 @@ export const ModelManager = ({ isOpen, onClose, onModelSelect }) => {
     const handleModelDownload = async (onlineModel) => {
         try {
             const downloadedModel = await downloadModel(onlineModel);
-            onModelSelect(downloadedModel.url);
+            onModelSelect(downloadedModel); // 传递完整的model对象
         } catch (error) {
             // 错误已在 hook 中处理
         }

@@ -8,6 +8,8 @@ export const ControlPanel = ({
     onOpenSensitivityPanel,
     onOpenModelManager,
     onOpenSmoothSettingsPanel, // 新增：平滑设置面板打开函数
+    onOpenAnimationLibrary, // 新增：动画库打开函数
+    selectedAnimation, // 新增：当前选中的动画
     showBones,
     onToggleBones,
     showArmAxes = false,
@@ -137,6 +139,20 @@ export const ControlPanel = ({
                                 className="w-full px-3 py-1.5 bg-vtuber-primary text-white text-xs rounded-lg hover:bg-vtuber-secondary transition-colors"
                             >
                                 管理模型
+                            </button>
+                        </div>
+
+                        {/* 新增：动画库管理 */}
+                        <div className="space-y-2">
+                            <h4 className="text-xs font-medium text-gray-600">动画库</h4>
+                            <div className="text-xs text-gray-500 truncate">
+                                当前: {selectedAnimation?.name || '待机动画'}
+                            </div>
+                            <button
+                                onClick={onOpenAnimationLibrary}
+                                className="w-full px-3 py-1.5 bg-purple-500 text-white text-xs rounded-lg hover:bg-purple-600 transition-colors"
+                            >
+                                管理动画
                             </button>
                         </div>
 

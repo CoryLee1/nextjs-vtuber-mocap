@@ -151,6 +151,7 @@ const BoneVisualizer = ({ vrm }) => {
 
 export const VRMAvatar = forwardRef(({
     modelUrl = '/models/avatar.vrm',
+    animationUrl = '/models/animations/Idle.fbx', // 新增：动画URL参数
     scale = 1,
     position = [0, 0, 0],
     showBones = false, // 添加骨骼可视化控制
@@ -167,7 +168,7 @@ export const VRMAvatar = forwardRef(({
     ...props
 }, ref) => {
     console.log('=== VRMAvatar 开始渲染 ===');
-    console.log('VRMAvatar: 组件初始化', { modelUrl, scale, position, showBones });
+    console.log('VRMAvatar: 组件初始化', { modelUrl, animationUrl, scale, position, showBones });
 
     // 获取灵敏度设置
     const { settings } = useSensitivitySettings();
@@ -200,7 +201,7 @@ export const VRMAvatar = forwardRef(({
         transitionToAnimation,
         shouldPlayIdle,
         getAnimationState
-    } = useAnimationManager(vrm);
+    } = useAnimationManager(vrm, animationUrl);
 
     // 添加VRM加载调试信息
     useEffect(() => {
@@ -251,6 +252,12 @@ export const VRMAvatar = forwardRef(({
             console.log('VRMAvatar: 清除之前的VRM实例');
         }
     }, [modelUrl]);
+
+    // 新增：监听动画URL变化
+    useEffect(() => {
+        console.log('VRMAvatar: 动画URL变化', animationUrl);
+        // 动画管理器会自动重新加载新的动画
+    }, [animationUrl]);
 
     // 动捕数据引用
     const riggedFace = useRef();
@@ -558,12 +565,13 @@ export const VRMAvatar = forwardRef(({
         // 根据手部检测状态决定是否播放idle动画
         try {
             if (shouldPlayIdle(hasHandDetection)) {
-                // 没有检测到手时，平滑过渡到idle动画
+                // 没有检测到手时，确保idle动画正在播放
                 const animationState = getAnimationState();
                 
                 if (!animationState.isPlayingIdle && !animationState.isTransitioning && animationState.hasMixer) {
-                    // 只在状态变化时记录
-                    console.log('VRMAvatar: 切换到idle动画 - 未检测到手部');
+                    // 启动idle动画
+                    console.log('VRMAvatar: 启动idle动画 - 未检测到手部');
+                    // 这里不需要手动启动，因为动画管理器会自动处理
                 }
             } else {
                 // 检测到手时，停止idle动画，使用动捕数据
