@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import {
@@ -52,12 +52,19 @@ export const CameraWidget = () => {
     const holisticRef = useRef();
     const cameraRef = useRef();
     const { settings } = useSensitivitySettings();
+    
+    // 性能优化：添加帧率控制
+    const frameRateRef = useRef(0);
+    const lastFrameTimeRef = useRef(0);
+    const targetFPS = 60; // 恢复到60FPS以获得更流畅的体验
+    const frameInterval = 1000 / targetFPS;
 
     const {
         setVideoElement,
         setIsCameraActive,
         setError,
-        clearError
+        clearError,
+        setResultsCallback // 新增：用于存储 resultsCallback
     } = useVideoRecognition();
 
     // 绘制 MediaPipe 结果
@@ -123,193 +130,13 @@ export const CameraWidget = () => {
         ctx.restore();
     };
 
-    // 启动摄像头和 MediaPipe
-    const startCamera = async () => {
-        try {
-            clearError();
-
-            if (!videoRef.current) return;
-
-            // 初始化 Holistic - 使用动态灵敏度设置
-            holisticRef.current = new Holistic({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/${file}`;
-                },
-                // 启用手部检测
-                refineFaceLandmarks: true,
-                modelComplexity: 1,
-                smoothLandmarks: true,
-                enableSegmentation: false,
-                smoothSegmentation: true,
-                // 使用动态灵敏度设置
-                minDetectionConfidence: settings.minDetectionConfidence,
-                minTrackingConfidence: settings.minTrackingConfidence,
-                // 确保启用手部检测
-                staticImageMode: false,
-                maxNumHands: 2,
-                // 启用 3D 姿态数据
-                enable3d: true,
-                // 手部检测配置 - 使用动态设置
-                minHandDetectionConfidence: settings.minHandDetectionConfidence,
-                minHandTrackingConfidence: settings.minHandTrackingConfidence,
-            });
-
-            // 设置结果回调
-            holisticRef.current.onResults((results) => {
-                drawResults(results);
-                
-                // 眨眼检测 - 使用FaceMesh的眼睛关键点
-                let blinkData = { leftEye: 1, rightEye: 1 };
-                if (results.faceLandmarks && results.faceLandmarks.length >= 468) {
-                    // FaceMesh的眼睛关键点索引
-                    const LEFT_EYE_INDICES = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398];
-                    const RIGHT_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
-                    
-                    // 计算左眼闭合程度
-                    const leftEyeHeight = calculateEyeAspectRatio(results.faceLandmarks, LEFT_EYE_INDICES);
-                    const rightEyeHeight = calculateEyeAspectRatio(results.faceLandmarks, RIGHT_EYE_INDICES);
-                    
-                    // 标准化眨眼值（0=完全闭合，1=完全睁开）
-                    blinkData = {
-                        leftEye: Math.max(0, Math.min(1, leftEyeHeight / 0.3)), // 0.3是正常睁眼时的EAR值
-                        rightEye: Math.max(0, Math.min(1, rightEyeHeight / 0.3))
-                    };
-                    
-                    console.log('CameraWidget: 眨眼检测', {
-                        leftEye: blinkData.leftEye.toFixed(3),
-                        rightEye: blinkData.rightEye.toFixed(3),
-                        leftEyeHeight: leftEyeHeight.toFixed(4),
-                        rightEyeHeight: rightEyeHeight.toFixed(4)
-                    });
-                }
-                
-                // 详细的数据类型检查
-                const dataTypeCheck = {
-                    hasFaceLandmarks: !!results.faceLandmarks,
-                    hasPoseLandmarks: !!results.poseLandmarks,
-                    hasLeftHand: !!results.leftHandLandmarks,
-                    hasRightHand: !!results.rightHandLandmarks,
-                    poseLandmarksLength: results.poseLandmarks?.length,
-                    leftHandLength: results.leftHandLandmarks?.length,
-                    rightHandLength: results.rightHandLandmarks?.length,
-                    // 检查是否有 3D 数据
-                    hasPose3D: !!results.pose3d,
-                    pose3dLength: results.pose3d?.length,
-                    // 详细的数据结构
-                    resultsKeys: Object.keys(results),
-                    faceLandmarksLength: results.faceLandmarks?.length,
-                    // 检查其他可能的字段
-                    hasEa: !!results.ea,
-                    hasZa: !!results.za,
-                    eaLength: results.ea?.length,
-                    zaLength: results.za?.length,
-                    // 添加眨眼数据
-                    blinkData
-                };
-                
-                // 检查数据格式（2D vs 3D）
-                if (results.poseLandmarks && results.poseLandmarks.length > 0) {
-                    const firstPosePoint = results.poseLandmarks[0];
-                    dataTypeCheck.poseDataFormat = {
-                        hasX: 'x' in firstPosePoint,
-                        hasY: 'y' in firstPosePoint,
-                        hasZ: 'z' in firstPosePoint,
-                        is3D: 'z' in firstPosePoint,
-                        samplePoint: firstPosePoint
-                    };
-                }
-                
-                if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
-                    const firstHandPoint = results.leftHandLandmarks[0];
-                    dataTypeCheck.leftHandDataFormat = {
-                        hasX: 'x' in firstHandPoint,
-                        hasY: 'y' in firstHandPoint,
-                        hasZ: 'z' in firstHandPoint,
-                        is3D: 'z' in firstHandPoint,
-                        samplePoint: firstHandPoint
-                    };
-                }
-                
-                if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
-                    const firstHandPoint = results.rightHandLandmarks[0];
-                    dataTypeCheck.rightHandDataFormat = {
-                        hasX: 'x' in firstHandPoint,
-                        hasY: 'y' in firstHandPoint,
-                        hasZ: 'z' in firstHandPoint,
-                        is3D: 'z' in firstHandPoint,
-                        samplePoint: firstHandPoint
-                    };
-                }
-                
-                console.log('CameraWidget: MediaPipe 结果和数据类型检查', dataTypeCheck);
-                
-                // 检查手部数据的具体内容
-                if (results.leftHandLandmarks) {
-                    console.log('CameraWidget: 左手数据样本', results.leftHandLandmarks.slice(0, 3));
-                }
-                if (results.rightHandLandmarks) {
-                    console.log('CameraWidget: 右手数据样本', results.rightHandLandmarks.slice(0, 3));
-                }
-                
-                // 将结果传递给 useVideoRecognition
-                const { resultsCallback } = useVideoRecognition.getState();
-                if (resultsCallback) {
-                    console.log('CameraWidget: 调用 resultsCallback');
-                    // 将眨眼数据添加到结果中
-                    const resultsWithBlink = {
-                        ...results,
-                        blinkData
-                    };
-                    resultsCallback(resultsWithBlink);
-                } else {
-                    console.warn('CameraWidget: resultsCallback 未设置');
-                }
-            });
-
-            // 等待 Holistic 初始化完成
-            await holisticRef.current.initialize();
-
-            // 初始化摄像头
-            cameraRef.current = new Camera(videoRef.current, {
-                onFrame: async () => {
-                    // 确保 holisticRef.current 存在且已初始化
-                    if (holisticRef.current && holisticRef.current.send) {
-                        await holisticRef.current.send({ image: videoRef.current });
-                    }
-                },
-                width: CAMERA_CONFIG.width,
-                height: CAMERA_CONFIG.height,
-            });
-
-            await cameraRef.current.start();
-
-            console.log('CameraWidget: 摄像头启动完成，设置 videoElement');
-            setVideoElement(videoRef.current);
-            setIsCameraActive(true);
-            console.log('CameraWidget: videoElement 已设置', !!videoRef.current);
-
-        } catch (error) {
-            console.error('Camera start error:', error);
-            setError('摄像头启动失败: ' + error.message);
-        }
-    };
-
-    // 当灵敏度设置变化时重新初始化 Holistic
-    useEffect(() => {
-        if (isStarted && holisticRef.current) {
-            console.log('CameraWidget: 灵敏度设置变化，重新初始化 Holistic');
-            stopCamera();
-            setTimeout(() => {
-                startCamera();
-            }, 100);
-        }
-    }, [settings.minDetectionConfidence, settings.minTrackingConfidence, settings.minHandDetectionConfidence, settings.minHandTrackingConfidence]);
-
     // 停止摄像头
-    const stopCamera = () => {
+    const stopCamera = useCallback(() => {
         try {
             if (cameraRef.current) {
-                cameraRef.current.stop();
+                // 正确停止MediaStream
+                const tracks = cameraRef.current.getTracks();
+                tracks.forEach(track => track.stop());
                 cameraRef.current = null;
             }
 
@@ -324,7 +151,122 @@ export const CameraWidget = () => {
         } catch (error) {
             console.error('Camera stop error:', error);
         }
-    };
+    }, [setVideoElement, setIsCameraActive]);
+
+    // 启动摄像头
+    const startCamera = useCallback(async () => {
+        try {
+            if (cameraRef.current) {
+                console.log('Camera already started');
+                return;
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                }
+            });
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
+            }
+
+            // 初始化 MediaPipe Holistic
+            if (!holisticRef.current) {
+                holisticRef.current = new Holistic({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+                    }
+                });
+
+                holisticRef.current.setOptions({
+                    modelComplexity: 1, // 恢复到完整模型
+                    smoothLandmarks: true,
+                    enableSegmentation: false, // 保持禁用分割
+                    smoothSegmentation: false, // 保持禁用分割平滑
+                    refineFaceLandmarks: true, // 恢复精细面部关键点
+                    minDetectionConfidence: 0.7, // 恢复到标准阈值
+                    minTrackingConfidence: 0.7, // 恢复到标准阈值
+                    minHandDetectionConfidence: 0.7, // 添加手部检测阈值
+                    minHandTrackingConfidence: 0.7 // 添加手部跟踪阈值
+                });
+
+                holisticRef.current.onResults((results) => {
+                    // 性能优化：帧率控制
+                    const currentTime = performance.now();
+                    if (currentTime - lastFrameTimeRef.current < frameInterval) {
+                        return; // 跳过帧以控制帧率
+                    }
+                    lastFrameTimeRef.current = currentTime;
+                    
+                    if (canvasRef.current && videoRef.current) {
+                        const ctx = canvasRef.current.getContext('2d');
+                        const video = videoRef.current;
+
+                        canvasRef.current.width = video.videoWidth;
+                        canvasRef.current.height = video.videoHeight;
+
+                        ctx.save();
+                        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                        ctx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
+
+                        // 绘制检测结果
+                        drawResults(results);
+
+                        ctx.restore();
+                    }
+
+                    // 更新状态
+                    setVideoElement(videoRef.current);
+                    setIsCameraActive(true);
+
+                    // 传递结果给父组件
+                    if (setResultsCallback) {
+                        setResultsCallback(results);
+                    }
+                });
+            }
+
+            // 开始处理视频流
+            if (videoRef.current && holisticRef.current) {
+                // 等待视频加载完成后再开始处理
+                videoRef.current.addEventListener('loadeddata', () => {
+                    if (holisticRef.current) {
+                        holisticRef.current.send({ image: videoRef.current });
+                    }
+                }, { once: true });
+                
+                // 立即发送第一帧
+                holisticRef.current.send({ image: videoRef.current });
+            }
+
+            cameraRef.current = stream;
+
+        } catch (error) {
+            console.error('Camera start error:', error);
+            setIsCameraActive(false);
+        }
+    }, [settings.minDetectionConfidence, settings.minTrackingConfidence, settings.minHandDetectionConfidence, settings.minHandTrackingConfidence, setResultsCallback, setVideoElement, setIsCameraActive]);
+
+    // 监听设置变化，重新启动摄像头 - 添加防抖
+    useEffect(() => {
+        if (isStarted && cameraRef.current) {
+            // 防抖：延迟重启以避免频繁重启
+            const timeoutId = setTimeout(() => {
+                console.log('CameraWidget: 设置变化，重启摄像头');
+                stopCamera();
+                // 延迟启动以确保清理完成
+                setTimeout(() => {
+                    startCamera();
+                }, 100);
+            }, 500); // 增加延迟时间
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [settings.minDetectionConfidence, settings.minTrackingConfidence, settings.minHandDetectionConfidence, settings.minHandTrackingConfidence, isStarted, startCamera, stopCamera]);
 
     // 切换摄像头状态
     const toggleCamera = () => {
@@ -343,7 +285,7 @@ export const CameraWidget = () => {
         return () => {
             stopCamera();
         };
-    }, [isStarted]);
+    }, [isStarted, startCamera, stopCamera]);
 
     return (
         <>
@@ -402,6 +344,13 @@ export const CameraWidget = () => {
                             <span className="text-white text-xs font-medium bg-black/50 px-1 py-0.5 rounded">
                                 LIVE
                             </span>
+                        </div>
+                    </div>
+                    
+                    {/* 性能监控 */}
+                    <div className="absolute bottom-1 left-1 z-20">
+                        <div className="text-white text-xs font-medium bg-black/50 px-1 py-0.5 rounded">
+                            FPS: {Math.round(1000 / frameInterval)}
                         </div>
                     </div>
                 </div>

@@ -1,206 +1,200 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { DraggablePanel } from './DraggablePanel';
 
-export const ArmTestPanel = ({ onSettingsChange, initialSettings = null }) => {
-    const [settings, setSettings] = useState({
-        leftArmMultiplier: { x: -1, y: 1, z: -1 },
-        rightArmMultiplier: { x: 1, y: 1, z: -1 },
-        amplitude: 1,
-        showDebug: true,
-        showBones: false,
-        showRawData: true,
-        ...initialSettings
-    });
+export const ArmTestPanel = ({ 
+    isOpen, 
+    onClose, 
+    showArmAxes, 
+    onToggleArmAxes, 
+    axisSettings, 
+    onAxisAdjustment 
+}) => {
+    const [activeSection, setActiveSection] = useState('leftArm');
 
-    const [isExpanded, setIsExpanded] = useState(true);
+    const sections = [
+        { id: 'leftArm', label: '左手臂', icon: '🤚' },
+        { id: 'rightArm', label: '右手臂', icon: '🤚' },
+        { id: 'leftHand', label: '左手', icon: '✋' },
+        { id: 'rightHand', label: '右手', icon: '✋' },
+        { id: 'neck', label: '脖子', icon: '👤' }
+    ];
 
-    // 当设置改变时通知父组件
-    useEffect(() => {
-        onSettingsChange?.(settings);
-    }, [settings, onSettingsChange]);
-
-    const updateSetting = (key, value) => {
-        setSettings(prev => ({ ...prev, [key]: value }));
+    const handleAxisChange = (section, axis, value) => {
+        onAxisAdjustment(section, axis, value);
     };
 
-    const updateMultiplier = (arm, axis, value) => {
-        setSettings(prev => ({
-            ...prev,
-            [`${arm}ArmMultiplier`]: {
-                ...prev[`${arm}ArmMultiplier`],
-                [axis]: value
-            }
-        }));
+    const resetSection = (section) => {
+        const defaultValues = { x: 1, y: 1, z: 1 };
+        Object.keys(defaultValues).forEach(axis => {
+            handleAxisChange(section, axis, defaultValues[axis]);
+        });
     };
 
-    // 预设配置
-    const presets = {
-        default: {
-            leftArmMultiplier: { x: -1, y: 1, z: -1 },
-            rightArmMultiplier: { x: 1, y: 1, z: -1 },
-            amplitude: 1
-        },
-        mirror: {
-            leftArmMultiplier: { x: 1, y: 1, z: 1 },
-            rightArmMultiplier: { x: -1, y: 1, z: 1 },
-            amplitude: 1
-        },
-        noFlip: {
-            leftArmMultiplier: { x: 1, y: 1, z: 1 },
-            rightArmMultiplier: { x: 1, y: 1, z: 1 },
-            amplitude: 1
-        }
-    };
-
-    const applyPreset = (presetName) => {
-        setSettings(prev => ({ ...prev, ...presets[presetName] }));
-    };
+    const currentSettings = axisSettings[activeSection] || { x: 1, y: 1, z: 1 };
 
     return (
-        <div className="fixed top-4 left-4 bg-white/95 backdrop-blur-md rounded-lg shadow-lg text-sm z-40 border border-gray-200">
-            {/* 标题栏 */}
-            <div 
-                className="flex items-center justify-between p-3 bg-vtuber-primary text-white rounded-t-lg cursor-pointer"
-                onClick={() => setIsExpanded(!isExpanded)}
-            >
-                <h3 className="font-bold">🔧 手臂调试面板</h3>
-                <span className="text-xs">{isExpanded ? '🔽' : '▶️'}</span>
-            </div>
-            
-            {isExpanded && (
-                <div className="p-4 space-y-4 max-w-xs">
-                    {/* 显示控制 */}
-                    <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">显示选项</h4>
-                        <div className="space-y-1">
-                            <label className="flex items-center text-xs">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.showDebug}
-                                    onChange={(e) => updateSetting('showDebug', e.target.checked)}
-                                    className="mr-2"
-                                />
-                                显示调试箭头
-                            </label>
-                            <label className="flex items-center text-xs">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.showBones}
-                                    onChange={(e) => updateSetting('showBones', e.target.checked)}
-                                    className="mr-2"
-                                />
-                                显示骨骼
-                            </label>
-                            <label className="flex items-center text-xs">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.showRawData}
-                                    onChange={(e) => updateSetting('showRawData', e.target.checked)}
-                                    className="mr-2"
-                                />
-                                显示原始数据
-                            </label>
-                        </div>
-                    </div>
+        <DraggablePanel
+            title="🦾 手臂测试面板"
+            defaultPosition={{ x: 250, y: 250 }}
+            minWidth={400}
+            minHeight={500}
+            maxWidth={600}
+            maxHeight={700}
+            isVisible={isOpen}
+            onClose={onClose}
+            showToggle={false}
+            showClose={true}
+            zIndex={85}
+        >
+            <div className="p-4 h-full flex flex-col">
+                {/* 标签页导航 */}
+                <div className="flex border-b border-gray-200 mb-4">
+                    {sections.map(section => (
+                        <button
+                            key={section.id}
+                            onClick={() => setActiveSection(section.id)}
+                            className={`flex-1 px-2 py-2 text-xs font-medium transition-colors ${
+                                activeSection === section.id
+                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <span className="mr-1">{section.icon}</span>
+                            {section.label}
+                        </button>
+                    ))}
+                </div>
 
-                    {/* 快速预设 */}
-                    <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">快速预设</h4>
-                        <div className="grid grid-cols-3 gap-1">
-                            {Object.keys(presets).map(presetName => (
+                {/* 内容区域 */}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="space-y-4">
+                        {/* 当前设置显示 */}
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">当前设置</h4>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div className="text-center">
+                                    <div className="text-red-600 font-medium">X轴</div>
+                                    <div className="text-gray-600">{currentSettings.x}</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-green-600 font-medium">Y轴</div>
+                                    <div className="text-gray-600">{currentSettings.y}</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-blue-600 font-medium">Z轴</div>
+                                    <div className="text-gray-600">{currentSettings.z}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 坐标轴调整 */}
+                        <div>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">坐标轴调整</h4>
+                            <div className="space-y-3">
+                                {/* X轴调整 */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-sm font-medium text-red-600">X轴 (左右)</label>
+                                        <span className="text-xs text-gray-500">{currentSettings.x}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => handleAxisChange(activeSection, 'x', -1)}
+                                            className="px-3 py-2 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                        >
+                                            反向 (-1)
+                                        </button>
+                                        <button
+                                            onClick={() => handleAxisChange(activeSection, 'x', 1)}
+                                            className="px-3 py-2 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                                        >
+                                            正向 (+1)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Y轴调整 */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-sm font-medium text-green-600">Y轴 (上下)</label>
+                                        <span className="text-xs text-gray-500">{currentSettings.y}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => handleAxisChange(activeSection, 'y', -1)}
+                                            className="px-3 py-2 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                        >
+                                            反向 (-1)
+                                        </button>
+                                        <button
+                                            onClick={() => handleAxisChange(activeSection, 'y', 1)}
+                                            className="px-3 py-2 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                        >
+                                            正向 (+1)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Z轴调整 */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-sm font-medium text-blue-600">Z轴 (前后)</label>
+                                        <span className="text-xs text-gray-500">{currentSettings.z}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => handleAxisChange(activeSection, 'z', -1)}
+                                            className="px-3 py-2 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                        >
+                                            反向 (-1)
+                                        </button>
+                                        <button
+                                            onClick={() => handleAxisChange(activeSection, 'z', 1)}
+                                            className="px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                        >
+                                            正向 (+1)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 快速操作 */}
+                        <div>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">快速操作</h4>
+                            <div className="grid grid-cols-2 gap-2">
                                 <button
-                                    key={presetName}
-                                    onClick={() => applyPreset(presetName)}
-                                    className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                                    onClick={() => resetSection(activeSection)}
+                                    className="px-3 py-2 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
                                 >
-                                    {presetName}
+                                    重置当前
                                 </button>
-                            ))}
+                                <button
+                                    onClick={onToggleArmAxes}
+                                    className={`px-3 py-2 text-xs rounded transition-colors ${
+                                        showArmAxes 
+                                            ? 'bg-orange-500 text-white hover:bg-orange-600' 
+                                            : 'bg-gray-500 text-white hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {showArmAxes ? '隐藏' : '显示'}坐标轴
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* 左臂倍数 */}
-                    <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">左臂倍数</h4>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['x', 'y', 'z'].map(axis => (
-                                <div key={axis} className="text-center">
-                                    <label className="block text-xs font-medium mb-1">
-                                        {axis.toUpperCase()}
-                                    </label>
-                                    <select
-                                        value={settings.leftArmMultiplier[axis]}
-                                        onChange={(e) => updateMultiplier('left', axis, parseFloat(e.target.value))}
-                                        className="w-full text-xs border rounded px-1 py-1"
-                                    >
-                                        <option value={-2}>-2</option>
-                                        <option value={-1}>-1</option>
-                                        <option value={0}>0</option>
-                                        <option value={1}>1</option>
-                                        <option value={2}>2</option>
-                                    </select>
-                                </div>
-                            ))}
+                        {/* 说明 */}
+                        <div className="bg-yellow-50 p-3 rounded-lg">
+                            <h5 className="text-xs font-semibold text-yellow-800 mb-1">💡 使用说明</h5>
+                            <div className="text-xs text-yellow-700 space-y-1">
+                                <div>• 红色=X轴(左右方向)</div>
+                                <div>• 绿色=Y轴(上下方向)</div>
+                                <div>• 蓝色=Z轴(前后方向)</div>
+                                <div>• 如果动作方向相反，点击对应的&quot;反向&quot;按钮</div>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* 右臂倍数 */}
-                    <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">右臂倍数</h4>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['x', 'y', 'z'].map(axis => (
-                                <div key={axis} className="text-center">
-                                    <label className="block text-xs font-medium mb-1">
-                                        {axis.toUpperCase()}
-                                    </label>
-                                    <select
-                                        value={settings.rightArmMultiplier[axis]}
-                                        onChange={(e) => updateMultiplier('right', axis, parseFloat(e.target.value))}
-                                        className="w-full text-xs border rounded px-1 py-1"
-                                    >
-                                        <option value={-2}>-2</option>
-                                        <option value={-1}>-1</option>
-                                        <option value={0}>0</option>
-                                        <option value={1}>1</option>
-                                        <option value={2}>2</option>
-                                    </select>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 幅度控制 */}
-                    <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">
-                            动作幅度: {settings.amplitude.toFixed(1)}
-                        </h4>
-                        <input
-                            type="range"
-                            min="0"
-                            max="3"
-                            step="0.1"
-                            value={settings.amplitude}
-                            onChange={(e) => updateSetting('amplitude', parseFloat(e.target.value))}
-                            className="w-full"
-                        />
-                    </div>
-
-                    {/* 当前设置显示 */}
-                    <div className="text-xs bg-gray-50 p-2 rounded">
-                        <div className="font-medium mb-1">当前设置:</div>
-                        <div>左臂: {JSON.stringify(settings.leftArmMultiplier)}</div>
-                        <div>右臂: {JSON.stringify(settings.rightArmMultiplier)}</div>
-                    </div>
-
-                    {/* 说明 */}
-                    <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                        <div className="font-medium mb-1">💡 使用说明:</div>
-                        <div>1. 打开摄像头</div>
-                        <div>2. 伸手测试方向</div>
-                        <div>3. 调整倍数修正</div>
-                        <div>4. X=左右, Y=上下, Z=前后</div>
                     </div>
                 </div>
-            )}
-        </div>
+            </div>
+        </DraggablePanel>
     );
 };

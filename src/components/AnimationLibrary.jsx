@@ -1,242 +1,109 @@
-import { useState } from 'react';
-import { AnimationCard } from './AnimationCard';
-import { FileUploader } from './FileUploader';
+import React, { useState } from 'react';
 import { useAnimationLibrary } from '@/hooks/useAnimationLibrary';
+import { AnimationCard } from './AnimationCard';
+import { DraggablePanel } from './DraggablePanel';
 
 export const AnimationLibrary = ({ isOpen, onClose, onAnimationSelect }) => {
-    const [activeTab, setActiveTab] = useState('local');
-
-    const {
-        getAllAnimations,
-        getSelectedAnimation,
-        onlineAnimations,
-        isUploading,
-        downloadingIds,
-        error,
-        uploadAnimation,
-        downloadAnimation,
-        deleteAnimation,
-        selectAnimation,
-        clearError,
-        getCategories
-    } = useAnimationLibrary();
-
-    // 处理动画选择
-    const handleAnimationSelect = (animation) => {
-        console.log('AnimationLibrary: handleAnimationSelect 被调用', animation.name, animation.url);
-        selectAnimation(animation);
-        onAnimationSelect(animation);
-        console.log('AnimationLibrary: 动画选择完成');
-    };
-
-    // 处理文件上传
-    const handleFileUpload = async (file) => {
-        try {
-            const newAnimation = await uploadAnimation(file);
-            onAnimationSelect(newAnimation);
-        } catch (error) {
-            // 错误已在 hook 中处理
-        }
-    };
-
-    // 处理动画下载
-    const handleAnimationDownload = async (onlineAnimation) => {
-        try {
-            const downloadedAnimation = await downloadAnimation(onlineAnimation);
-            onAnimationSelect(downloadedAnimation);
-        } catch (error) {
-            // 错误已在 hook 中处理
-        }
-    };
-
-    if (!isOpen) return null;
+    const { animations, getSelectedAnimation, selectAnimation } = useAnimationLibrary();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
     const selectedAnimation = getSelectedAnimation();
-    const allAnimations = getAllAnimations();
-    const categories = getCategories();
+
+    // 过滤动画 - 添加安全检查
+    const filteredAnimations = (animations || []).filter(animation => {
+        const matchesSearch = animation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            animation.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === 'all' || animation.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    // 获取所有分类 - 添加安全检查
+    const categories = ['all', ...new Set((animations || []).map(animation => animation.category))];
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[85vh] overflow-hidden">
-                {/* 头部 */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                    <div>
-                        <h2 className="text-2xl font-bold text-vtuber-text">动画库</h2>
-                        <p className="text-sm text-vtuber-text-light mt-1">
-                            管理你的 Mixamo 动画文件
-                        </p>
+        <DraggablePanel
+            title="🎬 动画库"
+            defaultPosition={{ x: 100, y: 100 }}
+            minWidth={450}
+            minHeight={500}
+            maxWidth={900}
+            maxHeight={700}
+            isVisible={isOpen}
+            onClose={onClose}
+            showToggle={false}
+            showClose={true}
+            zIndex={70}
+        >
+            <div className="p-4 h-full flex flex-col">
+                {/* 搜索和筛选 */}
+                <div className="mb-4 space-y-3">
+                    <div className="flex space-x-2">
+                        <input
+                            type="text"
+                            placeholder="搜索动画..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <select
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                            {categories.map(category => (
+                                <option key={category} value={category}>
+                                    {category === 'all' ? '所有分类' : category}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span>找到 {filteredAnimations.length} 个动画</span>
                         {selectedAnimation && (
-                            <div className="mt-2 text-sm text-vtuber-primary">
-                                当前动画: <span className="font-semibold">{selectedAnimation.name}</span>
-                            </div>
+                            <span className="text-purple-600">
+                                当前: {selectedAnimation.name}
+                            </span>
                         )}
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                    >
-                        ✕
-                    </button>
                 </div>
 
-                {/* 错误提示 */}
-                {error && (
-                    <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex items-center justify-between">
-                            <p className="text-red-600 text-sm">{error}</p>
-                            <button
-                                onClick={clearError}
-                                className="text-red-400 hover:text-red-600"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* 标签页导航 */}
-                <div className="flex border-b border-gray-200">
-                    {[
-                        { id: 'local', label: '我的动画', icon: '💻' },
-                        { id: 'upload', label: '上传动画', icon: '📤' },
-                        { id: 'download', label: '在线动画', icon: '🌐' },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? 'text-vtuber-primary border-b-2 border-vtuber-primary bg-vtuber-blue-50'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            <span className="mr-2">{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* 内容区域 */}
-                <div className="p-6 overflow-y-auto max-h-[55vh]">
-                    {/* 本地动画标签页 */}
-                    {activeTab === 'local' && (
-                        <div>
-                            {allAnimations.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <span className="text-2xl">🎬</span>
-                                    </div>
-                                    <h3 className="text-lg font-medium text-gray-600 mb-2">
-                                        暂无动画
-                                    </h3>
-                                    <p className="text-gray-500 text-sm">
-                                        请上传或下载动画文件
-                                    </p>
-                                </div>
-                            ) : (
-                                <div>
-                                    {/* 分类筛选 */}
-                                    <div className="mb-4">
-                                        <div className="flex flex-wrap gap-2">
-                                            <button
-                                                onClick={() => setActiveTab('local')}
-                                                className="px-3 py-1 text-xs bg-vtuber-primary text-white rounded-full"
-                                            >
-                                                全部 ({allAnimations.length})
-                                            </button>
-                                            {categories.map(category => {
-                                                const count = allAnimations.filter(anim => anim.category === category).length;
-                                                return (
-                                                    <button
-                                                        key={category}
-                                                        className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300"
-                                                    >
-                                                        {category} ({count})
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* 动画网格 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                        {allAnimations.map(animation => (
-                                            <AnimationCard
-                                                key={animation.id}
-                                                animation={animation}
-                                                onSelect={handleAnimationSelect}
-                                                onDelete={deleteAnimation}
-                                                isSelected={selectedAnimation?.id === animation.id}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* 上传动画标签页 */}
-                    {activeTab === 'upload' && (
-                        <div>
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold text-vtuber-text mb-2">
-                                    上传动画文件
-                                </h3>
-                                <p className="text-vtuber-text-light text-sm">
-                                    支持上传 Mixamo 导出的 .fbx 动画文件
-                                </p>
-                            </div>
-
-                            <FileUploader
-                                onUpload={handleFileUpload}
-                                isUploading={isUploading}
-                                accept=".fbx"
-                                title="拖拽动画文件到此处或点击上传"
-                                description="支持 .fbx 格式，最大 50MB"
+                {/* 动画列表 */}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredAnimations.map((animation) => (
+                            <AnimationCard
+                                key={animation.id}
+                                animation={animation}
+                                isSelected={selectedAnimation?.id === animation.id}
+                                onSelect={() => {
+                                    selectAnimation(animation);
+                                    onAnimationSelect(animation);
+                                }}
                             />
-                        </div>
-                    )}
-
-                    {/* 在线动画标签页 */}
-                    {activeTab === 'download' && (
-                        <div>
-                            <div className="mb-6">
-                                <h3 className="text-lg font-semibold text-vtuber-text mb-2">
-                                    在线动画库
-                                </h3>
-                                <p className="text-vtuber-text-light text-sm">
-                                    下载高质量的 Mixamo 动画到本地使用
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {onlineAnimations.map(animation => (
-                                    <AnimationCard
-                                        key={animation.id}
-                                        animation={animation}
-                                        onSelect={handleAnimationSelect}
-                                        onDownload={handleAnimationDownload}
-                                        isDownloading={downloadingIds.has(animation.id)}
-                                    />
-                                ))}
-                            </div>
+                        ))}
+                    </div>
+                    
+                    {filteredAnimations.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                            <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p>没有找到匹配的动画</p>
+                            <p className="text-sm">尝试调整搜索条件</p>
                         </div>
                     )}
                 </div>
 
                 {/* 底部信息 */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                        <div>
-                            <span className="font-medium">💡 提示:</span>
-                            <span className="ml-2">动画文件会自动适配到当前VRM模型</span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <span>📁 支持格式: FBX</span>
-                            <span>📏 最大大小: 50MB</span>
-                        </div>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>支持 FBX 格式</span>
+                        <span>点击动画卡片选择</span>
                     </div>
                 </div>
             </div>
-        </div>
+        </DraggablePanel>
     );
 }; 

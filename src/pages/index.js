@@ -2,7 +2,7 @@ import dynamic from 'next/dynamic';
 import Head from 'next/head';
 
 // 动态导入 VTuber 组件（避免 SSR 问题）
-const VTuberApp = dynamic(() => import('@/components/VTuberApp'), {
+const VTuberApp = dynamic(() => import('@/components/VTuberApp.jsx'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-screen bg-gradient-to-br from-vtuber-light to-vtuber-blue-50 flex items-center justify-center">

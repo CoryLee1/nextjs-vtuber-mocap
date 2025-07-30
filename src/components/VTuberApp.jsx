@@ -14,6 +14,7 @@ import { HandDebugPanel } from './HandDebugPanel'; // 新增：导入手部调�
 import { CameraController } from './CameraController'; // 新增：导入相机控制器
 import { CameraControlHint } from './CameraController'; // 新增：导入相机控制提示
 import { SmoothSettingsPanel } from './SmoothSettingsPanel'; // 新增：导入平滑设置面板
+import { AnimationDebugPanel } from './AnimationDebugPanel'; // 新增：导入动画调试面板
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
 import { useAnimationLibrary } from '@/hooks/useAnimationLibrary'; // 新增：导入动画库Hook
@@ -27,7 +28,19 @@ const LoadingIndicator = () => (
 );
 
 // 场景组件 - 更新以支持调试参数
-const Scene = ({ selectedModel, selectedAnimation, showBones, debugSettings, showArmAxes, axisSettings, cameraSettings }) => {
+const Scene = ({ 
+    selectedModel, 
+    selectedAnimation, 
+    showBones, 
+    debugSettings, 
+    showArmAxes, 
+    axisSettings, 
+    cameraSettings,
+    onVrmRef, // 新增：VRM引用回调
+    onAnimationManagerRef, // 新增：动画管理器引用回调
+    onHandDetectionStateRef, // 新增：手部检测状态引用回调
+    onMocapStatusUpdate // 新增：动捕状态更新回调
+}) => {
     console.log('Scene: 渲染场景', { selectedModel, selectedAnimation, showBones, debugSettings, axisSettings, cameraSettings });
     console.log('Scene: selectedModel详情', { 
         hasSelectedModel: !!selectedModel,
@@ -49,8 +62,15 @@ const Scene = ({ selectedModel, selectedAnimation, showBones, debugSettings, sho
             vrmRef: !!vrmRef.current,
             cameraSettings: cameraSettings
         });
-    }, [vrmRef.current, cameraSettings]);
-    
+    }, [cameraSettings]);
+
+    // 传递引用给父组件
+    useEffect(() => {
+        if (onVrmRef) {
+            onVrmRef(vrmRef);
+        }
+    }, [onVrmRef]);
+
     return (
         <>
             {/* 相机控制器 */}
@@ -94,6 +114,9 @@ const Scene = ({ selectedModel, selectedAnimation, showBones, debugSettings, sho
                         testSettings={debugSettings}
                         showArmAxes={showArmAxes}
                         axisSettings={axisSettings}
+                        onAnimationManagerRef={onAnimationManagerRef} // 新增：传递动画管理器引用
+                        onHandDetectionStateRef={onHandDetectionStateRef} // 新增：传递手部检测状态引用
+                        onMocapStatusUpdate={onMocapStatusUpdate} // 新增：传递动捕状态更新回调
                     />
                 </Suspense>
             </group>
@@ -114,111 +137,103 @@ const Scene = ({ selectedModel, selectedAnimation, showBones, debugSettings, sho
 
             {/* 后处理效果 */}
             <EffectComposer>
-                <Bloom
-                    mipmapBlur
-                    intensity={0.4}
-                    luminanceThreshold={0.9}
-                    luminanceSmoothing={0.025}
+                <Bloom 
+                    intensity={0.5} 
+                    luminanceThreshold={0.8} 
+                    luminanceSmoothing={0.9} 
                 />
             </EffectComposer>
         </>
     );
 };
 
-// 主应用组件
 export default function VTuberApp() {
     console.log('=== VTuberApp 开始渲染 ===');
-    
+
+    // 状态管理
     const [isModelManagerOpen, setIsModelManagerOpen] = useState(false);
+    const [isAnimationLibraryOpen, setIsAnimationLibraryOpen] = useState(false);
+    const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+    const [isArmTestPanelOpen, setIsArmTestPanelOpen] = useState(false);
+    const [isHandDebugPanelOpen, setIsHandDebugPanelOpen] = useState(false);
+    const [isSmoothSettingsPanelOpen, setIsSmoothSettingsPanelOpen] = useState(false);
     const [showBones, setShowBones] = useState(false);
-    const [showArmAxes, setShowArmAxes] = useState(false); // 新增手臂坐标轴状态
-    const [showSensitivityPanel, setShowSensitivityPanel] = useState(false); // 新增灵敏度面板状态
-    const [showSmoothSettingsPanel, setShowSmoothSettingsPanel] = useState(false); // 新增平滑设置面板状态
-    const [isAnimationLibraryOpen, setIsAnimationLibraryOpen] = useState(false); // 新增动画库状态
-    
-    // 新增：坐标轴设置状态
+    const [showArmAxes, setShowArmAxes] = useState(false);
+    const [showAnimationDebug, setShowAnimationDebug] = useState(true); // 新增：动画调试面板状态
+
+    // 调试设置
+    const [debugSettings, setDebugSettings] = useState({
+        showDebug: false,
+        showBones: false,
+        showRawData: false,
+        showArmAxes: false
+    });
+
+    // 坐标轴设置
     const [axisSettings, setAxisSettings] = useState({
         leftArm: { x: 1, y: 1, z: -1 },
         rightArm: { x: -1, y: 1, z: -1 },
         leftHand: { x: 1, y: 1, z: -1 },
         rightHand: { x: -1, y: 1, z: -1 },
-        neck: { x: -1, y: 1, z: -1 } // 新增脖子设置
+        neck: { x: -1, y: 1, z: -1 }
     });
-    
-    // 新增：相机控制状态
+
+    // 相机设置
     const [cameraSettings, setCameraSettings] = useState({
-        enableAutoTrack: true,
+        useGameStyle: false,
         enableUserControl: true,
+        enableAutoTrack: true,
         showHint: true,
-        useGameStyle: true, // 启用游戏风格控制
-        autoTrackSpeed: 0.02,
-        lookAtSmoothFactor: 0.03,
-        swingAmplitude: 2,
-        swingSpeed: 0.0005,
-        dampingFactor: 0.05,
-        rotateSpeed: 0.5,
-        zoomSpeed: 0.8,
-        minDistance: 1.5,
-        maxDistance: 8,
-        // 游戏风格设置
-        rotationSpeed: 3.5,
-        rotationDampening: 10.0,
-        zoomDampening: 6.0,
-        yMinLimit: -40,
-        yMaxLimit: 85,
-        useRightMouseButton: true,
         useLeftMouseButton: true,
-        useMiddleMouseButton: true,
-        invertY: false,
-        enableBreathing: false,
-        breathingAmplitude: 0.03,
-        breathingFrequency: 0.8,
-        enableCollisionDetection: true,
-        collisionOffset: 0.3,
-        panSmoothing: 10
+        useRightMouseButton: true,
+        useMiddleMouseButton: true
     });
-    
-    // 新增：动捕状态
+
+    // 动捕状态
     const [mocapStatus, setMocapStatus] = useState({
         face: false,
         pose: false,
         leftHand: false,
         rightHand: false
     });
-    
-    // 新增：调试设置状态
-    const [debugSettings, setDebugSettings] = useState({
-        showDebug: true,      // 默认开启调试
-        showBones: false,
-        showRawData: true,
-        leftArmMultiplier: { x: -1, y: 1, z: -1 },
-        rightArmMultiplier: { x: 1, y: 1, z: -1 },
-        amplitude: 1
-    });
-    
-    const { getSelectedModel, selectModel, getAllModels } = useModelManager();
-    
-    // 新增：动画库管理
-    const { 
-        getSelectedAnimation, 
-        selectAnimation, 
-        getAllAnimations 
-    } = useAnimationLibrary();
-    
-    // 获取当前选中的模型
+
+    // 引用管理
+    const vrmRef = useRef();
+    const animationManagerRef = useRef();
+    const handDetectionStateRef = useRef();
+
+    // 回调函数来接收引用
+    const setVrmRef = (ref) => {
+        vrmRef.current = ref?.current;
+    };
+
+    const setAnimationManagerRef = (manager) => {
+        animationManagerRef.current = manager;
+    };
+
+    const setHandDetectionStateRef = (state) => {
+        handDetectionStateRef.current = state;
+    };
+
+    // Hooks
+    const { getSelectedModel, selectModel } = useModelManager();
+    const { getSelectedAnimation, selectAnimation } = useAnimationLibrary();
+    const { isCameraActive, videoElement } = useVideoRecognition();
+
+    // 获取当前选中的模型和动画
     const selectedModel = getSelectedModel();
-    
-    // 新增：获取当前选中的动画
     const selectedAnimation = getSelectedAnimation();
-    
-    console.log('VTuberApp: 当前状态', { 
-        isModelManagerOpen, 
-        showBones, 
-        debugSettings,
+
+    console.log('VTuberApp: 当前状态', {
         selectedModel: selectedModel?.name,
-        selectedModelUrl: selectedModel?.url,
         selectedAnimation: selectedAnimation?.name,
-        selectedAnimationUrl: selectedAnimation?.url
+        isModelManagerOpen,
+        isAnimationLibraryOpen,
+        showBones,
+        debugSettings,
+        axisSettings,
+        cameraSettings,
+        mocapStatus
     });
 
     // 处理模型选择
@@ -234,7 +249,7 @@ export default function VTuberApp() {
         }
     };
 
-    // 新增：处理动画选择
+    // 处理动画选择
     const handleAnimationSelect = (animation) => {
         console.log('VTuberApp: handleAnimationSelect 被调用', animation);
         if (animation && animation.id) {
@@ -242,6 +257,9 @@ export default function VTuberApp() {
             selectAnimation(animation);
             console.log('VTuberApp: 动画已选择', animation.name, animation.url);
             console.log('VTuberApp: 当前selectedAnimation状态', getSelectedAnimation());
+            
+            // 强制重新渲染VRMAvatar组件以应用新动画
+            console.log('VTuberApp: 动画切换完成，VRMAvatar将重新加载动画');
         } else {
             console.warn('VTuberApp: 无效的动画对象', animation);
         }
@@ -257,12 +275,12 @@ export default function VTuberApp() {
         setIsModelManagerOpen(false);
     };
 
-    // 新增：打开动画库
+    // 打开动画库
     const handleOpenAnimationLibrary = () => {
         setIsAnimationLibraryOpen(true);
     };
 
-    // 新增：关闭动画库
+    // 关闭动画库
     const handleCloseAnimationLibrary = () => {
         setIsAnimationLibraryOpen(false);
     };
@@ -286,7 +304,7 @@ export default function VTuberApp() {
         console.log('VTuberApp: showBones 状态已更新');
     };
 
-    // 新增：处理调试设置变化
+    // 处理调试设置变化
     const handleDebugSettingsChange = (newSettings) => {
         console.log('VTuberApp: 调试设置变化', newSettings);
         setDebugSettings(newSettings);
@@ -297,7 +315,7 @@ export default function VTuberApp() {
         }
     };
 
-    // 新增：处理坐标轴调整
+    // 处理坐标轴调整
     const handleAxisAdjustment = (arm, axis, value) => {
         console.log('VTuberApp: 坐标轴调整', { arm, axis, value });
         setAxisSettings(prev => ({
@@ -309,7 +327,7 @@ export default function VTuberApp() {
         }));
     };
 
-    // 新增：处理相机设置调整
+    // 处理相机设置调整
     const handleCameraSettingsChange = (setting, value) => {
         console.log('VTuberApp: 相机设置调整', { setting, value });
         setCameraSettings(prev => ({
@@ -330,38 +348,70 @@ export default function VTuberApp() {
         });
     }, [cameraSettings]);
 
+    // 监听动画变化
+    useEffect(() => {
+        console.log('VTuberApp: 动画变化监听', {
+            selectedAnimation: selectedAnimation?.name,
+            animationUrl: selectedAnimation?.url
+        });
+    }, [selectedAnimation]);
+
     return (
-        <div className="w-full h-screen relative overflow-hidden bg-gradient-to-br from-vtuber-light via-white to-vtuber-blue-50">
-            {/* UI 覆盖层 */}
-            <UI />
+        <div className="w-full h-screen bg-gradient-to-br from-vtuber-light to-vtuber-blue-50 relative overflow-hidden">
+            {/* 3D 场景 */}
+            <div className="w-full h-full">
+                <Canvas
+                    camera={{ position: [0, 1.5, 3], fov: 50 }}
+                    shadows
+                    gl={{ 
+                        antialias: true, 
+                        alpha: true,
+                        preserveDrawingBuffer: true 
+                    }}
+                >
+                    <Scene
+                        selectedModel={selectedModel}
+                        selectedAnimation={selectedAnimation}
+                        showBones={showBones}
+                        debugSettings={debugSettings}
+                        showArmAxes={showArmAxes}
+                        axisSettings={axisSettings}
+                        cameraSettings={cameraSettings}
+                        onVrmRef={setVrmRef} // 传递VRM引用
+                        onAnimationManagerRef={setAnimationManagerRef} // 传递动画管理器引用
+                        onHandDetectionStateRef={setHandDetectionStateRef} // 传递手部检测状态引用
+                        onMocapStatusUpdate={(newStatus) => setMocapStatus(newStatus)} // 传递动捕状态更新回调
+                    />
+                </Canvas>
+            </div>
 
-            {/* 相机控制提示 - 移到Canvas外部 */}
-            <CameraControlHint isVisible={cameraSettings.showHint} />
-
-            {/* 新增：调试面板 */}
-            <ArmTestPanel 
-                onSettingsChange={handleDebugSettingsChange}
-                initialSettings={debugSettings}
+            {/* UI 组件 */}
+            <UI
+                isCameraActive={isCameraActive}
+                onOpenModelManager={handleOpenModelManager}
+                onOpenAnimationLibrary={handleOpenAnimationLibrary}
+                onToggleBones={handleToggleBones}
+                showBones={showBones}
+                selectedModel={selectedModel}
+                selectedAnimation={selectedAnimation}
+                showAnimationDebug={showAnimationDebug}
+                onToggleAnimationDebug={() => setShowAnimationDebug(!showAnimationDebug)}
             />
 
-            {/* 新增：手部调试面板 */}
-            <HandDebugPanel 
-                isVisible={debugSettings.showDebug}
-            />
-
-            {/* 新增：平滑设置面板 */}
-            <SmoothSettingsPanel 
-                isVisible={showSmoothSettingsPanel}
-                onClose={() => setShowSmoothSettingsPanel(false)}
-            />
+            {/* 相机组件 */}
+            <CameraWidget />
 
             {/* 控制面板 */}
             <ControlPanel
+                isOpen={isControlPanelOpen}
+                onClose={() => setIsControlPanelOpen(false)}
+                onOpenArmTest={() => setIsArmTestPanelOpen(true)}
+                onOpenHandDebug={() => setIsHandDebugPanelOpen(true)}
+                onOpenSmoothSettings={() => setIsSmoothSettingsPanelOpen(true)}
                 mocapStatus={mocapStatus}
-                onOpenSensitivityPanel={() => setShowSensitivityPanel(true)}
-                onOpenSmoothSettingsPanel={() => setShowSmoothSettingsPanel(true)}
-                onOpenModelManager={() => setIsModelManagerOpen(true)}
-                onOpenAnimationLibrary={() => setIsAnimationLibraryOpen(true)}
+                onOpenSensitivityPanel={() => setIsSmoothSettingsPanelOpen(true)}
+                onOpenModelManager={handleOpenModelManager}
+                onOpenAnimationLibrary={handleOpenAnimationLibrary}
                 selectedAnimation={selectedAnimation}
                 showBones={showBones}
                 onToggleBones={setShowBones}
@@ -371,10 +421,9 @@ export default function VTuberApp() {
                 onAxisAdjustment={handleAxisAdjustment}
                 cameraSettings={cameraSettings}
                 onCameraSettingsChange={handleCameraSettingsChange}
+                debugSettings={debugSettings}
+                onDebugSettingsChange={handleDebugSettingsChange}
             />
-
-            {/* 摄像头组件 */}
-            <CameraWidget />
 
             {/* 模型管理器 */}
             <ModelManager
@@ -383,70 +432,47 @@ export default function VTuberApp() {
                 onModelSelect={handleModelSelect}
             />
 
-            {/* 新增：动画库 */}
+            {/* 动画库 */}
             <AnimationLibrary
                 isOpen={isAnimationLibraryOpen}
                 onClose={handleCloseAnimationLibrary}
                 onAnimationSelect={handleAnimationSelect}
             />
 
-            {/* Loader */}
+            {/* 手臂测试面板 */}
+            <ArmTestPanel
+                isOpen={isArmTestPanelOpen}
+                onClose={() => setIsArmTestPanelOpen(false)}
+                showArmAxes={showArmAxes}
+                onToggleArmAxes={() => setShowArmAxes(!showArmAxes)}
+                axisSettings={axisSettings}
+                onAxisAdjustment={handleAxisAdjustment}
+            />
+
+            {/* 手部调试面板 */}
+            <HandDebugPanel
+                isOpen={isHandDebugPanelOpen}
+                onClose={() => setIsHandDebugPanelOpen(false)}
+            />
+
+            {/* 平滑设置面板 */}
+            <SmoothSettingsPanel
+                isOpen={isSmoothSettingsPanelOpen}
+                onClose={() => setIsSmoothSettingsPanelOpen(false)}
+            />
+
+            {/* 动画调试面板 */}
+            <AnimationDebugPanel 
+                animationManager={animationManagerRef.current}
+                vrm={vrmRef.current}
+                handDetectionState={handDetectionStateRef.current}
+                isVisible={showAnimationDebug}
+                onClose={() => setShowAnimationDebug(false)}
+                onToggle={() => setShowAnimationDebug(!showAnimationDebug)}
+            />
+
+            {/* 加载指示器 */}
             <Loader />
-
-            {/* 主 3D 场景 */}
-            <Canvas
-                camera={{
-                    position: [0, -2, 3],
-                    fov: 35, // 减小FOV以获得更好的景深效果
-                    near: 0.1,
-                    far: 10000
-                }}
-                shadows
-                gl={{
-                    antialias: true,
-                    alpha: true,
-                    powerPreference: 'high-performance',
-                }}
-                className="w-full h-full"
-                style={{
-                    pointerEvents: 'auto', // 确保可以接收鼠标事件
-                    touchAction: 'none' // 防止触摸设备上的默认行为
-                }}
-                events={() => ({
-                    priority: 1,
-                    enabled: true,
-                    compute: (event, state) => {
-                        // 确保事件正确传播
-                        state.pointer.set(
-                            (event.clientX / state.size.width) * 2 - 1,
-                            -(event.clientY / state.size.height) * 2 + 1
-                        );
-                        state.raycaster.setFromCamera(state.pointer, state.camera);
-                    }
-                })}
-            >
-                <color attach="background" args={['#f8fafc']} />
-                <fog attach="fog" args={['#f8fafc', 10, 20]} />
-
-                {/* 传递调试设置给场景 */}
-                <Scene 
-                    selectedModel={selectedModel} 
-                    selectedAnimation={selectedAnimation}
-                    showBones={showBones}
-                    debugSettings={debugSettings}
-                    showArmAxes={showArmAxes}
-                    axisSettings={axisSettings}
-                    cameraSettings={cameraSettings}
-                />
-            </Canvas>
-
-            {/* 版权信息 - 显示调试状态 */}
-            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10">
-                <p className="text-vtuber-text-light text-xs">
-                    Powered by Next.js + Three.js + MediaPipe 
-                    {debugSettings.showDebug && <span className="text-orange-500"> | 🔧 调试模式</span>}
-                </p>
-            </div>
         </div>
     );
 }

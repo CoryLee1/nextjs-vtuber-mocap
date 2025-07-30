@@ -1,26 +1,30 @@
-export default function TestPage() {
-  return (
-    <div className="min-h-screen bg-vtuber-light flex items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold text-vtuber-text mb-4">
-          🎉 配置测试成功！
-        </h1>
-        <p className="text-vtuber-text-light">
-          所有配置都正常工作，包括：
-        </p>
-        <ul className="mt-4 space-y-2 text-sm text-vtuber-text-light">
-          <li>✅ Tailwind CSS 配置</li>
-          <li>✅ 路径别名 (@/)</li>
-          <li>✅ 自定义颜色</li>
-          <li>✅ Next.js 配置</li>
-        </ul>
-        <a 
-          href="/" 
-          className="inline-block mt-6 bg-vtuber-primary text-white px-4 py-2 rounded-lg hover:bg-vtuber-secondary transition-colors"
-        >
-          返回主页
-        </a>
+import dynamic from 'next/dynamic';
+import Head from 'next/head';
+
+// 动态导入 VTuber 组件（避免 SSR 问题）
+const VTuberApp = dynamic(() => import('@/components/VTuberApp.jsx'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-screen bg-gradient-to-br from-vtuber-light to-vtuber-blue-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-vtuber-primary mx-auto mb-4"></div>
+        <p className="text-vtuber-text text-xl font-medium">Loading Test Page...</p>
+        <p className="text-vtuber-text-light text-sm mt-2">正在加载测试页面...</p>
       </div>
     </div>
+  ),
+});
+
+export default function TestPage() {
+  return (
+    <>
+      <Head>
+        <title>VTuber Animation Test | 动画测试页面</title>
+        <meta name="description" content="VTuber 动画功能测试页面" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      
+      <VTuberApp />
+    </>
   );
 } 

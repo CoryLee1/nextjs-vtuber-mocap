@@ -9,6 +9,8 @@ const DEFAULT_MODELS = [
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '15 MB',
+    category: 'default',
+    description: '默认女性角色模型A'
   },
   {
     id: 'avatar-sample-c',
@@ -17,6 +19,8 @@ const DEFAULT_MODELS = [
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '14 MB',
+    category: 'default',
+    description: '默认女性角色模型C'
   },
   {
     id: 'avatar-sample-h',
@@ -25,6 +29,8 @@ const DEFAULT_MODELS = [
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '19 MB',
+    category: 'default',
+    description: '默认女性角色模型H'
   },
   {
     id: 'avatar-sample-m',
@@ -33,6 +39,8 @@ const DEFAULT_MODELS = [
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '20 MB',
+    category: 'default',
+    description: '默认男性角色模型M'
   },
   {
     id: 'avatar-sample-z',
@@ -41,6 +49,8 @@ const DEFAULT_MODELS = [
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '17 MB',
+    category: 'default',
+    description: '默认女性角色模型Z'
   },
 ];
 
@@ -54,6 +64,7 @@ const ONLINE_MODELS = [
     size: '12.5 MB',
     author: 'VRoid Team',
     description: '可爱的动漫风格女性角色',
+    category: 'online'
   },
   {
     id: 'vroid-sample-2', 
@@ -63,6 +74,7 @@ const ONLINE_MODELS = [
     size: '11.8 MB',
     author: 'VRoid Team',
     description: '帅气的动漫风格男性角色',
+    category: 'online'
   },
 ];
 

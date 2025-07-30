@@ -1,6 +1,6 @@
 import { useFBX } from '@react-three/drei';
-import { useMemo, useRef, useEffect } from 'react';
-import { AnimationMixer } from 'three';
+import { useMemo, useRef, useEffect, useState } from 'react';
+import { AnimationMixer, LoopRepeat } from 'three';
 import * as THREE from 'three';
 
 // Mixamo到VRM的骨骼映射
@@ -59,26 +59,27 @@ const mixamoVRMRigMap = {
   mixamorigRightToeBase: "rightToes",
 }
 
-// 重新映射Mixamo动画到VRM
-function remapMixamoAnimationToVrm(vrm, asset) {
+// 改进的重新映射函数
+function remapMixamoAnimationToVrm(vrm, fbxScene) {
   console.log('AnimationManager: 开始重新映射动画', { 
     hasVrm: !!vrm, 
-    hasAsset: !!asset,
-    animationsCount: asset?.animations?.length 
+    hasFbxScene: !!fbxScene,
+    fbxAnimations: fbxScene?.animations?.length,
+    vrmHumanoid: !!vrm?.humanoid
   });
 
-  if (!vrm || !asset || !asset.animations || asset.animations.length === 0) {
+  if (!vrm || !fbxScene || !fbxScene.animations || fbxScene.animations.length === 0) {
     console.warn('AnimationManager: 无法重新映射动画 - 缺少必要数据');
     return null;
   }
 
-  // 查找mixamo动画剪辑 - 尝试多个可能的名称
-  let mixamoClip = THREE.AnimationClip.findByName(asset.animations, "mixamo.com");
+  // 查找动画剪辑
+  let mixamoClip = THREE.AnimationClip.findByName(fbxScene.animations, "mixamo.com");
   if (!mixamoClip) {
     // 尝试其他可能的名称
-    const possibleNames = ["mixamo.com", "Idle", "idle", "Animation"];
+    const possibleNames = ["mixamo.com", "Idle", "idle", "Animation", "Take 001"];
     for (const name of possibleNames) {
-      mixamoClip = THREE.AnimationClip.findByName(asset.animations, name);
+      mixamoClip = THREE.AnimationClip.findByName(fbxScene.animations, name);
       if (mixamoClip) {
         console.log('AnimationManager: 找到动画剪辑', name);
         break;
@@ -87,15 +88,21 @@ function remapMixamoAnimationToVrm(vrm, asset) {
   }
   
   if (!mixamoClip) {
-    // 如果还是找不到，使用第一个动画
+    // 使用第一个动画
     console.warn('AnimationManager: 未找到标准名称的动画剪辑，使用第一个动画');
-    mixamoClip = asset.animations[0];
+    mixamoClip = fbxScene.animations[0];
   }
 
   if (!mixamoClip) {
     console.warn('AnimationManager: 没有可用的动画剪辑');
     return null;
   }
+
+  console.log('AnimationManager: 使用动画剪辑', {
+    name: mixamoClip.name,
+    duration: mixamoClip.duration,
+    tracks: mixamoClip.tracks.length
+  });
 
   const clip = mixamoClip.clone();
   const tracks = [];
@@ -106,165 +113,167 @@ function remapMixamoAnimationToVrm(vrm, asset) {
   const _vec3 = new THREE.Vector3();
 
   // 调整臀部高度参考
-  const motionHipsHeight = asset.getObjectByName("mixamorigHips")?.position?.y || 0;
-  const vrmHipsY = vrm.humanoid?.getNormalizedBoneNode("hips")?.getWorldPosition(_vec3)?.y || 0;
-  const vrmRootY = vrm.scene.getWorldPosition(_vec3)?.y || 0;
-  const vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY);
-  const hipsPositionScale = vrmHipsHeight / motionHipsHeight || 1;
+  const mixamoHipsNode = fbxScene.getObjectByName("mixamorigHips");
+  const motionHipsHeight = mixamoHipsNode?.position?.y || 0;
+  
+  let vrmHipsHeight = 1; // 默认值
+  if (vrm.humanoid) {
+    const vrmHipsNode = vrm.humanoid.getNormalizedBoneNode("hips");
+    if (vrmHipsNode) {
+      const vrmHipsY = vrmHipsNode.getWorldPosition(_vec3).y;
+      const vrmRootY = vrm.scene.getWorldPosition(_vec3).y;
+      vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY) || 1;
+    }
+  }
+  
+  const hipsPositionScale = motionHipsHeight > 0 ? vrmHipsHeight / motionHipsHeight : 1;
 
   console.log('AnimationManager: 动画映射参数', {
     motionHipsHeight,
-    vrmHipsY,
-    vrmRootY,
     vrmHipsHeight,
     hipsPositionScale,
     clipName: clip.name
   });
 
+  let mappedTracks = 0;
+  
   clip.tracks.forEach((track) => {
     const trackSplitted = track.name.split(".");
     const mixamoRigName = trackSplitted[0];
     const vrmBoneName = mixamoVRMRigMap[mixamoRigName];
     
     if (!vrmBoneName) {
-      console.log('AnimationManager: 跳过未映射的骨骼', mixamoRigName);
       return;
     }
 
     const vrmNodeName = vrm.humanoid?.getNormalizedBoneNode(vrmBoneName)?.name;
-    const mixamoRigNode = asset.getObjectByName(mixamoRigName);
+    const mixamoRigNode = fbxScene.getObjectByName(mixamoRigName);
 
     if (vrmNodeName && mixamoRigNode) {
       const propertyName = trackSplitted[1];
 
-      // 存储rest-pose的旋转
-      mixamoRigNode.getWorldQuaternion(restRotationInverse).invert();
-      if (mixamoRigNode.parent) {
-        mixamoRigNode.parent.getWorldQuaternion(parentRestWorldRotation);
-      }
-
-      if (track instanceof THREE.QuaternionKeyframeTrack) {
-        // 重新映射mixamoRig到NormalizedBone的旋转
-        for (let i = 0; i < track.values.length; i += 4) {
-          const flatQuaternion = track.values.slice(i, i + 4);
-          _quatA.fromArray(flatQuaternion);
-
-          // 父级rest世界旋转 * 轨道旋转 * rest世界旋转的逆
-          _quatA.premultiply(parentRestWorldRotation).multiply(restRotationInverse);
-          _quatA.toArray(flatQuaternion);
-
-          flatQuaternion.forEach((v, index) => {
-            track.values[index + i] = v;
-          });
+      try {
+        // 存储rest-pose的旋转
+        mixamoRigNode.getWorldQuaternion(restRotationInverse).invert();
+        if (mixamoRigNode.parent) {
+          mixamoRigNode.parent.getWorldQuaternion(parentRestWorldRotation);
+        } else {
+          parentRestWorldRotation.identity();
         }
 
-        tracks.push(
-          new THREE.QuaternionKeyframeTrack(
-            `${vrmNodeName}.${propertyName}`,
-            track.times,
-            track.values.map((v, i) =>
-              vrm.meta?.metaVersion === "0" && i % 2 === 0 ? -v : v
+        if (track instanceof THREE.QuaternionKeyframeTrack) {
+          // 重新映射mixamoRig到NormalizedBone的旋转
+          const values = [...track.values];
+          for (let i = 0; i < values.length; i += 4) {
+            const flatQuaternion = values.slice(i, i + 4);
+            _quatA.fromArray(flatQuaternion);
+
+            // 父级rest世界旋转 * 轨道旋转 * rest世界旋转的逆
+            _quatA.premultiply(parentRestWorldRotation).multiply(restRotationInverse);
+            _quatA.toArray(flatQuaternion);
+
+            flatQuaternion.forEach((v, index) => {
+              values[index + i] = v;
+            });
+          }
+
+          tracks.push(
+            new THREE.QuaternionKeyframeTrack(
+              `${vrmNodeName}.${propertyName}`,
+              track.times,
+              values.map((v, i) =>
+                vrm.meta?.metaVersion === "0" && i % 2 === 0 ? -v : v
+              )
             )
-          )
-        );
-      } else if (track instanceof THREE.VectorKeyframeTrack) {
-        const value = track.values.map(
-          (v, i) =>
-            (vrm.meta?.metaVersion === "0" && i % 3 !== 1 ? -v : v) *
-            hipsPositionScale
-        );
-        tracks.push(
-          new THREE.VectorKeyframeTrack(
-            `${vrmNodeName}.${propertyName}`,
-            track.times,
-            value
-          )
-        );
+          );
+          mappedTracks++;
+        } else if (track instanceof THREE.VectorKeyframeTrack) {
+          const value = track.values.map(
+            (v, i) =>
+              (vrm.meta?.metaVersion === "0" && i % 3 !== 1 ? -v : v) *
+              hipsPositionScale
+          );
+          tracks.push(
+            new THREE.VectorKeyframeTrack(
+              `${vrmNodeName}.${propertyName}`,
+              track.times,
+              value
+            )
+          );
+          mappedTracks++;
+        }
+      } catch (error) {
+        console.warn('AnimationManager: 映射轨道时出错', mixamoRigName, error);
       }
     }
   });
+
+  if (tracks.length === 0) {
+    console.warn('AnimationManager: 没有成功映射任何轨道');
+    return null;
+  }
 
   const remappedClip = new THREE.AnimationClip("vrmAnimation", clip.duration, tracks);
   console.log('AnimationManager: 动画重新映射完成', {
     originalTracks: clip.tracks.length,
     remappedTracks: tracks.length,
+    mappedTracks,
     duration: remappedClip.duration
   });
 
   return remappedClip;
 }
 
-// 动画混合器
+// 改进的动画管理器
 export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle.fbx') => {
     console.log('AnimationManager: 初始化', { hasVrm: !!vrm, animationUrl });
 
     const mixerRef = useRef();
     const currentActionRef = useRef();
     const idleActionRef = useRef();
-    const transitionRef = useRef();
     const isTransitioningRef = useRef(false);
+    const transitionTimeRef = useRef(0);
     const hasMixerRef = useRef(false);
-
-    // 加载动画文件
-    const { animations: idleAnimations } = useFBX(animationUrl);
+    const animationModeRef = useRef('idle'); // 'idle' | 'mocap'
     
-    // 添加调试信息
-    useEffect(() => {
-        console.log('AnimationManager: 动画文件加载状态', {
-            animationUrl,
-            hasAnimations: !!idleAnimations,
-            animationsCount: idleAnimations?.length,
-            animations: idleAnimations?.map(anim => ({
-                name: anim.name,
-                duration: anim.duration,
-                tracksCount: anim.tracks.length,
-                tracks: anim.tracks.map(track => ({
-                    name: track.name,
-                    type: track.constructor.name,
-                    times: track.times.length
-                }))
-            }))
-        });
+    // 状态管理
+    const [animationState, setAnimationState] = useState({
+        isPlayingIdle: false,
+        isTransitioning: false,
+        hasMixer: false,
+        currentMode: 'idle'
+    });
 
-        // 检查是否有名为"mixamo.com"的动画
-        if (idleAnimations && idleAnimations.length > 0) {
-            const mixamoClip = THREE.AnimationClip.findByName(idleAnimations, "mixamo.com");
-            console.log('AnimationManager: 查找mixamo.com动画', {
-                found: !!mixamoClip,
-                availableNames: idleAnimations.map(anim => anim.name),
-                firstAnimationName: idleAnimations[0]?.name
-            });
-            
-            // 检查第一个动画的详细信息
-            if (idleAnimations[0]) {
-                const firstAnim = idleAnimations[0];
-                console.log('AnimationManager: 第一个动画详情', {
-                    name: firstAnim.name,
-                    duration: firstAnim.duration,
-                    tracksCount: firstAnim.tracks.length,
-                    trackNames: firstAnim.tracks.map(track => track.name).slice(0, 5) // 只显示前5个
-                });
-            }
-        }
-    }, [animationUrl, idleAnimations]);
+    // 加载FBX动画文件
+    const fbxScene = useFBX(animationUrl);
+    
+    // 调试FBX加载
+    useEffect(() => {
+        console.log('AnimationManager: FBX加载状态', {
+            animationUrl,
+            hasFbxScene: !!fbxScene,
+            fbxAnimations: fbxScene?.animations?.length,
+            fbxChildren: fbxScene?.children?.length,
+            fbxAnimationNames: fbxScene?.animations?.map(anim => anim.name)
+        });
+    }, [animationUrl, fbxScene]);
 
     // 创建动画剪辑
     const idleClip = useMemo(() => {
         console.log('AnimationManager: 创建idle剪辑', { 
             hasVrm: !!vrm, 
-            hasIdleAnimation: !!idleAnimations,
-            idleAnimationAnimations: idleAnimations?.length,
-            animationUrl // 添加URL信息
+            hasFbxScene: !!fbxScene,
+            fbxAnimations: fbxScene?.animations?.length,
+            animationUrl
         });
         
-        if (!vrm || !idleAnimations) {
-            console.warn('AnimationManager: 缺少必要参数', { hasVrm: !!vrm, hasIdleAnimations: !!idleAnimations });
+        if (!vrm || !fbxScene) {
+            console.warn('AnimationManager: 缺少必要参数');
             return null;
         }
         
-        // 首先尝试使用重新映射功能处理Mixamo动画
         try {
-            const remappedClip = remapMixamoAnimationToVrm(vrm, idleAnimations);
+            const remappedClip = remapMixamoAnimationToVrm(vrm, fbxScene);
             
             if (remappedClip) {
                 console.log('AnimationManager: 重新映射的idle剪辑创建成功', { 
@@ -278,10 +287,9 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
             console.warn('AnimationManager: 重新映射失败', error);
         }
         
-        // 如果重新映射失败，尝试使用原始动画
-        console.warn('AnimationManager: 重新映射失败，尝试使用原始动画');
-        const clip = idleAnimations[0];
-        if (clip) {
+        // 备用方案：使用原始动画
+        if (fbxScene.animations && fbxScene.animations.length > 0) {
+            const clip = fbxScene.animations[0].clone();
             clip.name = 'Idle';
             console.log('AnimationManager: 使用原始idle剪辑', { 
                 clipName: clip.name,
@@ -291,11 +299,9 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
             return clip;
         }
         
-        console.warn('AnimationManager: 无法创建idle剪辑', { 
-            animationsCount: idleAnimations?.length 
-        });
+        console.warn('AnimationManager: 无法创建idle剪辑');
         return null;
-    }, [vrm, idleAnimations, animationUrl]); // 添加animationUrl依赖
+    }, [vrm, fbxScene, animationUrl]);
 
     // 初始化动画混合器
     useEffect(() => {
@@ -303,10 +309,7 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
             hasVrm: !!vrm, 
             hasIdleClip: !!idleClip,
             vrmScene: !!vrm?.scene,
-            vrmHumanoid: !!vrm?.humanoid,
-            idleClipName: idleClip?.name,
-            idleClipDuration: idleClip?.duration,
-            idleClipTracks: idleClip?.tracks?.length
+            vrmHumanoid: !!vrm?.humanoid
         });
         
         if (!vrm || !idleClip) {
@@ -315,7 +318,14 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
                 console.log('AnimationManager: 清理之前的混合器');
                 mixerRef.current.stopAllAction();
                 mixerRef.current = null;
+                hasMixerRef.current = false;
             }
+            
+            setAnimationState(prev => ({
+                ...prev,
+                hasMixer: false,
+                isPlayingIdle: false
+            }));
             return;
         }
 
@@ -325,160 +335,215 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
             return;
         }
 
-        // 验证VRM骨骼
-        console.log('AnimationManager: 验证VRM骨骼', {
-            sceneChildren: vrm.scene.children.length,
-            humanoidBones: Object.keys(vrm.humanoid.humanBones),
-            availableBones: Object.keys(vrm.humanoid.humanBones).filter(name => 
-                vrm.humanoid.getNormalizedBoneNode(name)
-            )
-        });
+        try {
+            // 创建动画混合器
+            const mixer = new AnimationMixer(vrm.scene);
+            mixerRef.current = mixer;
+            hasMixerRef.current = true;
+            
+            console.log('AnimationManager: 创建动画混合器成功');
 
-        // 创建动画混合器
-        const mixer = new AnimationMixer(vrm.scene);
-        mixerRef.current = mixer;
-        console.log('AnimationManager: 创建动画混合器成功');
+            // 创建idle动作
+            const idleAction = mixer.clipAction(idleClip);
+            idleActionRef.current = idleAction;
+            currentActionRef.current = idleAction;
 
-        // 创建idle动作
-        const idleAction = mixer.clipAction(idleClip);
-        currentActionRef.current = idleAction;
-        idleActionRef.current = idleAction; // 初始化idleActionRef
+            // 设置动画参数
+            idleAction.setEffectiveWeight(1.0);
+            idleAction.timeScale = 1.0;
+            idleAction.setLoop(LoopRepeat);
+            idleAction.clampWhenFinished = false;
+            idleAction.enabled = true;
 
-        // 设置动画参数
-        idleAction.setEffectiveWeight(1.0);
-        idleAction.timeScale = 1.0;
-        idleAction.setLoop(THREE.LoopRepeat);
-
-        // 开始播放idle动画
-        idleAction.play();
-        hasMixerRef.current = true;
-        console.log('AnimationManager: 开始播放idle动画', {
-            actionName: idleAction.getClip().name,
-            duration: idleAction.getClip().duration,
-            isRunning: idleAction.isRunning(),
-            timeScale: idleAction.timeScale,
-            weight: idleAction.weight,
-            loop: idleAction.loop
-        });
-
-        // 添加一个简单的测试：5秒后检查动画状态
-        setTimeout(() => {
-            console.log('AnimationManager: 5秒后动画状态检查', {
-                hasMixer: !!mixerRef.current,
-                hasIdleAction: !!idleActionRef.current,
-                idleActionRunning: idleActionRef.current?.isRunning(),
-                idleActionTime: idleActionRef.current?.time,
-                idleActionWeight: idleActionRef.current?.weight
+            // 开始播放idle动画
+            idleAction.reset();
+            idleAction.play();
+            
+            animationModeRef.current = 'idle';
+            
+            setAnimationState({
+                isPlayingIdle: true,
+                isTransitioning: false,
+                hasMixer: true,
+                currentMode: 'idle'
             });
-        }, 5000);
+            
+            console.log('AnimationManager: 开始播放idle动画', {
+                actionName: idleAction.getClip().name,
+                duration: idleAction.getClip().duration,
+                isRunning: idleAction.isRunning(),
+                timeScale: idleAction.timeScale,
+                weight: idleAction.weight,
+                enabled: idleAction.enabled
+            });
+
+        } catch (error) {
+            console.error('AnimationManager: 初始化动画混合器失败', error);
+            setAnimationState(prev => ({
+                ...prev,
+                hasMixer: false,
+                isPlayingIdle: false
+            }));
+        }
 
         return () => {
-            if (mixer) {
+            if (mixerRef.current) {
                 console.log('AnimationManager: 清理动画混合器');
-                mixer.stopAllAction();
+                mixerRef.current.stopAllAction();
+                mixerRef.current = null;
+                hasMixerRef.current = false;
             }
         }
     }, [vrm, idleClip]);
 
-    // 平滑过渡到目标动画
-    const transitionToAnimation = (targetAnim, duration = 0.5) => {
-        if (!mixerRef.current || !targetAnim) return;
-
-        if (currentActionRef.current === targetAnim) return;
-
-        // 开始过渡
+    // 切换到动捕模式
+    const switchToMocapMode = () => {
+        if (!mixerRef.current || !idleActionRef.current) return;
+        
+        if (animationModeRef.current === 'mocap') return;
+        
+        console.log('AnimationManager: 切换到动捕模式');
+        
+        // 开始淡出idle动画
         isTransitioningRef.current = true;
-        transitionRef.current = 0;
-        currentActionRef.current = targetAnim;
+        transitionTimeRef.current = 0;
+        animationModeRef.current = 'mocap';
+        
+        setAnimationState(prev => ({
+            ...prev,
+            isTransitioning: true,
+            currentMode: 'mocap'
+        }));
+    };
 
-        // 设置动画权重
-        if (currentActionRef.current) {
-            currentActionRef.current.setEffectiveWeight(1);
-        }
-        targetAnim.setEffectiveWeight(0);
-
-        // 播放目标动画
-        targetAnim.play();
-    }
+    // 切换到idle模式
+    const switchToIdleMode = () => {
+        if (!mixerRef.current || !idleActionRef.current) return;
+        
+        if (animationModeRef.current === 'idle') return;
+        
+        console.log('AnimationManager: 切换到idle模式');
+        
+        // 重新启动idle动画
+        idleActionRef.current.reset();
+        idleActionRef.current.setEffectiveWeight(0);
+        idleActionRef.current.play();
+        
+        // 开始淡入idle动画
+        isTransitioningRef.current = true;
+        transitionTimeRef.current = 0;
+        animationModeRef.current = 'idle';
+        
+        setAnimationState(prev => ({
+            ...prev,
+            isTransitioning: true,
+            currentMode: 'idle'
+        }));
+    };
 
     // 更新动画混合器
     const updateAnimation = (delta) => {
         if (!mixerRef.current) {
-            console.log('AnimationManager: 没有动画混合器，跳过更新');
             return;
+        }
+
+        // 处理过渡逻辑
+        if (isTransitioningRef.current) {
+            transitionTimeRef.current += delta;
+            const transitionDuration = 0.5; // 0.5秒过渡时间
+            const progress = Math.min(transitionTimeRef.current / transitionDuration, 1);
+            
+            if (animationModeRef.current === 'idle') {
+                // 淡入idle动画
+                idleActionRef.current.setEffectiveWeight(progress);
+            } else if (animationModeRef.current === 'mocap') {
+                // 淡出idle动画
+                idleActionRef.current.setEffectiveWeight(1 - progress);
+            }
+            
+            if (progress >= 1) {
+                isTransitioningRef.current = false;
+                transitionTimeRef.current = 0;
+                
+                if (animationModeRef.current === 'mocap') {
+                    // 完全停止idle动画
+                    idleActionRef.current.setEffectiveWeight(0);
+                    idleActionRef.current.enabled = false;
+                } else {
+                    // 确保idle动画完全启用
+                    idleActionRef.current.setEffectiveWeight(1);
+                    idleActionRef.current.enabled = true;
+                }
+                
+                setAnimationState(prev => ({
+                    ...prev,
+                    isTransitioning: false,
+                    isPlayingIdle: animationModeRef.current === 'idle'
+                }));
+                
+                console.log('AnimationManager: 过渡完成', {
+                    mode: animationModeRef.current,
+                    idleWeight: idleActionRef.current.weight,
+                    idleEnabled: idleActionRef.current.enabled
+                });
+            }
         }
 
         // 更新混合器
         mixerRef.current.update(delta);
 
-        // 强制更新idle动画
-        if (idleActionRef.current && !idleActionRef.current.isRunning()) {
-            console.log('AnimationManager: 强制重启idle动画');
-            idleActionRef.current.reset();
-            idleActionRef.current.play();
-        }
-
-        // 处理过渡
-        if (isTransitioningRef.current && currentActionRef.current) {
-            transitionRef.current = Math.min(transitionRef.current + delta / 0.5, 1); // 0.5秒过渡
-
-            if (currentActionRef.current) {
-                currentActionRef.current.setEffectiveWeight(1 - transitionRef.current);
-            }
-            currentActionRef.current.setEffectiveWeight(transitionRef.current);
-
-            if (transitionRef.current >= 1) {
-                // 过渡完成
-                if (currentActionRef.current) {
-                    currentActionRef.current.stop();
-                }
-                currentActionRef.current = idleActionRef.current; // 恢复到idle动作
-                isTransitioningRef.current = false;
+        // 检查idle动画状态
+        if (animationModeRef.current === 'idle' && !isTransitioningRef.current) {
+            if (idleActionRef.current && !idleActionRef.current.isRunning()) {
+                console.log('AnimationManager: 重启idle动画');
+                idleActionRef.current.reset();
+                idleActionRef.current.play();
             }
         }
-
-        // 确保idle动画始终在播放（如果没有其他动画在播放）
-        if (!isTransitioningRef.current && idleActionRef.current && !idleActionRef.current.isRunning()) {
-            console.log('AnimationManager: 重新启动idle动画');
-            idleActionRef.current.play();
-        }
-
-        // 调试信息：每60帧输出一次状态
-        if (Math.floor(Date.now() / 1000) % 5 === 0) {
-            console.log('AnimationManager: 动画状态', {
-                hasMixer: !!mixerRef.current,
-                hasIdleAction: !!idleActionRef.current,
-                idleActionRunning: idleActionRef.current?.isRunning(),
-                idleActionTime: idleActionRef.current?.time,
-                idleActionWeight: idleActionRef.current?.weight,
-                isTransitioning: isTransitioningRef.current
-            });
-        }
-    }
+    };
 
     // 检查是否应该播放idle动画
     const shouldPlayIdle = (hasHandDetection) => {
         return !hasHandDetection;
-    }
+    };
+
+    // 处理模式切换
+    const handleModeSwitch = (shouldUseMocap) => {
+        if (shouldUseMocap && animationModeRef.current === 'idle') {
+            switchToMocapMode();
+        } else if (!shouldUseMocap && animationModeRef.current === 'mocap') {
+            switchToIdleMode();
+        }
+    };
 
     // 获取当前动画状态
     const getAnimationState = () => {
-        const isPlayingIdle = idleActionRef.current?.isRunning() || 
-                             (currentActionRef.current === idleActionRef.current && currentActionRef.current?.isRunning());
-        
         return {
-            isPlayingIdle,
+            ...animationState,
+            isPlayingIdle: animationModeRef.current === 'idle' && !isTransitioningRef.current,
             isTransitioning: isTransitioningRef.current,
-            blendFactor: transitionRef.current || 0, // 使用transitionRef作为blendFactor
-            hasMixer: !!mixerRef.current
-        }
-    }
+            blendFactor: transitionTimeRef.current,
+            hasMixer: hasMixerRef.current,
+            currentMode: animationModeRef.current
+        };
+    };
 
     return {
         updateAnimation,
-        transitionToAnimation,
+        switchToMocapMode,
+        switchToIdleMode,
+        handleModeSwitch,
         shouldPlayIdle,
         getAnimationState,
-        idleClip
-    }
-}; 
+        idleClip,
+        
+        // 调试方法
+        getCurrentMode: () => animationModeRef.current,
+        forceIdleRestart: () => {
+            if (idleActionRef.current) {
+                idleActionRef.current.reset();
+                idleActionRef.current.play();
+            }
+        }
+    };
+};

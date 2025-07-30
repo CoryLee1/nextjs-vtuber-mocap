@@ -1,10 +1,14 @@
 // MediaPipe 配置
 export const MEDIAPIPE_CONFIG = {
-  modelComplexity: 1,
+  modelComplexity: 1, // 恢复到完整模型
   smoothLandmarks: true,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7,
-  refineFaceLandmarks: true,
+  minDetectionConfidence: 0.7, // 恢复到标准阈值
+  minTrackingConfidence: 0.7, // 恢复到标准阈值
+  minHandDetectionConfidence: 0.7, // 添加手部检测阈值
+  minHandTrackingConfidence: 0.7, // 添加手部跟踪阈值
+  refineFaceLandmarks: true, // 恢复精细面部关键点
+  enableSegmentation: false, // 保持禁用分割
+  smoothSegmentation: false, // 保持禁用分割平滑
 };
 
 // 摄像头配置
@@ -89,15 +93,53 @@ export const MIXAMO_VRM_RIG_MAP = {
 
 // 动画配置
 export const ANIMATION_CONFIG = {
-  // 动画速度
+  // 动画速度 - 这些值控制动画的平滑度
   LERP_FACTOR: {
-    expression: 12,
-    bone: 5,
-    eye: 5,
+    expression: 12,  // 表情动画阻尼 (0-20)
+    bone: 8,         // 骨骼动画阻尼 (0-10)
+    eye: 5,          // 眼球动画阻尼 (0-10)
   },
   
-  // 动画类型
-  TYPES: ['None', 'Idle', 'Swing Dancing', 'Thriller Part 2'],
+  // 平滑设置 - 新增阻尼值配置
+  SMOOTHING: {
+    neckDamping: 0.9,    // 脖子阻尼 (0.1-1.0)
+    armDamping: 0.5,    // 手臂阻尼 (0.1-1.0)
+    handDamping: 0.95,    // 手部阻尼 (0.1-1.0)
+    fingerDamping: 0.9,  // 手指阻尼 (0.1-1.0)
+  },
+  
+  // 动画类型 - 更新为实际的动画文件
+  TYPES: [
+    'None', 
+    'Idle', 
+    'Breakdance 1990',
+    'Mma Kick',
+    'Breakdance Uprock Var 2',
+    'Twist Dance',
+    'Sitting Laughing',
+    'Taunt',
+    'Capoeira'
+  ],
+  
+  // 动画文件路径映射
+  ANIMATION_FILES: {
+    'Idle': '/models/animations/Idle.fbx',
+    'Breakdance 1990': '/models/animations/Breakdance 1990.fbx',
+    'Mma Kick': '/models/animations/Mma Kick.fbx',
+    'Breakdance Uprock Var 2': '/models/animations/Breakdance Uprock Var 2.fbx',
+    'Twist Dance': '/models/animations/Twist Dance.fbx',
+    'Sitting Laughing': '/models/animations/Sitting Laughing.fbx',
+    'Taunt': '/models/animations/Taunt.fbx',
+    'Capoeira': '/models/animations/Capoeira.fbx'
+  },
+  
+  // 动画分类
+  CATEGORIES: {
+    'idle': ['Idle'],
+    'dance': ['Breakdance 1990', 'Breakdance Uprock Var 2', 'Twist Dance'],
+    'combat': ['Mma Kick', 'Capoeira'],
+    'emotion': ['Sitting Laughing', 'Taunt']
+  },
   
   // 默认动画
   DEFAULT: 'Idle',
