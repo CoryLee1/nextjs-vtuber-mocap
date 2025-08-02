@@ -25,7 +25,7 @@ const ModelLoadingIndicator = ({ isLoading, error, modelName }) => {
         <div className="bg-white rounded-lg p-6 max-w-md mx-4">
           <div className="text-red-500 text-xl mb-4">⚠️ 模型加载失败</div>
           <div className="text-gray-700 mb-4">
-            无法加载模型 "{modelName}"，请检查网络连接或稍后重试。
+            无法加载模型 &quot;{modelName}&quot;，请检查网络连接或稍后重试。
           </div>
           <div className="text-sm text-gray-500">
             错误信息: {error.message || '未知错误'}
@@ -203,8 +203,8 @@ const BoneVisualizer = ({ vrm }) => {
 };
 
 export const VRMAvatar = forwardRef(({
-    modelUrl = '/models/avatar.vrm',
-    animationUrl = '/models/animations/Idle.fbx', // 新增：动画URL参数
+    modelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
+    animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx', // 新增：动画URL参数
     scale = 1,
     position = [0, 0, 0],
     showBones = false, // 添加骨骼可视化控制

@@ -197,7 +197,7 @@ function remapMixamoAnimationToVrm(vrm, fbxScene) {
 }
 
 // 改进的动画管理器
-export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle.fbx') => {
+export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx') => {
     // 修正 animationUrl 末尾多余的冒号
     const safeAnimationUrl = typeof animationUrl === 'string' ? animationUrl.replace(/:$/, '') : animationUrl;
 

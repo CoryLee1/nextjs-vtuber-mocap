@@ -85,8 +85,8 @@ const Scene = ({
                 <Suspense fallback={<LoadingIndicator />}>
                     <VRMAvatar
                         ref={vrmRef}
-                        modelUrl={selectedModel?.url || '/models/AvatarSample_A.vrm'}
-                        animationUrl={selectedAnimation?.url || '/models/animations/Idle.fbx'}
+                        modelUrl={selectedModel?.url || 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm'}
+                        animationUrl={selectedAnimation?.url || 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx'}
                         scale={1}
                         position={[0, -1, 0]}
                         showBones={showBones}

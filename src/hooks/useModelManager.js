@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
+import { s3Uploader } from '@/utils/s3Uploader';
 
 // 默认模型列表
 const DEFAULT_MODELS = [
   {
     id: 'avatar-sample-a',
     name: 'Avatar Sample A',
-    url: '/models/AvatarSample_A.vrm',
+    url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '15 MB',
@@ -15,43 +16,13 @@ const DEFAULT_MODELS = [
   {
     id: 'avatar-sample-c',
     name: 'Avatar Sample C',
-    url: '/models/AvatarSample_C.vrm',
+    url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_C.vrm',
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '14 MB',
     category: 'default',
     description: '默认女性角色模型C'
-  },
-  {
-    id: 'avatar-sample-h',
-    name: 'Avatar Sample H',
-    url: '/models/AvatarSample_H.vrm',
-    thumbnail: '/images/1111.jpg',
-    isDefault: true,
-    size: '19 MB',
-    category: 'default',
-    description: '默认女性角色模型H'
-  },
-  {
-    id: 'avatar-sample-m',
-    name: 'Avatar Sample M',
-    url: '/models/AvatarSample_M.vrm',
-    thumbnail: '/images/1111.jpg',
-    isDefault: true,
-    size: '20 MB',
-    category: 'default',
-    description: '默认男性角色模型M'
-  },
-  {
-    id: 'avatar-sample-z',
-    name: 'Avatar Sample Z',
-    url: '/models/AvatarSample_Z.vrm',
-    thumbnail: '/images/1111.jpg',
-    isDefault: true,
-    size: '17 MB',
-    category: 'default',
-    description: '默认女性角色模型Z'
-  },
+  }
 ];
 
 // 在线模型库
@@ -82,6 +53,7 @@ export const useModelManager = () => {
   const [uploadedModels, setUploadedModels] = useState([]);
   const [selectedModelId, setSelectedModelId] = useState('avatar-sample-a');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [downloadingIds, setDownloadingIds] = useState(new Set());
   const [error, setError] = useState(null);
   
@@ -101,15 +73,6 @@ export const useModelManager = () => {
     return allModels.find(model => model.id === selectedModelId) || DEFAULT_MODELS[0];
   }, [getAllModels, selectedModelId]);
 
-  // 格式化文件大小
-  const formatFileSize = useCallback((bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }, []);
-
   // 生成缩略图（占位符实现）
   const generateThumbnail = useCallback(async (file) => {
     // TODO: 实现真实的 VRM 缩略图生成
@@ -117,27 +80,38 @@ export const useModelManager = () => {
     return '/images/1111.jpg';
   }, []);
 
-  // 上传模型
+  // 上传模型到 S3
   const uploadModel = useCallback(async (file) => {
     setIsUploading(true);
+    setUploadProgress(0);
     clearError();
 
     try {
-      // 创建文件 URL
-      const fileUrl = URL.createObjectURL(file);
+      // 验证文件
+      const validationErrors = s3Uploader.validateFile(file);
+      if (validationErrors.length > 0) {
+        throw new Error(validationErrors.join('\n'));
+      }
+
+      // 上传到 S3
+      const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
+        setUploadProgress(progress);
+      });
       
       // 生成缩略图
       const thumbnail = await generateThumbnail(file);
       
       const newModel = {
         id: `uploaded-${Date.now()}`,
-        name: file.name.replace('.vrm', ''),
-        url: fileUrl,
+        name: file.name.replace(/\.(vrm|fbx)$/i, ''),
+        url: uploadResult.url,
         thumbnail: thumbnail,
         isUploaded: true,
-        size: formatFileSize(file.size),
+        size: s3Uploader.formatFileSize(file.size),
         uploadDate: new Date().toLocaleDateString('zh-CN'),
-        file: file, // 保存原始文件引用
+        originalName: file.name,
+        s3Key: uploadResult.fileName,
+        category: file.name.toLowerCase().endsWith('.vrm') ? 'vrm' : 'fbx'
       };
 
       setUploadedModels(prev => [...prev, newModel]);
@@ -151,8 +125,9 @@ export const useModelManager = () => {
       throw error;
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
-  }, [generateThumbnail, formatFileSize, clearError]);
+  }, [generateThumbnail, clearError]);
 
   // 下载在线模型
   const downloadModel = useCallback(async (onlineModel) => {
@@ -165,14 +140,18 @@ export const useModelManager = () => {
       if (!response.ok) throw new Error('下载失败');
       
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const file = new File([blob], onlineModel.name + '.vrm', { type: 'model/vrm' });
+      
+      // 使用 S3 上传
+      const uploadResult = await s3Uploader.uploadFile(file);
       
       const downloadedModel = {
         ...onlineModel,
         id: `downloaded-${Date.now()}`,
-        url: url,
+        url: uploadResult.url,
         isDownloaded: true,
         downloadDate: new Date().toLocaleDateString('zh-CN'),
+        s3Key: uploadResult.fileName,
       };
       
       setUploadedModels(prev => [...prev, downloadedModel]);
@@ -196,18 +175,11 @@ export const useModelManager = () => {
   // 删除模型
   const deleteModel = useCallback((modelId) => {
     setUploadedModels(prev => {
-      const modelToDelete = prev.find(model => model.id === modelId);
-      
-      // 清理 URL 对象
-      if (modelToDelete?.url.startsWith('blob:')) {
-        URL.revokeObjectURL(modelToDelete.url);
-      }
-      
       const updatedModels = prev.filter(model => model.id !== modelId);
       
       // 如果删除的是当前选中的模型，切换到默认模型
       if (selectedModelId === modelId) {
-        setSelectedModelId('default');
+        setSelectedModelId('avatar-sample-a');
       }
       
       return updatedModels;
@@ -224,6 +196,7 @@ export const useModelManager = () => {
     uploadedModels,
     selectedModelId,
     isUploading,
+    uploadProgress,
     downloadingIds,
     error,
     
@@ -240,7 +213,7 @@ export const useModelManager = () => {
     selectModel,
     
     // 工具方法
-    formatFileSize,
+    formatFileSize: s3Uploader.formatFileSize,
     clearError,
   };
 };

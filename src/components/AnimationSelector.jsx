@@ -127,7 +127,7 @@ export const AnimationSelector = ({ isOpen, onClose, onAnimationSelect }) => {
                 <div>没有找到动画</div>
                 {searchTerm && (
                   <div className="text-sm text-gray-400 mt-1">
-                    搜索: "{searchTerm}"
+                    搜索: &quot;{searchTerm}&quot;
                   </div>
                 )}
               </div>
@@ -205,7 +205,7 @@ export const AnimationSelector = ({ isOpen, onClose, onAnimationSelect }) => {
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="text-xs text-gray-500">
             共 {filteredAnimations.length} 个动画
-            {searchTerm && ` (搜索: "${searchTerm}")`}
+            {searchTerm && ` (搜索: &quot;${searchTerm}&quot;)`}
           </div>
         </div>
       </div>

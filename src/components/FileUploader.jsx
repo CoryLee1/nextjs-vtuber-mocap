@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
+import { s3Uploader } from '@/utils/s3Uploader';
 
-export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm" }) => {
+export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm,.fbx", fileType = "model" }) => {
   const fileInputRef = useRef();
   const [dragOver, setDragOver] = useState(false);
   const [validationError, setValidationError] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // 处理文件选择
   const handleFileSelect = (file) => {
@@ -13,45 +15,13 @@ export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm" })
     setValidationError(null);
     
     // 文件验证
-    const errors = validateFile(file);
+    const errors = s3Uploader.validateFile(file);
     if (errors.length > 0) {
       setValidationError(errors.join('\n'));
       return;
     }
     
     onUpload(file);
-  };
-
-  // 文件验证
-  const validateFile = (file) => {
-    const errors = [];
-    
-    // 检查文件类型
-    if (!file.name.toLowerCase().endsWith('.vrm')) {
-      errors.push('❌ 只支持 .vrm 格式的文件');
-    }
-    
-    // 检查文件大小 (50MB)
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      errors.push('❌ 文件大小不能超过 50MB');
-    }
-    
-    // 检查文件是否为空
-    if (file.size === 0) {
-      errors.push('❌ 文件不能为空');
-    }
-    
-    return errors;
-  };
-
-  // 格式化文件大小
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   // 拖拽处理
@@ -73,6 +43,20 @@ export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm" })
     if (files.length > 0) {
       handleFileSelect(files[0]);
     }
+  };
+
+  // 获取文件类型显示名称
+  const getFileTypeName = () => {
+    if (fileType === 'animation') return '动画文件';
+    if (fileType === 'model') return '模型文件';
+    return '文件';
+  };
+
+  // 获取支持格式
+  const getSupportedFormats = () => {
+    if (fileType === 'animation') return '.fbx';
+    if (fileType === 'model') return '.vrm';
+    return '.vrm, .fbx';
   };
 
   return (
@@ -97,7 +81,7 @@ export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm" })
           </div>
           
           <h3 className="text-lg font-semibold text-vtuber-text mb-2">
-            {isUploading ? '上传中...' : '上传你的 VRM 模型'}
+            {isUploading ? '上传中...' : `上传你的 ${getFileTypeName()}`}
           </h3>
           
           <p className="text-vtuber-text-light text-sm">
@@ -138,10 +122,10 @@ export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm" })
           <div className="bg-vtuber-blue-50 rounded-lg p-4">
             <h4 className="font-medium mb-2">📋 上传要求:</h4>
             <ul className="text-left space-y-1">
-              <li>• 支持格式: .vrm</li>
-              <li>• 最大大小: 50MB</li>
-              <li>• 推荐来源: VRoid Studio</li>
-              <li>• 确保包含面部表情</li>
+              <li>• 支持格式: {getSupportedFormats()}</li>
+              <li>• 最大大小: 100MB</li>
+              <li>• 文件将上传到 AWS S3</li>
+              <li>• 支持进度显示</li>
             </ul>
           </div>
         </div>
@@ -154,14 +138,17 @@ export const FileUploader = ({ onUpload, isUploading = false, accept = ".vrm" })
         </div>
       )}
       
-      {/* 上传进度（如果需要） */}
+      {/* 上传进度 */}
       {isUploading && (
         <div className="mt-4">
           <div className="bg-gray-200 rounded-full h-2">
-            <div className="bg-vtuber-primary h-2 rounded-full animate-pulse" style={{ width: '45%' }}></div>
+            <div 
+              className="bg-vtuber-primary h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
           </div>
           <p className="text-xs text-vtuber-text-light mt-2 text-center">
-            正在处理模型文件...
+            正在上传到 S3... {uploadProgress.toFixed(1)}%
           </p>
         </div>
       )}

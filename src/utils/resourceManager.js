@@ -123,15 +123,6 @@ const RESOURCE_CONFIG = {
         size: '2.0MB'
       },
       {
-        id: 'test-animation',
-        name: 'Test Animation',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Taunt.fbx',
-        thumbnail: '/images/thumbnails/taunt.gif',
-        category: 'test',
-        tags: ['test'],
-        size: '2.0MB'
-      },
-      {
         id: 'capoeira',
         name: 'Capoeira',
         url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Capoeira.fbx',

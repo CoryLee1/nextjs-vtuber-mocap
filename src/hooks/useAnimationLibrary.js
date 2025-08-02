@@ -19,10 +19,10 @@ export const useAnimationLibrary = () => {
                 // 添加默认动画作为备用
                 const defaultAnimations = [
                     {
-                        id: 'local-idle',
+                        id: 'local-idle', // Changed from 'idle' to 'local-idle'
                         name: '待机动画',
                         description: '默认的待机动画',
-                        url: '/models/animations/Idle.fbx',
+                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
                         type: 'fbx',
                         isDefault: true,
                         category: 'idle',
@@ -51,10 +51,10 @@ export const useAnimationLibrary = () => {
                 // 使用本地默认动画作为备用
                 const fallbackAnimations = [
                     {
-                        id: 'local-idle',
+                        id: 'local-idle', // Changed from 'idle' to 'local-idle'
                         name: '待机动画',
                         description: '默认的待机动画',
-                        url: '/models/animations/Idle.fbx',
+                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
                         type: 'fbx',
                         isDefault: true,
                         category: 'idle',
