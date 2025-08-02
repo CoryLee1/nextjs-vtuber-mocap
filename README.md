@@ -1,5 +1,9 @@
 # 🎭 VTuber Motion Capture Demo
 
+[![VTuber Mocap Demo](JIETU.png)](https://nextjs-vtuber-mocap.vercel.app/)
+
+**🌐 在线体验：** [https://nextjs-vtuber-mocap.vercel.app/](https://nextjs-vtuber-mocap.vercel.app/)
+
 一个基于 Next.js + Three.js + MediaPipe 的实时 VTuber 动作捕捉演示项目，支持 VRM 模型驱动、面部表情同步、手势识别和动画切换。
 
 ## ✨ 核心功能
