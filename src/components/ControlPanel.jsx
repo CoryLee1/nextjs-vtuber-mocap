@@ -11,6 +11,7 @@ export const ControlPanel = ({
     onOpenSensitivityPanel,
     onOpenModelManager,
     onOpenAnimationLibrary,
+    onOpenConfigManager,
     selectedAnimation,
     showBones,
     onToggleBones,
@@ -286,6 +287,12 @@ export const ControlPanel = ({
                                         className="px-3 py-2 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
                                     >
                                         {showArmAxes ? '隐藏' : '显示'}坐标轴
+                                    </button>
+                                    <button
+                                        onClick={onOpenConfigManager}
+                                        className="px-3 py-2 text-xs bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors col-span-2"
+                                    >
+                                        ⚙️ 配置管理器
                                     </button>
                                 </div>
                             </div>

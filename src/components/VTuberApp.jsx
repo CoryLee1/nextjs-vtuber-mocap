@@ -15,6 +15,7 @@ import { CameraController } from './CameraController';
 import { CameraControlHint } from './CameraController';
 import { SmoothSettingsPanel } from './SmoothSettingsPanel';
 import { AnimationDebugPanel } from './AnimationDebugPanel';
+import { ConfigManagerPanel } from './ConfigManagerPanel';
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
 import { useAnimationLibrary } from '@/hooks/useAnimationLibrary';
@@ -134,6 +135,7 @@ export default function VTuberApp() {
     const [isArmTestPanelOpen, setIsArmTestPanelOpen] = useState(false);
     const [isHandDebugPanelOpen, setIsHandDebugPanelOpen] = useState(false);
     const [isSmoothSettingsPanelOpen, setIsSmoothSettingsPanelOpen] = useState(false);
+    const [isConfigManagerPanelOpen, setIsConfigManagerPanelOpen] = useState(false);
     const [showBones, setShowBones] = useState(false);
     const [showArmAxes, setShowArmAxes] = useState(false);
     const [showAnimationDebug, setShowAnimationDebug] = useState(true);
@@ -249,6 +251,16 @@ export default function VTuberApp() {
         setIsAnimationLibraryOpen(false);
     };
 
+    // 打开配置管理器
+    const handleOpenConfigManager = () => {
+        setIsConfigManagerPanelOpen(true);
+    };
+
+    // 关闭配置管理器
+    const handleCloseConfigManager = () => {
+        setIsConfigManagerPanelOpen(false);
+    };
+
     // 切换骨骼可视化
     const handleToggleBones = () => {
         const newShowBones = !showBones;
@@ -324,6 +336,7 @@ export default function VTuberApp() {
                 isCameraActive={isCameraActive}
                 onOpenModelManager={handleOpenModelManager}
                 onOpenAnimationLibrary={handleOpenAnimationLibrary}
+                onOpenConfigManager={handleOpenConfigManager}
                 onToggleBones={handleToggleBones}
                 showBones={showBones}
                 selectedModel={selectedModel}
@@ -394,6 +407,12 @@ export default function VTuberApp() {
             <SmoothSettingsPanel
                 isOpen={isSmoothSettingsPanelOpen}
                 onClose={() => setIsSmoothSettingsPanelOpen(false)}
+            />
+
+            {/* 配置管理器面板 */}
+            <ConfigManagerPanel
+                isOpen={isConfigManagerPanelOpen}
+                onClose={handleCloseConfigManager}
             />
 
             {/* 动画调试面板 */}

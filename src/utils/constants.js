@@ -98,7 +98,7 @@ export const ANIMATION_CONFIG = {
   // 动画速度 - 这些值控制动画的平滑度
   LERP_FACTOR: {
     expression: 12,  // 表情动画阻尼 (0-20)
-    bone: 8,         // 骨骼动画阻尼 (0-10)
+    bone: 4,         // 骨骼动画阻尼 (0-10) - 从 8 降低到 4，减少抖动
     eye: 5,          // 眼球动画阻尼 (0-10)
   },
   
