@@ -1,14 +1,16 @@
 // MediaPipe 配置
 export const MEDIAPIPE_CONFIG = {
-  modelComplexity: 1, // 恢复到完整模型
+  modelComplexity: 1, // 保持完整模型
   smoothLandmarks: true,
-  minDetectionConfidence: 0.7, // 恢复到标准阈值
-  minTrackingConfidence: 0.7, // 恢复到标准阈值
-  minHandDetectionConfidence: 0.7, // 添加手部检测阈值
-  minHandTrackingConfidence: 0.7, // 添加手部跟踪阈值
-  refineFaceLandmarks: true, // 恢复精细面部关键点
-  enableSegmentation: false, // 保持禁用分割
-  smoothSegmentation: false, // 保持禁用分割平滑
+  minDetectionConfidence: 0.7, // 标准阈值
+  minTrackingConfidence: 0.7, // 标准阈值
+  refineFaceLandmarks: true, // 启用精细面部关键点
+  // 移除额外的hand检测设置，使用标准设置
+  // minHandDetectionConfidence: 0.7,
+  // minHandTrackingConfidence: 0.7,
+  // 移除分割设置以提高性能
+  // enableSegmentation: false,
+  // smoothSegmentation: false,
 };
 
 // 摄像头配置

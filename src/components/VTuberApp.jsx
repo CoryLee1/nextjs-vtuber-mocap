@@ -7,17 +7,17 @@ import { CameraWidget } from './CameraWidget';
 import { VRMAvatar } from './VRMAvatar';
 import { UI } from './UI';
 import { ModelManager } from './ModelManager';
-import { AnimationLibrary } from './AnimationLibrary'; // 新增：导入动画库
+import { AnimationLibrary } from './AnimationLibrary';
 import { ControlPanel } from './ControlPanel';
-import { ArmTestPanel } from './ArmTestPanel'; // 新增：导入调试面板
-import { HandDebugPanel } from './HandDebugPanel'; // 新增：导入手部调试面板
-import { CameraController } from './CameraController'; // 新增：导入相机控制器
-import { CameraControlHint } from './CameraController'; // 新增：导入相机控制提示
-import { SmoothSettingsPanel } from './SmoothSettingsPanel'; // 新增：导入平滑设置面板
-import { AnimationDebugPanel } from './AnimationDebugPanel'; // 新增：导入动画调试面板
+import { ArmTestPanel } from './ArmTestPanel';
+import { HandDebugPanel } from './HandDebugPanel';
+import { CameraController } from './CameraController';
+import { CameraControlHint } from './CameraController';
+import { SmoothSettingsPanel } from './SmoothSettingsPanel';
+import { AnimationDebugPanel } from './AnimationDebugPanel';
 import { useVideoRecognition } from '@/hooks/useVideoRecognition';
 import { useModelManager } from '@/hooks/useModelManager';
-import { useAnimationLibrary } from '@/hooks/useAnimationLibrary'; // 新增：导入动画库Hook
+import { useAnimationLibrary } from '@/hooks/useAnimationLibrary';
 
 // 3D 加载指示器组件
 const LoadingIndicator = () => (
@@ -27,7 +27,7 @@ const LoadingIndicator = () => (
     </mesh>
 );
 
-// 场景组件 - 更新以支持调试参数
+// 场景组件 - 优化调试信息
 const Scene = ({ 
     selectedModel, 
     selectedAnimation, 
@@ -36,34 +36,13 @@ const Scene = ({
     showArmAxes, 
     axisSettings, 
     cameraSettings,
-    onVrmRef, // 新增：VRM引用回调
-    onAnimationManagerRef, // 新增：动画管理器引用回调
-    onHandDetectionStateRef, // 新增：手部检测状态引用回调
-    onMocapStatusUpdate // 新增：动捕状态更新回调
+    onVrmRef,
+    onAnimationManagerRef,
+    onHandDetectionStateRef,
+    onMocapStatusUpdate
 }) => {
-    console.log('Scene: 渲染场景', { selectedModel, selectedAnimation, showBones, debugSettings, axisSettings, cameraSettings });
-    console.log('Scene: selectedModel详情', { 
-        hasSelectedModel: !!selectedModel,
-        modelName: selectedModel?.name,
-        modelUrl: selectedModel?.url,
-        modelId: selectedModel?.id
-    });
-    console.log('Scene: selectedAnimation详情', { 
-        hasSelectedAnimation: !!selectedAnimation,
-        animationName: selectedAnimation?.name,
-        animationUrl: selectedAnimation?.url,
-        animationId: selectedAnimation?.id
-    });
     const vrmRef = useRef();
     
-    // 添加调试信息
-    useEffect(() => {
-        console.log('Scene: VRM ref状态', { 
-            vrmRef: !!vrmRef.current,
-            cameraSettings: cameraSettings
-        });
-    }, [cameraSettings]);
-
     // 传递引用给父组件
     useEffect(() => {
         if (onVrmRef) {
@@ -114,9 +93,9 @@ const Scene = ({
                         testSettings={debugSettings}
                         showArmAxes={showArmAxes}
                         axisSettings={axisSettings}
-                        onAnimationManagerRef={onAnimationManagerRef} // 新增：传递动画管理器引用
-                        onHandDetectionStateRef={onHandDetectionStateRef} // 新增：传递手部检测状态引用
-                        onMocapStatusUpdate={onMocapStatusUpdate} // 新增：传递动捕状态更新回调
+                        onAnimationManagerRef={onAnimationManagerRef}
+                        onHandDetectionStateRef={onHandDetectionStateRef}
+                        onMocapStatusUpdate={onMocapStatusUpdate}
                     />
                 </Suspense>
             </group>
@@ -148,8 +127,6 @@ const Scene = ({
 };
 
 export default function VTuberApp() {
-    console.log('=== VTuberApp 开始渲染 ===');
-
     // 状态管理
     const [isModelManagerOpen, setIsModelManagerOpen] = useState(false);
     const [isAnimationLibraryOpen, setIsAnimationLibraryOpen] = useState(false);
@@ -159,7 +136,7 @@ export default function VTuberApp() {
     const [isSmoothSettingsPanelOpen, setIsSmoothSettingsPanelOpen] = useState(false);
     const [showBones, setShowBones] = useState(false);
     const [showArmAxes, setShowArmAxes] = useState(false);
-    const [showAnimationDebug, setShowAnimationDebug] = useState(true); // 新增：动画调试面板状态
+    const [showAnimationDebug, setShowAnimationDebug] = useState(true);
 
     // 调试设置
     const [debugSettings, setDebugSettings] = useState({
@@ -197,6 +174,9 @@ export default function VTuberApp() {
         rightHand: false
     });
 
+    // 当前模式状态
+    const [currentMode, setCurrentMode] = useState('idle');
+
     // 引用管理
     const vrmRef = useRef();
     const animationManagerRef = useRef();
@@ -209,10 +189,21 @@ export default function VTuberApp() {
 
     const setAnimationManagerRef = (manager) => {
         animationManagerRef.current = manager;
+        // 获取当前模式
+        if (manager) {
+            const state = manager.getAnimationState();
+            setCurrentMode(state.currentMode);
+        }
     };
 
     const setHandDetectionStateRef = (state) => {
         handDetectionStateRef.current = state;
+    };
+
+    // 动捕状态更新回调
+    const handleMocapStatusUpdate = (newStatus) => {
+        console.log('VTuberApp: 收到动捕状态更新', newStatus);
+        setMocapStatus(newStatus);
     };
 
     // Hooks
@@ -224,44 +215,17 @@ export default function VTuberApp() {
     const selectedModel = getSelectedModel();
     const selectedAnimation = getSelectedAnimation();
 
-    console.log('VTuberApp: 当前状态', {
-        selectedModel: selectedModel?.name,
-        selectedAnimation: selectedAnimation?.name,
-        isModelManagerOpen,
-        isAnimationLibraryOpen,
-        showBones,
-        debugSettings,
-        axisSettings,
-        cameraSettings,
-        mocapStatus
-    });
-
     // 处理模型选择
     const handleModelSelect = (model) => {
-        console.log('VTuberApp: handleModelSelect 被调用', model);
         if (model && model.id) {
-            console.log('VTuberApp: 找到模型', model.name, model.url);
             selectModel(model.id);
-            console.log('VTuberApp: 模型已选择', model.name, model.url);
-            console.log('VTuberApp: 当前selectedModel状态', getSelectedModel());
-        } else {
-            console.warn('VTuberApp: 无效的模型对象', model);
         }
     };
 
     // 处理动画选择
     const handleAnimationSelect = (animation) => {
-        console.log('VTuberApp: handleAnimationSelect 被调用', animation);
         if (animation && animation.id) {
-            console.log('VTuberApp: 找到动画', animation.name, animation.url);
             selectAnimation(animation);
-            console.log('VTuberApp: 动画已选择', animation.name, animation.url);
-            console.log('VTuberApp: 当前selectedAnimation状态', getSelectedAnimation());
-            
-            // 强制重新渲染VRMAvatar组件以应用新动画
-            console.log('VTuberApp: 动画切换完成，VRMAvatar将重新加载动画');
-        } else {
-            console.warn('VTuberApp: 无效的动画对象', animation);
         }
     };
 
@@ -288,11 +252,6 @@ export default function VTuberApp() {
     // 切换骨骼可视化
     const handleToggleBones = () => {
         const newShowBones = !showBones;
-        console.log('=== 切换骨骼可视化 ===');
-        console.log('VTuberApp: 切换骨骼可视化', { 
-            当前状态: showBones, 
-            新状态: newShowBones 
-        });
         setShowBones(newShowBones);
         
         // 同步更新调试设置中的骨骼显示
@@ -300,13 +259,10 @@ export default function VTuberApp() {
             ...prev,
             showBones: newShowBones
         }));
-        
-        console.log('VTuberApp: showBones 状态已更新');
     };
 
     // 处理调试设置变化
     const handleDebugSettingsChange = (newSettings) => {
-        console.log('VTuberApp: 调试设置变化', newSettings);
         setDebugSettings(newSettings);
         
         // 同步骨骼显示状态
@@ -317,7 +273,6 @@ export default function VTuberApp() {
 
     // 处理坐标轴调整
     const handleAxisAdjustment = (arm, axis, value) => {
-        console.log('VTuberApp: 坐标轴调整', { arm, axis, value });
         setAxisSettings(prev => ({
             ...prev,
             [arm]: {
@@ -329,32 +284,11 @@ export default function VTuberApp() {
 
     // 处理相机设置调整
     const handleCameraSettingsChange = (setting, value) => {
-        console.log('VTuberApp: 相机设置调整', { setting, value });
         setCameraSettings(prev => ({
             ...prev,
             [setting]: value
         }));
     };
-
-    // 添加调试信息
-    useEffect(() => {
-        console.log('VTuberApp: 相机设置状态', {
-            useGameStyle: cameraSettings.useGameStyle,
-            enableUserControl: cameraSettings.enableUserControl,
-            enableAutoTrack: cameraSettings.enableAutoTrack,
-            useLeftMouseButton: cameraSettings.useLeftMouseButton,
-            useRightMouseButton: cameraSettings.useRightMouseButton,
-            useMiddleMouseButton: cameraSettings.useMiddleMouseButton
-        });
-    }, [cameraSettings]);
-
-    // 监听动画变化
-    useEffect(() => {
-        console.log('VTuberApp: 动画变化监听', {
-            selectedAnimation: selectedAnimation?.name,
-            animationUrl: selectedAnimation?.url
-        });
-    }, [selectedAnimation]);
 
     return (
         <div className="w-full h-screen bg-gradient-to-br from-vtuber-light to-vtuber-blue-50 relative overflow-hidden">
@@ -377,10 +311,10 @@ export default function VTuberApp() {
                         showArmAxes={showArmAxes}
                         axisSettings={axisSettings}
                         cameraSettings={cameraSettings}
-                        onVrmRef={setVrmRef} // 传递VRM引用
-                        onAnimationManagerRef={setAnimationManagerRef} // 传递动画管理器引用
-                        onHandDetectionStateRef={setHandDetectionStateRef} // 传递手部检测状态引用
-                        onMocapStatusUpdate={(newStatus) => setMocapStatus(newStatus)} // 传递动捕状态更新回调
+                        onVrmRef={setVrmRef}
+                        onAnimationManagerRef={setAnimationManagerRef}
+                        onHandDetectionStateRef={setHandDetectionStateRef}
+                        onMocapStatusUpdate={handleMocapStatusUpdate}
                     />
                 </Canvas>
             </div>
@@ -396,6 +330,7 @@ export default function VTuberApp() {
                 selectedAnimation={selectedAnimation}
                 showAnimationDebug={showAnimationDebug}
                 onToggleAnimationDebug={() => setShowAnimationDebug(!showAnimationDebug)}
+                currentMode={currentMode}
             />
 
             {/* 相机组件 */}
@@ -469,6 +404,20 @@ export default function VTuberApp() {
                 isVisible={showAnimationDebug}
                 onClose={() => setShowAnimationDebug(false)}
                 onToggle={() => setShowAnimationDebug(!showAnimationDebug)}
+                onModeSwitch={(mode) => {
+                    if (animationManagerRef.current) {
+                        if (mode === 'idle') {
+                            animationManagerRef.current.switchToIdleMode();
+                        } else if (mode === 'mocap') {
+                            animationManagerRef.current.switchToMocapMode();
+                        }
+                    }
+                }}
+                onForceIdleRestart={() => {
+                    if (animationManagerRef.current) {
+                        animationManagerRef.current.forceIdleRestart();
+                    }
+                }}
             />
 
             {/* 加载指示器 */}

@@ -17,25 +17,51 @@ const tmpVec3 = new Vector3();
 const tmpQuat = new Quaternion();
 const tmpEuler = new Euler();
 
+// 性能监控辅助函数
+const createPerformanceMonitor = (name) => {
+    const startTime = performance.now();
+    return {
+        checkpoint: (checkpointName) => {
+            const currentTime = performance.now();
+            const duration = currentTime - startTime;
+            if (duration > 5) { // 只记录超过5ms的检查点
+                // console.warn(`性能监控 [${name}]: ${checkpointName} 耗时 ${duration.toFixed(2)}ms`);
+            }
+            return duration;
+        },
+        end: () => {
+            const totalTime = performance.now() - startTime;
+            if (totalTime > 12) { // 只记录超过12ms的总时间
+                // console.warn(`性能监控 [${name}]: 总耗时 ${totalTime.toFixed(2)}ms`);
+            }
+            return totalTime;
+        }
+    };
+};
+
+// 性能优化的批量更新函数
+const batchUpdateDebugInfo = (debugInfo, updates) => {
+    Object.assign(debugInfo, updates);
+};
+
+// 优化的错误处理函数
+const handleProcessingError = (error, processName, debugInfo) => {
+    console.error(`VRMAvatar: ${processName} 错误`, error.message);
+    debugInfo.errorCount++;
+};
+
 // 骨骼可视化组件 - 使用圆柱体
 const BoneVisualizer = ({ vrm }) => {
     const [boneMeshes, setBoneMeshes] = useState([]);
 
-    console.log('BoneVisualizer: 组件被调用', { vrm: !!vrm, humanoid: !!vrm?.humanoid });
-
     useEffect(() => {
         if (!vrm?.humanoid) {
-            console.log('BoneVisualizer: 缺少VRM或humanoid');
             return;
         }
-
-        console.log('BoneVisualizer: 开始创建骨骼可视化');
-        console.log('=== 可用的骨骼节点 ===');
 
         // 使用正确的 VRM API 访问骨骼
         const humanBones = vrm.humanoid.humanBones;
         const boneNames = Object.keys(humanBones);
-        console.log('骨骼名称列表:', boneNames);
 
         const meshes = [];
 
@@ -55,12 +81,6 @@ const BoneVisualizer = ({ vrm }) => {
                 const length = direction.length();
 
                 if (length > 0.01) { // 只显示有意义的骨骼
-                    console.log(`BoneVisualizer: 创建骨骼 ${boneName}, 长度: ${length.toFixed(3)}`);
-                    console.log(`  父节点: ${parent.name || 'unnamed'}`);
-                    console.log(`  子节点: ${child.name || 'unnamed'}`);
-                    console.log(`  父位置: (${parentWorldPos.x.toFixed(3)}, ${parentWorldPos.y.toFixed(3)}, ${parentWorldPos.z.toFixed(3)})`);
-                    console.log(`  子位置: (${childWorldPos.x.toFixed(3)}, ${childWorldPos.y.toFixed(3)}, ${childWorldPos.z.toFixed(3)})`);
-
                     // 创建细长圆柱体
                     const geometry = new CylinderGeometry(0.02, 0.02, length, 8);
                     const material = new MeshBasicMaterial({
@@ -85,16 +105,10 @@ const BoneVisualizer = ({ vrm }) => {
 
                     mesh.userData = { boneName: boneName };
                     meshes.push(mesh);
-                } else {
-                    console.log(`BoneVisualizer: 跳过骨骼 ${boneName}, 长度太短: ${length.toFixed(3)}`);
                 }
-            } else {
-                console.log(`BoneVisualizer: 跳过骨骼 ${boneName}, 缺少节点或父节点`);
             }
         });
 
-        console.log(`BoneVisualizer: 创建了 ${meshes.length} 个骨骼可视化`);
-        console.log('=== 骨骼可视化创建完成 ===');
         setBoneMeshes(meshes);
     }, [vrm]);
 
@@ -170,9 +184,6 @@ export const VRMAvatar = forwardRef(({
     onMocapStatusUpdate = null, // 新增：动捕状态更新回调
     ...props
 }, ref) => {
-    console.log('=== VRMAvatar 开始渲染 ===');
-    console.log('VRMAvatar: 组件初始化', { modelUrl, animationUrl, scale, position, showBones });
-
     // 获取灵敏度设置
     const { settings } = useSensitivitySettings();
 
@@ -182,9 +193,7 @@ export const VRMAvatar = forwardRef(({
         undefined,
         undefined,
         (loader) => {
-            console.log('VRMAvatar: 注册 VRM 加载器', modelUrl);
             loader.register((parser) => {
-                console.log('VRMAvatar: 创建 VRMLoaderPlugin');
                 return new VRMLoaderPlugin(parser);
             });
         }
@@ -240,19 +249,8 @@ export const VRMAvatar = forwardRef(({
 
     // 添加VRM加载调试信息
     useEffect(() => {
-        console.log('VRMAvatar: VRM加载状态', {
-            modelUrl,
-            userData: !!userData,
-            vrm: !!vrm,
-            errors: !!errors,
-            scene: !!scene,
-            userDataKeys: userData ? Object.keys(userData) : [],
-            userDataContent: userData
-        });
-
         if (userData && !vrm) {
             console.warn('VRMAvatar: userData存在但vrm为null', userData);
-            console.warn('VRMAvatar: 检查userData内容', JSON.stringify(userData, null, 2));
         }
 
         if (errors) {
@@ -265,32 +263,36 @@ export const VRMAvatar = forwardRef(({
     const isCameraActive = useVideoRecognition((state) => state.isCameraActive);
     const setHandDebugInfo = useVideoRecognition((state) => state.setHandDebugInfo);
 
-    // 添加调试信息
+    // 添加调试信息 - 跟踪 videoElement 状态变化
     useEffect(() => {
-        console.log('VRMAvatar: 状态更新', {
+        console.log('VRMAvatar: videoElement 状态变化', {
             videoElement: !!videoElement,
+            videoElementValue: videoElement,
             isCameraActive,
-            vrm: !!vrm,
-            modelUrl,
-            hasErrors: !!errors,
-            userData: !!userData,
-            scene: !!scene,
-            userDataKeys: userData ? Object.keys(userData) : []
+            hasVrm: !!vrm
         });
-    }, [videoElement, isCameraActive, vrm, modelUrl, errors, userData, scene]);
+        
+        // 检查完整的 useVideoRecognition 状态
+        const fullState = useVideoRecognition.getState();
+        console.log('VRMAvatar: useVideoRecognition 完整状态', {
+            videoElement: !!fullState.videoElement,
+            videoElementValue: fullState.videoElement,
+            isCameraActive: fullState.isCameraActive,
+            hasResultsCallback: !!fullState.resultsCallback,
+            hasError: !!fullState.error
+        });
+    }, [videoElement, isCameraActive, vrm]);
 
     // 监听模型URL变化，强制重新加载
     useEffect(() => {
-        console.log('VRMAvatar: 模型URL变化', modelUrl);
         // 清除之前的VRM实例
         if (vrm) {
-            console.log('VRMAvatar: 清除之前的VRM实例');
+            // VRM实例会在新模型加载时自动更新
         }
     }, [modelUrl, vrm]);
 
     // 新增：监听动画URL变化
     useEffect(() => {
-        console.log('VRMAvatar: 动画URL变化', animationUrl);
         // 动画管理器会自动重新加载新的动画
     }, [animationUrl]);
 
@@ -300,6 +302,23 @@ export const VRMAvatar = forwardRef(({
     const riggedLeftHand = useRef();
     const riggedRightHand = useRef();
     const blinkData = useRef({ leftEye: 1, rightEye: 1 }); // 添加眨眼数据引用
+
+    // 动捕调试信息
+    const mocapDebugInfo = useRef({
+        mediapipeStatus: '未启动',
+        kalidokitStatus: '未处理',
+        faceDetection: false,
+        poseDetection: false,
+        leftHandDetection: false,
+        rightHandDetection: false,
+        lastResultsTime: null,
+        processingTime: 0,
+        errorCount: 0,
+        successCount: 0,
+        lastFaceProcessTime: 0,
+        lastPoseProcessTime: 0,
+        lastHandProcessTime: 0
+    });
 
     // 手部检测状态
     const handDetectionState = useRef({
@@ -317,46 +336,6 @@ export const VRMAvatar = forwardRef(({
     // 初始化 VRM 模型
     useEffect(() => {
         if (!vrm) return;
-
-        console.log('VRM 模型加载完成:', vrm);
-
-        // 打印骨骼列表
-        if (vrm.humanoid) {
-            console.log('=== VRM 骨骼列表 ===');
-            console.log('VRM humanoid:', vrm.humanoid);
-            console.log('humanBones 类型:', typeof vrm.humanoid.humanBones);
-            console.log('humanBones:', vrm.humanoid.humanBones);
-
-            // 使用正确的 VRM API 访问骨骼
-            const humanBones = vrm.humanoid.humanBones;
-            const boneNames = Object.keys(humanBones);
-            console.log('总骨骼数量:', boneNames.length);
-            console.log('骨骼名称列表:', boneNames);
-
-            // 检查根骨骼
-            const rootBones = ['hips', 'spine', 'chest'];
-            console.log('=== 根骨骼检查 ===');
-            rootBones.forEach(boneName => {
-                const bone = humanBones[boneName];
-                if (bone) {
-                    console.log(`${boneName}:`, {
-                        存在: !!bone.node,
-                        父节点: bone.node?.parent?.name || '无',
-                        层级: bone.node?.parent?.parent?.name || '顶级'
-                    });
-                }
-            });
-
-            boneNames.forEach((boneName, index) => {
-                const bone = humanBones[boneName];
-                console.log(`${index + 1}. ${boneName} - 节点: ${bone.node ? '存在' : '不存在'}`);
-                if (bone.node) {
-                    const worldPos = bone.node.getWorldPosition(new Vector3());
-                    console.log(`   位置: (${worldPos.x.toFixed(3)}, ${worldPos.y.toFixed(3)}, ${worldPos.z.toFixed(3)})`);
-                }
-            });
-            console.log('=== 骨骼列表结束 ===');
-        }
 
         // VRM 优化
         VRMUtils.removeUnnecessaryVertices(scene);
@@ -379,136 +358,197 @@ export const VRMAvatar = forwardRef(({
         };
     }, [vrm, scene, camera]);
 
-    // MediaPipe 结果处理回调
+    // MediaPipe 结果处理回调 - 性能优化版本
     const resultsCallback = useCallback((results) => {
-        if (!videoElement || !vrm) {
-            console.log('VRMAvatar: 缺少必要组件', { videoElement: !!videoElement, vrm: !!vrm });
+        // 创建性能监控器
+        const monitor = createPerformanceMonitor('MediaPipe回调');
+        const startTime = performance.now();
+        
+        // 关键修复：使用直接传递的 videoElement，而不是从 store 获取
+        const directVideoElement = results.videoElement || videoElement;
+        
+        // 快速验证必要组件
+        if (!directVideoElement || !vrm) {
+            console.warn('VRMAvatar: 缺少必要组件', { 
+                directVideoElement: !!directVideoElement,
+                storeVideoElement: !!videoElement,
+                vrm: !!vrm,
+                directVideoElementType: typeof directVideoElement,
+                storeVideoElementType: typeof videoElement,
+                vrmType: typeof vrm,
+                timestamp: new Date().toISOString()
+            });
             return;
         }
 
-        // 更新动捕状态
-        const newMocapStatus = {
-            face: !!results.faceLandmarks,
-            pose: !!results.poseLandmarks && results.poseLandmarks.length > 0,
-            leftHand: !!results.leftHandLandmarks && results.leftHandLandmarks.length > 0,
-            rightHand: !!results.rightHandLandmarks && results.rightHandLandmarks.length > 0
-        };
-
-        // 调用动捕状态更新回调
-        if (onMocapStatusUpdate) {
-            onMocapStatusUpdate(newMocapStatus);
+        // 添加额外的时序检查
+        if (!directVideoElement.readyState || directVideoElement.readyState < 2) {
+            console.warn('VRMAvatar: videoElement 未准备就绪', {
+                readyState: directVideoElement.readyState,
+                videoWidth: directVideoElement.videoWidth,
+                videoHeight: directVideoElement.videoHeight
+            });
+            return;
         }
 
-        // 调试信息
-        console.log('VRMAvatar: 收到 MediaPipe 结果', {
+        // 添加稳定性检查 - 确保 videoElement 已经稳定了一段时间
+        const now = Date.now();
+        if (!resultsCallback.lastStableCheck || (now - resultsCallback.lastStableCheck) > 1000) {
+            resultsCallback.lastStableCheck = now;
+            console.log('VRMAvatar: 检查 videoElement 稳定性', {
+                directVideoElement: !!directVideoElement,
+                storeVideoElement: !!videoElement,
+                readyState: directVideoElement.readyState,
+                videoWidth: directVideoElement.videoWidth,
+                videoHeight: directVideoElement.videoHeight,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // 添加调试信息 - 确认数据接收
+        console.log('VRMAvatar: 收到 MediaPipe 数据', {
             hasFaceLandmarks: !!results.faceLandmarks,
             hasPoseLandmarks: !!results.poseLandmarks,
             hasLeftHand: !!results.leftHandLandmarks,
             hasRightHand: !!results.rightHandLandmarks,
-            hasPose3D: !!results.pose3d,
+            faceLandmarksLength: results.faceLandmarks?.length,
             poseLandmarksLength: results.poseLandmarks?.length,
             leftHandLength: results.leftHandLandmarks?.length,
             rightHandLength: results.rightHandLandmarks?.length,
-            // 检查手部数据的具体内容
-            leftHandSample: results.leftHandLandmarks ? results.leftHandLandmarks.slice(0, 2) : null,
-            rightHandSample: results.rightHandLandmarks ? results.rightHandLandmarks.slice(0, 2) : null,
-            // 检查其他可能的字段
-            hasEa: !!results.ea,
-            hasZa: !!results.za,
-            eaLength: results.ea?.length,
-            zaLength: results.za?.length,
-            mocapStatus: newMocapStatus
+            hasVrm: !!vrm,
+            directVideoElementReady: directVideoElement.readyState >= 2,
+            storeVideoElementReady: videoElement?.readyState >= 2
         });
 
-        // 处理面部关键点
+        monitor.checkpoint('组件验证');
+
+        // 面部处理
         if (results.faceLandmarks) {
+            const faceStartTime = performance.now();
             try {
-            riggedFace.current = Face.solve(results.faceLandmarks, {
-                runtime: 'mediapipe',
-                video: videoElement,
-                imageSize: { width: 640, height: 480 },
-                smoothBlink: false,
-                blinkSettings: [0.25, 0.75],
-            });
+                riggedFace.current = Face.solve(results.faceLandmarks, {
+                    runtime: "mediapipe",
+                    video: directVideoElement,
+                    imageSize: { width: 640, height: 480 },
+                    smoothBlink: false,
+                    blinkSettings: [0.25, 0.75],
+                });
+                
+                console.log('VRMAvatar: 面部数据处理成功', {
+                    hasRiggedFace: !!riggedFace.current,
+                    faceData: riggedFace.current ? {
+                        hasHead: !!riggedFace.current.head,
+                        hasMouth: !!riggedFace.current.mouth,
+                        hasEye: !!riggedFace.current.eye
+                    } : null
+                });
+                
+                const faceProcessTime = performance.now() - faceStartTime;
+                mocapDebugInfo.current.lastFaceProcessTime = faceProcessTime;
+                mocapDebugInfo.current.successCount++;
+                
+                if (faceProcessTime > 8) {
+                    // console.warn('VRMAvatar: 面部处理耗时过长', faceProcessTime.toFixed(2) + 'ms');
+                }
+                
             } catch (error) {
-                console.warn('VRMAvatar: Face.solve 错误', error);
+                const faceProcessTime = performance.now() - faceStartTime;
+                mocapDebugInfo.current.lastFaceProcessTime = faceProcessTime;
+                handleProcessingError(error, 'Face.solve', mocapDebugInfo.current);
             }
         }
 
-        // 处理姿态关键点 - 使用正确的 Kalidokit 格式
-        if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+        // 姿态处理
+        if (results.za && results.poseLandmarks) {
+            const poseStartTime = performance.now();
             try {
-                // 根据参考项目，使用 za 字段作为 3D 数据
-                if (results.za && results.poseLandmarks) {
-            riggedPose.current = Pose.solve(results.za, results.poseLandmarks, {
-                runtime: 'mediapipe',
-                video: videoElement,
-                    });
-                    console.log('VRMAvatar: Pose.solve 成功 (使用 za)', riggedPose.current);
-                } else {
-                    // 备用方案：如果没有 za，尝试使用 pose3d
-                    const pose3d = results.pose3d || results.poseLandmarks;
-                    const pose2d = results.poseLandmarks;
-
-                    riggedPose.current = Pose.solve(pose3d, pose2d, {
-                        runtime: 'mediapipe',
-                        video: videoElement,
-                    });
-                    console.log('VRMAvatar: Pose.solve 成功 (使用 pose3d)', riggedPose.current);
+                riggedPose.current = Pose.solve(results.za, results.poseLandmarks, {
+                    runtime: "mediapipe",
+                    video: directVideoElement,
+                });
+                
+                console.log('VRMAvatar: 姿态数据处理成功', {
+                    hasRiggedPose: !!riggedPose.current,
+                    poseData: riggedPose.current ? {
+                        hasSpine: !!riggedPose.current.Spine,
+                        hasLeftUpperArm: !!riggedPose.current.LeftUpperArm,
+                        hasRightUpperArm: !!riggedPose.current.RightUpperArm,
+                        hasLeftHand: !!riggedPose.current.LeftHand,
+                        hasRightHand: !!riggedPose.current.RightHand
+                    } : null
+                });
+                
+                const poseProcessTime = performance.now() - poseStartTime;
+                mocapDebugInfo.current.lastPoseProcessTime = poseProcessTime;
+                mocapDebugInfo.current.successCount++;
+                
+                if (poseProcessTime > 8) {
+                    // console.warn('VRMAvatar: 姿态处理耗时过长', poseProcessTime.toFixed(2) + 'ms');
                 }
+                
             } catch (error) {
-                console.warn('VRMAvatar: Pose.solve 错误', error);
-                console.log('VRMAvatar: poseLandmarks 数据', results.poseLandmarks);
-                // 尝试备用调用方式
-                try {
-                    console.log('VRMAvatar: 尝试备用调用方式');
-                    riggedPose.current = Pose.solve(results.poseLandmarks, {
-                        runtime: 'mediapipe',
-                        video: videoElement,
-                    });
-                    console.log('VRMAvatar: 备用调用成功', riggedPose.current);
-                } catch (error2) {
-                    console.warn('VRMAvatar: 备用调用也失败', error2);
-                }
+                const poseProcessTime = performance.now() - poseStartTime;
+                mocapDebugInfo.current.lastPoseProcessTime = poseProcessTime;
+                handleProcessingError(error, 'Pose.solve', mocapDebugInfo.current);
             }
-        } else {
-            console.log('VRMAvatar: 缺少姿态数据', {
-                hasPoseLandmarks: !!results.poseLandmarks,
-                poseLandmarksLength: results.poseLandmarks?.length,
-                hasZa: !!results.za,
-                zaLength: results.za?.length
-            });
         }
 
-        // 处理手部关键点（镜像效果）
+        monitor.checkpoint('面部和姿态处理');
+
+        // 手部处理 - 优化镜像映射
+        let handProcessTime = 0;
+        
+        // 左手处理（镜像到右手）
         if (results.leftHandLandmarks && results.leftHandLandmarks.length > 0) {
+            const leftHandStartTime = performance.now();
             try {
-                // 镜像映射：左手数据控制右手
-            riggedRightHand.current = Hand.solve(results.leftHandLandmarks, 'Right');
+                riggedRightHand.current = Hand.solve(results.leftHandLandmarks, "Right");
                 handDetectionState.current.hasRightHand = true;
-                console.log('VRMAvatar: 左手检测成功（镜像映射到右手）', riggedRightHand.current);
+                
+                const leftHandProcessTime = performance.now() - leftHandStartTime;
+                handProcessTime = Math.max(handProcessTime, leftHandProcessTime);
+                mocapDebugInfo.current.lastHandProcessTime = leftHandProcessTime;
+                mocapDebugInfo.current.successCount++;
+                
             } catch (error) {
-                console.warn('VRMAvatar: Hand.solve (left->right) 错误', error);
+                const leftHandProcessTime = performance.now() - leftHandStartTime;
+                handProcessTime = Math.max(handProcessTime, leftHandProcessTime);
+                mocapDebugInfo.current.lastHandProcessTime = leftHandProcessTime;
+                handleProcessingError(error, 'Hand.solve (left->right)', mocapDebugInfo.current);
                 handDetectionState.current.hasRightHand = false;
             }
         } else {
             handDetectionState.current.hasRightHand = false;
-            console.log('VRMAvatar: 未检测到左手（镜像映射到右手）');
         }
+        
+        // 右手处理（镜像到左手）
         if (results.rightHandLandmarks && results.rightHandLandmarks.length > 0) {
+            const rightHandStartTime = performance.now();
             try {
-                // 镜像映射：右手数据控制左手
-            riggedLeftHand.current = Hand.solve(results.rightHandLandmarks, 'Left');
+                riggedLeftHand.current = Hand.solve(results.rightHandLandmarks, "Left");
                 handDetectionState.current.hasLeftHand = true;
-                console.log('VRMAvatar: 右手检测成功（镜像映射到左手）', riggedLeftHand.current);
+                
+                const rightHandProcessTime = performance.now() - rightHandStartTime;
+                handProcessTime = Math.max(handProcessTime, rightHandProcessTime);
+                mocapDebugInfo.current.lastHandProcessTime = rightHandProcessTime;
+                mocapDebugInfo.current.successCount++;
+                
             } catch (error) {
-                console.warn('VRMAvatar: Hand.solve (right->left) 错误', error);
+                const rightHandProcessTime = performance.now() - rightHandStartTime;
+                handProcessTime = Math.max(handProcessTime, rightHandProcessTime);
+                mocapDebugInfo.current.lastHandProcessTime = rightHandProcessTime;
+                handleProcessingError(error, 'Hand.solve (right->left)', mocapDebugInfo.current);
                 handDetectionState.current.hasLeftHand = false;
             }
         } else {
             handDetectionState.current.hasLeftHand = false;
-            console.log('VRMAvatar: 未检测到右手（镜像映射到左手）');
         }
+
+        if (handProcessTime > 8) {
+            // console.warn('VRMAvatar: 手部处理耗时过长', handProcessTime.toFixed(2) + 'ms');
+        }
+
+        monitor.checkpoint('手部处理');
 
         // 更新手部检测状态
         handDetectionState.current.hasHandDetection =
@@ -517,11 +557,18 @@ export const VRMAvatar = forwardRef(({
         // 更新眨眼数据
         if (results.blinkData) {
             blinkData.current = results.blinkData;
-            console.log('VRMAvatar: 更新眨眼数据', blinkData.current);
         }
 
-        // 更新手部调试信息
-        const debugInfo = {
+        // 计算总处理时间
+        const totalProcessTime = performance.now() - startTime;
+        mocapDebugInfo.current.processingTime = totalProcessTime;
+
+        if (totalProcessTime > 12) {
+            // console.warn('VRMAvatar: 总处理时间过长', totalProcessTime.toFixed(2) + 'ms');
+        }
+
+        // 优化手部调试信息 - 减少对象创建
+        const handDebugInfo = {
             leftHandDetected: handDetectionState.current.hasLeftHand,
             rightHandDetected: handDetectionState.current.hasRightHand,
             leftHandData: riggedLeftHand.current ? {
@@ -536,10 +583,21 @@ export const VRMAvatar = forwardRef(({
                 (handDetectionState.current.hasLeftHand && handDetectionState.current.hasRightHand ? 
                     '双手检测中' : 
                     (handDetectionState.current.hasLeftHand ? '仅左手检测中' : '仅右手检测中')
-                ) : '无手部检测'
+                ) : '无手部检测',
+            mocapDebugInfo: mocapDebugInfo.current
         };
-        setHandDebugInfo(debugInfo);
-    }, [videoElement, vrm, setHandDebugInfo]);
+        
+        setHandDebugInfo(handDebugInfo);
+
+        // 最终性能检查
+        const finalDuration = monitor.end();
+        
+        // 严重性能警告：超过16ms帧时间
+        if (finalDuration > 16) {
+            console.error('VRMAvatar: 回调执行时间超过16ms', finalDuration.toFixed(2) + 'ms');
+        }
+        
+    }, [videoElement, vrm, setHandDebugInfo, onMocapStatusUpdate]);
 
     // 注册结果回调
     useEffect(() => {
@@ -558,28 +616,37 @@ export const VRMAvatar = forwardRef(({
     // 骨骼旋转函数
     const rotateBone = useCallback((boneName, value, slerpFactor, flip = { x: 1, y: 1, z: 1 }) => {
         if (!vrm?.humanoid || !value) {
-            console.warn(`VRMAvatar: rotateBone 缺少必要参数`, {
-                hasVrm: !!vrm,
-                hasHumanoid: !!vrm?.humanoid,
-                boneName,
-                hasValue: !!value
-            });
+            // console.warn(`VRMAvatar: rotateBone 缺少必要参数`, {
+            //     hasVrm: !!vrm,
+            //     hasHumanoid: !!vrm?.humanoid,
+            //     boneName,
+            //     hasValue: !!value
+            // });
             return;
         }
 
         // 保护根骨骼，不允许移动
         const protectedBones = ['hips'];
         if (protectedBones.includes(boneName)) {
-            console.warn(`VRMAvatar: 尝试移动受保护的根骨骼 ${boneName}，已跳过`);
+            // console.warn(`VRMAvatar: 尝试移动受保护的根骨骼 ${boneName}，已跳过`);
             return;
         }
 
         const bone = vrm.humanoid.getNormalizedBoneNode(boneName);
         if (!bone) {
-            console.warn(`VRMAvatar: 骨骼 ${boneName} 未找到`);
+            // console.warn(`VRMAvatar: 骨骼 ${boneName} 未找到`);
             // 列出可用的骨骼名称
             const availableBones = Object.keys(vrm.humanoid.humanBones);
-            console.log('VRMAvatar: 可用的骨骼:', availableBones);
+            // console.log('VRMAvatar: 可用的骨骼:', availableBones);
+            
+            // 尝试查找相似的骨骼名称
+            const similarBones = availableBones.filter(name => 
+                name.toLowerCase().includes(boneName.toLowerCase()) ||
+                boneName.toLowerCase().includes(name.toLowerCase())
+            );
+            if (similarBones.length > 0) {
+                // console.log(`VRMAvatar: 找到相似的骨骼:`, similarBones);
+            }
             return;
         }
 
@@ -587,222 +654,276 @@ export const VRMAvatar = forwardRef(({
         tmpEuler.set(value.x * flip.x, value.y * flip.y, value.z * flip.z);
         tmpQuat.setFromEuler(tmpEuler);
         bone.quaternion.slerp(tmpQuat, slerpFactor);
-
-        console.log(`VRMAvatar: 成功应用骨骼 ${boneName}`, {
-            rotation: { x: value.x * flip.x, y: value.y * flip.y, z: value.z * flip.z },
-            slerpFactor
-        });
     }, [vrm]);
 
-    // 动画循环
+    // 动画循环 - 简化模式切换逻辑
     useFrame((_, delta) => {
         if (!vrm) return;
 
-        // 更新动画管理器
-        try {
-            updateAnimation(delta);
-        } catch (error) {
-            console.warn('VRMAvatar: 动画更新错误', error);
-        }
+        // **简化的模式切换逻辑：基于camera button状态**
+        // 摄像头开启 = 动捕模式，摄像头关闭 = 预制动画模式
+        const shouldUseMocap = isCameraActive;
+        handleModeSwitch(shouldUseMocap);
+        
+        // 获取当前模式
+        const animationState = getAnimationState();
+        const currentMode = animationState.currentMode;
+        
+        // 调试信息（每5秒输出一次）- 暂时注释掉
+        // if (Math.floor(Date.now() / 1000) % 5 === 0) {
+        //     console.log('=== VRMAvatar 简化模式切换 Debug ===');
+        //     console.log('VRMAvatar: 当前状态', {
+        //         timestamp: new Date().toISOString(),
+        //         currentMode,
+        //         shouldUseMocap,
+        //         isCameraActive,
+        //         hasVideoElement: !!videoElement,
+        //         hasRiggedFace: !!riggedFace.current,
+        //         hasRiggedPose: !!riggedPose.current,
+        //         hasRiggedLeftHand: !!riggedLeftHand.current,
+        //         hasRiggedRightHand: !!riggedRightHand.current,
+        //         isTransitioning: animationState.isTransitioning,
+        //         isPlayingIdle: animationState.isPlayingIdle
+        //     });
+        // }
 
-        const lerpFactor = delta * ANIMATION_CONFIG.LERP_FACTOR.expression;
-        const boneLerpFactor = delta * ANIMATION_CONFIG.LERP_FACTOR.bone;
-
-        // **简化：直接应用动捕数据，不依赖复杂状态判断**
-        if (riggedFace.current) {
+        // **模式1：预制动画模式（摄像头关闭）**
+        if (currentMode === 'idle') {
+            // 只更新动画，完全忽略动捕数据
             try {
-                // 口型同步
-                const mouthShapes = [
-                    { name: 'aa', value: riggedFace.current.mouth?.shape?.A || 0 },
-                    { name: 'ih', value: riggedFace.current.mouth?.shape?.I || 0 },
-                    { name: 'ee', value: riggedFace.current.mouth?.shape?.E || 0 },
-                    { name: 'oh', value: riggedFace.current.mouth?.shape?.O || 0 },
-                    { name: 'ou', value: riggedFace.current.mouth?.shape?.U || 0 },
-                ];
+                updateAnimation(delta);
+            } catch (error) {
+                // console.warn('VRMAvatar: 动画更新错误', error);
+            }
+        }
+        
+        // **模式2：动捕模式（摄像头开启）**
+        else if (currentMode === 'mocap') {
+            const lerpFactor = delta * ANIMATION_CONFIG.LERP_FACTOR.expression;
+            const boneLerpFactor = delta * ANIMATION_CONFIG.LERP_FACTOR.bone;
 
-                mouthShapes.forEach(({ name, value }) => {
-                    lerpExpression(name, value, lerpFactor);
-                });
+            // 添加调试信息 - 确认动捕模式激活
+            console.log('VRMAvatar: 动捕模式激活', {
+                currentMode,
+                isCameraActive,
+                hasVideoElement: !!videoElement,
+                hasRiggedFace: !!riggedFace.current,
+                hasRiggedPose: !!riggedPose.current,
+                hasRiggedLeftHand: !!riggedLeftHand.current,
+                hasRiggedRightHand: !!riggedRightHand.current,
+                hasVrm: !!vrm,
+                hasHumanoid: !!vrm?.humanoid
+            });
 
-                // 眨眼同步
-                if (blinkData.current) {
-                    lerpExpression('blinkLeft', 1 - blinkData.current.leftEye, lerpFactor);
-                    lerpExpression('blinkRight', 1 - blinkData.current.rightEye, lerpFactor);
-                } else if (riggedFace.current) {
-                    lerpExpression('blinkLeft', 1 - (riggedFace.current.eye?.l || 1), lerpFactor);
-                    lerpExpression('blinkRight', 1 - (riggedFace.current.eye?.r || 1), lerpFactor);
+            // **面部表情处理**
+            if (riggedFace.current) {
+                try {
+                    console.log('VRMAvatar: 开始处理面部表情', {
+                        hasHead: !!riggedFace.current.head,
+                        hasMouth: !!riggedFace.current.mouth,
+                        hasEye: !!riggedFace.current.eye
+                    });
+
+                    // 口型同步
+                    const mouthShapes = [
+                        { name: 'aa', value: riggedFace.current.mouth?.shape?.A || 0 },
+                        { name: 'ih', value: riggedFace.current.mouth?.shape?.I || 0 },
+                        { name: 'ee', value: riggedFace.current.mouth?.shape?.E || 0 },
+                        { name: 'oh', value: riggedFace.current.mouth?.shape?.O || 0 },
+                        { name: 'ou', value: riggedFace.current.mouth?.shape?.U || 0 },
+                    ];
+
+                    mouthShapes.forEach(({ name, value }) => {
+                        lerpExpression(name, value, lerpFactor);
+                    });
+
+                    // 眨眼同步
+                    if (blinkData.current) {
+                        lerpExpression('blinkLeft', 1 - blinkData.current.leftEye, lerpFactor);
+                        lerpExpression('blinkRight', 1 - blinkData.current.rightEye, lerpFactor);
+                    } else if (riggedFace.current) {
+                        lerpExpression('blinkLeft', 1 - (riggedFace.current.eye?.l || 1), lerpFactor);
+                        lerpExpression('blinkRight', 1 - (riggedFace.current.eye?.r || 1), lerpFactor);
+                    }
+
+                    // 头部旋转
+                    if (riggedFace.current.head) {
+                        const rawNeckData = {
+                            x: riggedFace.current.head.x * axisSettings.neck.x,
+                            y: riggedFace.current.head.y * axisSettings.neck.y,
+                            z: riggedFace.current.head.z * axisSettings.neck.z,
+                        };
+                        
+                        console.log('VRMAvatar: 应用头部旋转', rawNeckData);
+                        rotateBone('neck', rawNeckData, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
+                    }
+
+                } catch (error) {
+                    console.error('VRMAvatar: 面部表情处理错误', error);
                 }
+            } else {
+                console.log('VRMAvatar: 没有面部数据可处理');
+            }
 
-                // **简化：直接应用头部旋转，不依赖状态**
-                if (riggedFace.current.head) {
-                    const rawNeckData = {
-                        x: riggedFace.current.head.x * axisSettings.neck.x,
-                        y: riggedFace.current.head.y * axisSettings.neck.y,
-                        z: riggedFace.current.head.z * axisSettings.neck.z,
-                    };
+            // **身体姿态处理**
+            if (riggedPose.current) {
+                try {
+                    console.log('VRMAvatar: 开始处理身体姿态', {
+                        hasSpine: !!riggedPose.current.Spine,
+                        hasLeftUpperArm: !!riggedPose.current.LeftUpperArm,
+                        hasRightUpperArm: !!riggedPose.current.RightUpperArm,
+                        hasLeftHand: !!riggedPose.current.LeftHand,
+                        hasRightHand: !!riggedPose.current.RightHand
+                    });
+
+                    // 躯干控制
+                    if (riggedPose.current.Spine) {
+                        rotateBone('chest', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
+                        rotateBone('spine', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
+                    }
+
+                    // 手臂控制
+                    if (riggedPose.current.LeftUpperArm) {
+                        const rawLeftArmData = {
+                            x: riggedPose.current.LeftUpperArm.x * axisSettings.leftArm.x,
+                            y: riggedPose.current.LeftUpperArm.y * axisSettings.leftArm.y,
+                            z: riggedPose.current.LeftUpperArm.z * axisSettings.leftArm.z,
+                        };
+                        console.log('VRMAvatar: 应用左手臂数据', rawLeftArmData);
+                        rotateBone('leftUpperArm', rawLeftArmData, boneLerpFactor * settings.armSpeed);
+                    }
                     
-                    rotateBone('neck', rawNeckData, boneLerpFactor, { x: 0.7, y: 0.7, z: 0.7 });
-                }
-
-            } catch (error) {
-                console.warn('VRMAvatar: 面部表情处理错误', error);
-            }
-        } else if (!videoElement || !isCameraActive) {
-            // 默认眨眼动画
-            const time = Date.now() * 0.001;
-            const blinkFrequency = Math.sin(time * 3) > 0.8 ? 1 : 0;
-            lerpExpression('blinkLeft', blinkFrequency, lerpFactor);
-            lerpExpression('blinkRight', blinkFrequency, lerpFactor);
-        }
-
-        // **简化：直接应用身体姿态，不依赖复杂状态判断**
-        if (riggedPose.current) {
-            try {
-                // 躯干控制
-                if (riggedPose.current.Spine) {
-                    rotateBone('chest', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
-                    rotateBone('spine', riggedPose.current.Spine, boneLerpFactor, { x: 0.3, y: 0.3, z: 0.3 });
-                }
-
-                // 手臂控制 - 直接应用，不依赖手部检测状态
-                if (riggedPose.current.LeftUpperArm) {
-                    const rawLeftArmData = {
-                        x: riggedPose.current.LeftUpperArm.x * axisSettings.leftArm.x,
-                        y: riggedPose.current.LeftUpperArm.y * axisSettings.leftArm.y,
-                        z: riggedPose.current.LeftUpperArm.z * axisSettings.leftArm.z,
-                    };
-                    rotateBone('leftUpperArm', rawLeftArmData, boneLerpFactor * settings.armSpeed);
-                }
-                
-                if (riggedPose.current.LeftLowerArm) {
-                    const rawLeftLowerArmData = {
-                        x: riggedPose.current.LeftLowerArm.x * axisSettings.leftArm.x,
-                        y: riggedPose.current.LeftLowerArm.y * axisSettings.leftArm.y,
-                        z: riggedPose.current.LeftLowerArm.z * axisSettings.leftArm.z,
-                    };
-                    rotateBone('leftLowerArm', rawLeftLowerArmData, boneLerpFactor * settings.armSpeed);
-                }
-
-                if (riggedPose.current.RightUpperArm) {
-                    const rawRightArmData = {
-                        x: riggedPose.current.RightUpperArm.x * axisSettings.rightArm.x,
-                        y: riggedPose.current.RightUpperArm.y * axisSettings.rightArm.y,
-                        z: riggedPose.current.RightUpperArm.z * axisSettings.rightArm.z,
-                    };
-                    rotateBone('rightUpperArm', rawRightArmData, boneLerpFactor * settings.armSpeed);
-                }
-                
-                if (riggedPose.current.RightLowerArm) {
-                    const rawRightLowerArmData = {
-                        x: riggedPose.current.RightLowerArm.x * axisSettings.rightArm.x,
-                        y: riggedPose.current.RightLowerArm.y * axisSettings.rightArm.y,
-                        z: riggedPose.current.RightLowerArm.z * axisSettings.rightArm.z,
-                    };
-                    rotateBone('rightLowerArm', rawRightLowerArmData, boneLerpFactor * settings.armSpeed);
-                }
-
-                // 手部控制 - 直接应用
-                if (riggedPose.current.LeftHand && riggedLeftHand.current) {
-                    const rawLeftHandData = {
-                        x: -riggedLeftHand.current.LeftWrist.x * axisSettings.leftHand.x,
-                        y: riggedLeftHand.current.LeftWrist.y * axisSettings.leftHand.y,
-                        z: riggedPose.current.LeftHand.z * axisSettings.leftHand.z,
-                    };
-                    rotateBone('leftHand', rawLeftHandData, boneLerpFactor * settings.handSpeed);
-                }
-
-                if (riggedPose.current.RightHand && riggedRightHand.current) {
-                    const rawRightHandData = {
-                        x: -riggedRightHand.current.RightWrist.x * axisSettings.rightHand.x,
-                        y: riggedRightHand.current.RightWrist.y * axisSettings.rightHand.y,
-                        z: riggedPose.current.RightHand.z * axisSettings.rightHand.z,
-                    };
-                    rotateBone('rightHand', rawRightHandData, boneLerpFactor * settings.handSpeed);
-                }
-
-            } catch (error) {
-                console.warn('VRMAvatar: 身体姿态处理错误', error);
-            }
-        }
-
-        // **简化：直接应用手指控制，不依赖复杂状态判断**
-        if (riggedLeftHand.current) {
-            try {
-                // 左手手指控制 - 镜像映射：riggedLeftHand 包含右手数据，控制左手
-                const leftFingerBones = [
-                    { bone: 'leftRingProximal', data: riggedLeftHand.current.LeftRingProximal },
-                    { bone: 'leftRingIntermediate', data: riggedLeftHand.current.LeftRingIntermediate },
-                    { bone: 'leftRingDistal', data: riggedLeftHand.current.LeftRingDistal },
-                    { bone: 'leftIndexProximal', data: riggedLeftHand.current.LeftIndexProximal },
-                    { bone: 'leftIndexIntermediate', data: riggedLeftHand.current.LeftIndexIntermediate },
-                    { bone: 'leftIndexDistal', data: riggedLeftHand.current.LeftIndexDistal },
-                    { bone: 'leftMiddleProximal', data: riggedLeftHand.current.LeftMiddleProximal },
-                    { bone: 'leftMiddleIntermediate', data: riggedLeftHand.current.LeftMiddleIntermediate },
-                    { bone: 'leftMiddleDistal', data: riggedLeftHand.current.LeftMiddleDistal },
-                    { bone: 'leftThumbProximal', data: riggedLeftHand.current.LeftThumbProximal },
-                    { bone: 'leftThumbMetacarpal', data: riggedLeftHand.current.LeftThumbIntermediate },
-                    { bone: 'leftThumbDistal', data: riggedLeftHand.current.LeftThumbDistal },
-                    { bone: 'leftLittleProximal', data: riggedLeftHand.current.LeftLittleProximal },
-                    { bone: 'leftLittleIntermediate', data: riggedLeftHand.current.LeftLittleIntermediate },
-                    { bone: 'leftLittleDistal', data: riggedLeftHand.current.LeftLittleDistal }
-                ];
-
-                leftFingerBones.forEach(({ bone, data }) => {
-                    if (data) {
-                        const rawFingerData = {
-                            x: -data.x, // 翻转X轴（镜像效果），去掉amplitude
-                            y: -data.z, // 翻转Z轴（向前变向前），去掉amplitude
-                            z: data.y, // 交换Y和Z轴，去掉amplitude
+                    if (riggedPose.current.LeftLowerArm) {
+                        const rawLeftLowerArmData = {
+                            x: riggedPose.current.LeftLowerArm.x * axisSettings.leftArm.x,
+                            y: riggedPose.current.LeftLowerArm.y * axisSettings.leftArm.y,
+                            z: riggedPose.current.LeftLowerArm.z * axisSettings.leftArm.z,
                         };
-                        
-                        // 应用平滑效果 - 使用较小的阻尼值让手指更敏感
-                        rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
+                        rotateBone('leftLowerArm', rawLeftLowerArmData, boneLerpFactor * settings.armSpeed);
                     }
-                });
-            } catch (error) {
-                console.warn('VRMAvatar: 左手处理错误', error);
-            }
-        }
 
-        if (riggedRightHand.current) {
-            try {
-                // 右手手指控制 - 镜像映射：riggedRightHand 包含左手数据，控制右手
-                const rightFingerBones = [
-                    { bone: 'rightRingProximal', data: riggedRightHand.current.RightRingProximal },
-                    { bone: 'rightRingIntermediate', data: riggedRightHand.current.RightRingIntermediate },
-                    { bone: 'rightRingDistal', data: riggedRightHand.current.RightRingDistal },
-                    { bone: 'rightIndexProximal', data: riggedRightHand.current.RightIndexProximal },
-                    { bone: 'rightIndexIntermediate', data: riggedRightHand.current.RightIndexIntermediate },
-                    { bone: 'rightIndexDistal', data: riggedRightHand.current.RightIndexDistal },
-                    { bone: 'rightMiddleProximal', data: riggedRightHand.current.RightMiddleProximal },
-                    { bone: 'rightMiddleIntermediate', data: riggedRightHand.current.RightMiddleIntermediate },
-                    { bone: 'rightMiddleDistal', data: riggedRightHand.current.RightMiddleDistal },
-                    { bone: 'rightThumbProximal', data: riggedRightHand.current.RightThumbProximal },
-                    { bone: 'rightThumbMetacarpal', data: riggedRightHand.current.RightThumbIntermediate },
-                    { bone: 'rightThumbDistal', data: riggedRightHand.current.RightThumbDistal },
-                    { bone: 'rightLittleProximal', data: riggedRightHand.current.RightLittleProximal },
-                    { bone: 'rightLittleIntermediate', data: riggedRightHand.current.RightLittleIntermediate },
-                    { bone: 'rightLittleDistal', data: riggedRightHand.current.RightLittleDistal }
-                ];
-
-                rightFingerBones.forEach(({ bone, data }) => {
-                    if (data) {
-                        const rawFingerData = {
-                            x: -data.x, // 翻转X轴（镜像效果），去掉amplitude
-                            y: -data.z, // 翻转Z轴（向前变向前），去掉amplitude
-                            z: data.y, // 交换Y和Z轴，去掉amplitude
+                    if (riggedPose.current.RightUpperArm) {
+                        const rawRightArmData = {
+                            x: riggedPose.current.RightUpperArm.x * axisSettings.rightArm.x,
+                            y: riggedPose.current.RightUpperArm.y * axisSettings.rightArm.y,
+                            z: riggedPose.current.RightUpperArm.z * axisSettings.rightArm.z,
                         };
-                        
-                        // 应用平滑效果 - 使用较小的阻尼值让手指更敏感
-                        rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
+                        console.log('VRMAvatar: 应用右手臂数据', rawRightArmData);
+                        rotateBone('rightUpperArm', rawRightArmData, boneLerpFactor * settings.armSpeed);
                     }
-                });
-            } catch (error) {
-                console.warn('VRMAvatar: 右手处理错误', error);
+                    
+                    if (riggedPose.current.RightLowerArm) {
+                        const rawRightLowerArmData = {
+                            x: riggedPose.current.RightLowerArm.x * axisSettings.rightArm.x,
+                            y: riggedPose.current.RightLowerArm.y * axisSettings.rightArm.y,
+                            z: riggedPose.current.RightLowerArm.z * axisSettings.rightArm.z,
+                        };
+                        rotateBone('rightLowerArm', rawRightLowerArmData, boneLerpFactor * settings.armSpeed);
+                    }
+
+                    // 手部控制
+                    if (riggedPose.current.LeftHand && riggedLeftHand.current) {
+                        const rawLeftHandData = {
+                            x: -riggedLeftHand.current.LeftWrist.x * axisSettings.leftHand.x,
+                            y: riggedLeftHand.current.LeftWrist.y * axisSettings.leftHand.y,
+                            z: riggedPose.current.LeftHand.z * axisSettings.leftHand.z,
+                        };
+                        console.log('VRMAvatar: 应用左手数据', rawLeftHandData);
+                        rotateBone('leftHand', rawLeftHandData, boneLerpFactor * settings.handSpeed);
+                    }
+
+                    if (riggedPose.current.RightHand && riggedRightHand.current) {
+                        const rawRightHandData = {
+                            x: -riggedRightHand.current.RightWrist.x * axisSettings.rightHand.x,
+                            y: riggedRightHand.current.RightWrist.y * axisSettings.rightHand.y,
+                            z: riggedPose.current.RightHand.z * axisSettings.rightHand.z,
+                        };
+                        console.log('VRMAvatar: 应用右手数据', rawRightHandData);
+                        rotateBone('rightHand', rawRightHandData, boneLerpFactor * settings.handSpeed);
+                    }
+
+                } catch (error) {
+                    console.warn('VRMAvatar: 身体姿态处理错误', error);
+                }
+            } else {
+                console.log('VRMAvatar: 没有姿态数据可处理');
+            }
+
+            // **手指控制**
+            if (riggedLeftHand.current) {
+                try {
+                    // 左手手指控制 - 镜像映射
+                    const leftFingerBones = [
+                        { bone: 'leftRingProximal', data: riggedLeftHand.current.LeftRingProximal },
+                        { bone: 'leftRingIntermediate', data: riggedLeftHand.current.LeftRingIntermediate },
+                        { bone: 'leftRingDistal', data: riggedLeftHand.current.LeftRingDistal },
+                        { bone: 'leftIndexProximal', data: riggedLeftHand.current.LeftIndexProximal },
+                        { bone: 'leftIndexIntermediate', data: riggedLeftHand.current.LeftIndexIntermediate },
+                        { bone: 'leftIndexDistal', data: riggedLeftHand.current.LeftIndexDistal },
+                        { bone: 'leftMiddleProximal', data: riggedLeftHand.current.LeftMiddleProximal },
+                        { bone: 'leftMiddleIntermediate', data: riggedLeftHand.current.LeftMiddleIntermediate },
+                        { bone: 'leftMiddleDistal', data: riggedLeftHand.current.LeftMiddleDistal },
+                        { bone: 'leftThumbProximal', data: riggedLeftHand.current.LeftThumbProximal },
+                        { bone: 'leftThumbMetacarpal', data: riggedLeftHand.current.LeftThumbIntermediate },
+                        { bone: 'leftThumbDistal', data: riggedLeftHand.current.LeftThumbDistal },
+                        { bone: 'leftLittleProximal', data: riggedLeftHand.current.LeftLittleProximal },
+                        { bone: 'leftLittleIntermediate', data: riggedLeftHand.current.LeftLittleIntermediate },
+                        { bone: 'leftLittleDistal', data: riggedLeftHand.current.LeftLittleDistal }
+                    ];
+
+                    leftFingerBones.forEach(({ bone, data }) => {
+                        if (data) {
+                            const rawFingerData = {
+                                x: -data.x,
+                                y: -data.z,
+                                z: data.y,
+                            };
+                            rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
+                        }
+                    });
+                } catch (error) {
+                    // console.warn('VRMAvatar: 左手处理错误', error);
+                }
+            }
+
+            if (riggedRightHand.current) {
+                try {
+                    // 右手手指控制 - 镜像映射
+                    const rightFingerBones = [
+                        { bone: 'rightRingProximal', data: riggedRightHand.current.RightRingProximal },
+                        { bone: 'rightRingIntermediate', data: riggedRightHand.current.RightRingIntermediate },
+                        { bone: 'rightRingDistal', data: riggedRightHand.current.RightRingDistal },
+                        { bone: 'rightIndexProximal', data: riggedRightHand.current.RightIndexProximal },
+                        { bone: 'rightIndexIntermediate', data: riggedRightHand.current.RightIndexIntermediate },
+                        { bone: 'rightIndexDistal', data: riggedRightHand.current.RightIndexDistal },
+                        { bone: 'rightMiddleProximal', data: riggedRightHand.current.RightMiddleProximal },
+                        { bone: 'rightMiddleIntermediate', data: riggedRightHand.current.RightMiddleIntermediate },
+                        { bone: 'rightMiddleDistal', data: riggedRightHand.current.RightMiddleDistal },
+                        { bone: 'rightThumbProximal', data: riggedRightHand.current.RightThumbProximal },
+                        { bone: 'rightThumbMetacarpal', data: riggedRightHand.current.RightThumbIntermediate },
+                        { bone: 'rightThumbDistal', data: riggedRightHand.current.RightThumbDistal },
+                        { bone: 'rightLittleProximal', data: riggedRightHand.current.RightLittleProximal },
+                        { bone: 'rightLittleIntermediate', data: riggedRightHand.current.RightLittleIntermediate },
+                        { bone: 'rightLittleDistal', data: riggedRightHand.current.RightLittleDistal }
+                    ];
+
+                    rightFingerBones.forEach(({ bone, data }) => {
+                        if (data) {
+                            const rawFingerData = {
+                                x: -data.x,
+                                y: -data.z,
+                                z: data.y,
+                            };
+                            rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
+                        }
+                    });
+                } catch (error) {
+                    // console.warn('VRMAvatar: 右手处理错误', error);
+                }
             }
         }
 
-        // 更新 VRM
+        // **最后统一更新VRM**
         vrm.update(delta);
     });
 
@@ -813,6 +934,15 @@ export const VRMAvatar = forwardRef(({
                 scale={scale}
                 position={position}
             />
+            
+            {/* 模式指示器 - 调试用 */}
+            {showDebug && (
+                <div className="fixed top-4 left-4 z-50 bg-black/80 text-white p-2 rounded">
+                    <div>模式: {getAnimationState().currentMode}</div>
+                    <div>摄像头: {isCameraActive ? '开启' : '关闭'}</div>
+                    <div>动捕数据: {riggedPose.current ? '有' : '无'}</div>
+                </div>
+            )}
             
             {/* 原有的骨骼可视化 */}
             {(() => {
@@ -849,7 +979,6 @@ export const VRMAvatar = forwardRef(({
             {/* 重要：确保ref指向scene对象 */}
             {useEffect(() => {
                 if (ref && scene) {
-                    console.log('VRMAvatar: 设置ref到scene对象', { ref: !!ref, scene: !!scene });
                     // 如果ref是函数，调用它
                     if (typeof ref === 'function') {
                         ref(scene);

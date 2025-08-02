@@ -68,12 +68,6 @@ export const CameraController = ({
     useGameStyle = true,
     cameraSettings = {}
 }) => {
-    console.log('CameraController: 主控制器初始化', {
-        useGameStyle,
-        enableUserControl,
-        enableAutoTrack
-    });
-    
     return (
         <>
             {/* 标准OrbitControls - 始终面对角色 */}
@@ -106,17 +100,6 @@ export const CameraController = ({
                     
                     // 重要：这会让 OrbitControls 成为默认控制器
                     makeDefault
-                    
-                    // 事件回调
-                    onStart={() => {
-                        console.log('🎮 用户开始控制相机');
-                    }}
-                    onEnd={() => {
-                        console.log('🎮 用户停止控制相机');
-                    }}
-                    onChange={() => {
-                        console.log('🎮 相机位置/角度发生变化');
-                    }}
                 />
             )}
             
