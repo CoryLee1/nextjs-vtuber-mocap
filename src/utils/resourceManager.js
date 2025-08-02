@@ -3,8 +3,8 @@
 
 // 资源配置
 const RESOURCE_CONFIG = {
-  // 使用 GitHub Releases 或 CDN 链接
-  baseUrl: 'https://github.com/CoryLee1/nextjs-vtuber-mocap/releases/download/v1.0.0',
+  // 使用 AWS S3 链接
+  baseUrl: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com',
   
   // 本地资源（小文件）
   localBaseUrl: '/models',
@@ -15,27 +15,54 @@ const RESOURCE_CONFIG = {
       {
         id: 'avatar-sample-a',
         name: 'Avatar Sample A',
-        url: '/models/AvatarSample_A.vrm', // 暂时保持本地
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
         thumbnail: '/images/thumbnails/avatar-sample-a.jpg',
         category: 'anime',
         tags: ['female', 'long-hair'],
         size: '15MB'
       },
       {
-        id: 'avatar-sample-b', 
-        name: 'Avatar Sample B',
-        url: '/models/AvatarSample_B.vrm',
-        thumbnail: '/images/thumbnails/avatar-sample-b.jpg',
+        id: 'avatar-sample-c', 
+        name: 'Avatar Sample C',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_C.vrm',
+        thumbnail: '/images/thumbnails/avatar-sample-c.jpg',
+        category: 'anime',
+        tags: ['female', 'short-hair'],
+        size: '14MB'
+      },
+      {
+        id: 'avatar-sample-h', 
+        name: 'Avatar Sample H',
+        url: 'https://github.com/CoryLee1/nextjs-vtuber-mocap/releases/download/v1.0.0/AvatarSample_H.vrm',
+        thumbnail: '/images/thumbnails/avatar-sample-h.jpg',
+        category: 'anime',
+        tags: ['female', 'long-hair'],
+        size: '19MB'
+      },
+      {
+        id: 'avatar-sample-m', 
+        name: 'Avatar Sample M',
+        url: 'https://github.com/CoryLee1/nextjs-vtuber-mocap/releases/download/v1.0.0/AvatarSample_M.vrm',
+        thumbnail: '/images/thumbnails/avatar-sample-m.jpg',
         category: 'anime',
         tags: ['male', 'short-hair'],
-        size: '14MB'
+        size: '20MB'
+      },
+      {
+        id: 'avatar-sample-z', 
+        name: 'Avatar Sample Z',
+        url: 'https://github.com/CoryLee1/nextjs-vtuber-mocap/releases/download/v1.0.0/AvatarSample_Z.vrm',
+        thumbnail: '/images/thumbnails/avatar-sample-z.jpg',
+        category: 'anime',
+        tags: ['male', 'long-hair'],
+        size: '17MB'
       }
     ],
     animations: [
       {
         id: 'idle',
         name: 'Idle Animation',
-        url: '/models/animations/Idle.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
         thumbnail: '/images/thumbnails/idle.gif',
         category: 'idle',
         tags: ['basic', 'loop'],
@@ -44,7 +71,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'dance',
         name: 'Breakdance 1990',
-        url: '/models/animations/Breakdance 1990.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Breakdance%201990.fbx',
         thumbnail: '/images/thumbnails/dance.gif',
         category: 'dance',
         tags: ['energetic', 'hip-hop'],
@@ -53,11 +80,65 @@ const RESOURCE_CONFIG = {
       {
         id: 'combat',
         name: 'Mma Kick',
-        url: '/models/animations/Mma Kick.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Mma%20Kick.fbx',
         thumbnail: '/images/thumbnails/combat.gif',
         category: 'combat',
         tags: ['action', 'fighting'],
         size: '1.8MB'
+      },
+      {
+        id: 'breakdance-uprock',
+        name: 'Breakdance Uprock Var 2',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Breakdance%20Uprock%20Var%202.fbx',
+        thumbnail: '/images/thumbnails/breakdance-uprock.gif',
+        category: 'dance',
+        tags: ['energetic', 'hip-hop'],
+        size: '2.1MB'
+      },
+      {
+        id: 'twist-dance',
+        name: 'Twist Dance',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Twist%20Dance.fbx',
+        thumbnail: '/images/thumbnails/twist-dance.gif',
+        category: 'dance',
+        tags: ['energetic', 'fun'],
+        size: '2.4MB'
+      },
+      {
+        id: 'sitting-laughing',
+        name: 'Sitting Laughing',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Sitting%20Laughing.fbx',
+        thumbnail: '/images/thumbnails/sitting-laughing.gif',
+        category: 'idle',
+        tags: ['casual', 'fun'],
+        size: '2.3MB'
+      },
+      {
+        id: 'taunt',
+        name: 'Taunt',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Taunt.fbx',
+        thumbnail: '/images/thumbnails/taunt.gif',
+        category: 'gesture',
+        tags: ['casual', 'fun'],
+        size: '2.0MB'
+      },
+      {
+        id: 'test-animation',
+        name: 'Test Animation',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Taunt.fbx',
+        thumbnail: '/images/thumbnails/taunt.gif',
+        category: 'test',
+        tags: ['test'],
+        size: '2.0MB'
+      },
+      {
+        id: 'capoeira',
+        name: 'Capoeira',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Capoeira.fbx',
+        thumbnail: '/images/thumbnails/capoeira.gif',
+        category: 'combat',
+        tags: ['action', 'martial-arts'],
+        size: '2.0MB'
       }
     ]
   }

@@ -17,6 +17,45 @@ const tmpVec3 = new Vector3();
 const tmpQuat = new Quaternion();
 const tmpEuler = new Euler();
 
+// 模型加载状态组件
+const ModelLoadingIndicator = ({ isLoading, error, modelName }) => {
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+          <div className="text-red-500 text-xl mb-4">⚠️ 模型加载失败</div>
+          <div className="text-gray-700 mb-4">
+            无法加载模型 "{modelName}"，请检查网络连接或稍后重试。
+          </div>
+          <div className="text-sm text-gray-500">
+            错误信息: {error.message || '未知错误'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md mx-4 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="text-lg font-medium text-gray-900 mb-2">正在加载模型</div>
+          <div className="text-gray-600 mb-2">{modelName}</div>
+          <div className="text-sm text-gray-500">
+            从 GitHub Releases 下载中，请稍候...
+          </div>
+          <div className="mt-4 text-xs text-gray-400">
+            首次加载可能需要较长时间，请耐心等待
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 // 性能监控辅助函数
 const createPerformanceMonitor = (name) => {
     const startTime = performance.now();
@@ -188,7 +227,7 @@ export const VRMAvatar = forwardRef(({
     const { settings } = useSensitivitySettings();
 
     // 加载 VRM 模型 - 参考提供的文件
-    const { scene, userData, errors } = useGLTF(
+    const { scene, userData, errors, isLoading } = useGLTF(
         modelUrl,
         undefined,
         undefined,
@@ -928,66 +967,75 @@ export const VRMAvatar = forwardRef(({
     });
 
     return (
-        <group {...props} ref={ref}>
-            <primitive
-                object={scene}
-                scale={scale}
-                position={position}
+        <>
+            {/* 模型加载状态指示器 */}
+            <ModelLoadingIndicator 
+                isLoading={isLoading} 
+                error={errors} 
+                modelName={modelUrl.split('/').pop() || '未知模型'}
             />
             
-            {/* 模式指示器 - 调试用 */}
-            {showDebug && (
-                <div className="fixed top-4 left-4 z-50 bg-black/80 text-white p-2 rounded">
-                    <div>模式: {getAnimationState().currentMode}</div>
-                    <div>摄像头: {isCameraActive ? '开启' : '关闭'}</div>
-                    <div>动捕数据: {riggedPose.current ? '有' : '无'}</div>
-                </div>
-            )}
-            
-            {/* 原有的骨骼可视化 */}
-            {(() => {
-                const shouldRender = vrm && showBones;
-                return shouldRender ? (
+            <group {...props} ref={ref}>
+                <primitive
+                    object={scene}
+                    scale={scale}
+                    position={position}
+                />
+                
+                {/* 模式指示器 - 调试用 */}
+                {showDebug && (
+                    <div className="fixed top-4 left-4 z-50 bg-black/80 text-white p-2 rounded">
+                        <div>模式: {getAnimationState().currentMode}</div>
+                        <div>摄像头: {isCameraActive ? '开启' : '关闭'}</div>
+                        <div>动捕数据: {riggedPose.current ? '有' : '无'}</div>
+                    </div>
+                )}
+                
+                {/* 原有的骨骼可视化 */}
+                {(() => {
+                    const shouldRender = vrm && showBones;
+                    return shouldRender ? (
+                        <>
+                            <BoneVisualizer vrm={vrm} />
+                            {/* 添加一个测试立方体来确认组件被渲染 */}
+                            <mesh position={[0, 2, 0]}>
+                                <boxGeometry args={[0.2, 0.2, 0.2]} />
+                                <meshBasicMaterial color="red" />
+                            </mesh>
+                        </>
+                    ) : null;
+                })()}
+                
+                {/* 新增：调试工具 */}
+                {showDebug && (
                     <>
-                        <BoneVisualizer vrm={vrm} />
-                        {/* 添加一个测试立方体来确认组件被渲染 */}
-                        <mesh position={[0, 2, 0]}>
-                            <boxGeometry args={[0.2, 0.2, 0.2]} />
-                            <meshBasicMaterial color="red" />
-                        </mesh>
+                        <CoordinateAxes position={[2, 0, 0]} size={0.8} />
+                        <ArmDirectionDebugger
+                            vrm={vrm}
+                            riggedPose={riggedPose}
+                            showDebug={showDebug}
+                        />
+                        {testSettings?.showRawData && (
+                            <DataDisplayPanel riggedPose={riggedPose} />
+                        )}
+                        {/* 手臂坐标轴可视化 */}
+                        <SimpleArmAxes vrm={vrm} showDebug={showArmAxes} />
                     </>
-                ) : null;
-            })()}
-            
-            {/* 新增：调试工具 */}
-            {showDebug && (
-                <>
-                    <CoordinateAxes position={[2, 0, 0]} size={0.8} />
-                    <ArmDirectionDebugger
-                        vrm={vrm}
-                        riggedPose={riggedPose}
-                        showDebug={showDebug}
-                    />
-                    {testSettings?.showRawData && (
-                        <DataDisplayPanel riggedPose={riggedPose} />
-                    )}
-                    {/* 手臂坐标轴可视化 */}
-                    <SimpleArmAxes vrm={vrm} showDebug={showArmAxes} />
-                </>
-            )}
-            
-            {/* 重要：确保ref指向scene对象 */}
-            {useEffect(() => {
-                if (ref && scene) {
-                    // 如果ref是函数，调用它
-                    if (typeof ref === 'function') {
-                        ref(scene);
-                    } else if (ref.current !== undefined) {
-                        ref.current = scene;
+                )}
+                
+                {/* 重要：确保ref指向scene对象 */}
+                {useEffect(() => {
+                    if (ref && scene) {
+                        // 如果ref是函数，调用它
+                        if (typeof ref === 'function') {
+                            ref(scene);
+                        } else if (ref.current !== undefined) {
+                            ref.current = scene;
+                        }
                     }
-                }
-            }, [ref, scene])}
-        </group>
+                }, [ref, scene])}
+            </group>
+        </>
     );
 });
 

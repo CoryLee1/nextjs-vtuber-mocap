@@ -4,7 +4,7 @@ import { AnimationCard } from './AnimationCard';
 import { DraggablePanel } from './DraggablePanel';
 
 export const AnimationLibrary = ({ isOpen, onClose, onAnimationSelect }) => {
-    const { animations, getSelectedAnimation, selectAnimation } = useAnimationLibrary();
+    const { animations, loading, error, getSelectedAnimation, selectAnimation } = useAnimationLibrary();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -13,7 +13,7 @@ export const AnimationLibrary = ({ isOpen, onClose, onAnimationSelect }) => {
     // 过滤动画 - 添加安全检查
     const filteredAnimations = (animations || []).filter(animation => {
         const matchesSearch = animation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            animation.description.toLowerCase().includes(searchTerm.toLowerCase());
+                            (animation.description && animation.description.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesCategory = selectedCategory === 'all' || animation.category === selectedCategory;
         return matchesSearch && matchesCategory;
     });
@@ -69,23 +69,29 @@ export const AnimationLibrary = ({ isOpen, onClose, onAnimationSelect }) => {
                     </div>
                 </div>
 
+                {/* 错误提示 */}
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="text-red-700 text-sm">
+                            <div className="font-medium">加载失败</div>
+                            <div>{error}</div>
+                        </div>
+                    </div>
+                )}
+
                 {/* 动画列表 */}
                 <div className="flex-1 overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredAnimations.map((animation) => (
-                            <AnimationCard
-                                key={animation.id}
-                                animation={animation}
-                                isSelected={selectedAnimation?.id === animation.id}
-                                onSelect={() => {
-                                    selectAnimation(animation);
-                                    onAnimationSelect(animation);
-                                }}
-                            />
-                        ))}
-                    </div>
-                    
-                    {filteredAnimations.length === 0 && (
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center h-32 space-y-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                            <div className="text-gray-500 text-center">
+                                <div>正在加载动画列表...</div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                    从 GitHub Releases 获取资源信息
+                                </div>
+                            </div>
+                        </div>
+                    ) : filteredAnimations.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                             <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -93,14 +99,29 @@ export const AnimationLibrary = ({ isOpen, onClose, onAnimationSelect }) => {
                             <p>没有找到匹配的动画</p>
                             <p className="text-sm">尝试调整搜索条件</p>
                         </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredAnimations.map((animation) => (
+                                <AnimationCard
+                                    key={animation.id}
+                                    animation={animation}
+                                    isSelected={selectedAnimation?.id === animation.id}
+                                    onSelect={() => {
+                                        selectAnimation(animation);
+                                        onAnimationSelect(animation);
+                                    }}
+                                />
+                            ))}
+                        </div>
                     )}
                 </div>
 
                 {/* 底部信息 */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>支持 FBX 格式</span>
-                        <span>点击动画卡片选择</span>
+                    <div className="text-xs text-gray-500">
+                        共 {filteredAnimations.length} 个动画
+                        {searchTerm && ` (搜索: "${searchTerm}")`}
+                        {loading && ' - 正在加载...'}
                     </div>
                 </div>
             </div>

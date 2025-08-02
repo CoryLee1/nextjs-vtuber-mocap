@@ -125,14 +125,14 @@ export const ANIMATION_CONFIG = {
   
   // 动画文件路径映射
   ANIMATION_FILES: {
-    'Idle': '/models/animations/Idle.fbx',
-    'Breakdance 1990': '/models/animations/Breakdance 1990.fbx',
-    'Mma Kick': '/models/animations/Mma Kick.fbx',
-    'Breakdance Uprock Var 2': '/models/animations/Breakdance Uprock Var 2.fbx',
-    'Twist Dance': '/models/animations/Twist Dance.fbx',
-    'Sitting Laughing': '/models/animations/Sitting Laughing.fbx',
-    'Taunt': '/models/animations/Taunt.fbx',
-    'Capoeira': '/models/animations/Capoeira.fbx'
+    'Idle': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
+    'Breakdance 1990': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Breakdance%201990.fbx',
+    'Mma Kick': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Mma%20Kick.fbx',
+    'Breakdance Uprock Var 2': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Breakdance%20Uprock%20Var%202.fbx',
+    'Twist Dance': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Twist%20Dance.fbx',
+    'Sitting Laughing': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Sitting%20Laughing.fbx',
+    'Taunt': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Taunt.fbx',
+    'Capoeira': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Capoeira.fbx'
   },
   
   // 动画分类

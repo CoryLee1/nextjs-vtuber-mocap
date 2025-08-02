@@ -198,6 +198,9 @@ function remapMixamoAnimationToVrm(vrm, fbxScene) {
 
 // 改进的动画管理器
 export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle.fbx') => {
+    // 修正 animationUrl 末尾多余的冒号
+    const safeAnimationUrl = typeof animationUrl === 'string' ? animationUrl.replace(/:$/, '') : animationUrl;
+
     const mixerRef = useRef();
     const currentActionRef = useRef();
     const idleActionRef = useRef();
@@ -211,11 +214,16 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
         isPlayingIdle: false,
         isTransitioning: false,
         hasMixer: false,
-        currentMode: 'idle'
+        currentMode: 'idle',
+        isLoading: false,
+        error: null
     });
 
     // 加载FBX动画文件
-    const fbxScene = useFBX(animationUrl);
+    const fbxScene = useFBX(safeAnimationUrl, undefined, undefined, (loader) => {
+        // 可以在这里添加加载进度回调
+        console.log('AnimationManager: 开始加载动画', safeAnimationUrl);
+    });
 
     // 创建动画剪辑
     const idleClip = useMemo(() => {
@@ -228,6 +236,7 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
             const remappedClip = remapMixamoAnimationToVrm(vrm, fbxScene);
             
             if (remappedClip) {
+                console.log('AnimationManager: 动画重新映射成功');
                 return remappedClip;
             }
         } catch (error) {
@@ -238,12 +247,13 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
         if (fbxScene.animations && fbxScene.animations.length > 0) {
             const clip = fbxScene.animations[0].clone();
             clip.name = 'Idle';
+            console.log('AnimationManager: 使用原始动画作为备用');
             return clip;
         }
         
         console.warn('AnimationManager: 无法创建idle剪辑');
         return null;
-    }, [vrm, fbxScene, animationUrl]);
+    }, [vrm, fbxScene, safeAnimationUrl]);
 
     // 初始化动画混合器
     useEffect(() => {
@@ -258,17 +268,26 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
             setAnimationState(prev => ({
                 ...prev,
                 hasMixer: false,
-                isPlayingIdle: false
+                isPlayingIdle: false,
+                isLoading: false,
+                error: !vrm ? 'VRM模型未加载' : !idleClip ? '动画文件加载失败' : null
             }));
             return;
         }
 
         // 确保VRM完全加载
         if (!vrm.scene || !vrm.humanoid) {
+            setAnimationState(prev => ({
+                ...prev,
+                isLoading: true,
+                error: null
+            }));
             return;
         }
 
         try {
+            console.log('AnimationManager: 初始化动画混合器');
+            
             // 创建动画混合器
             const mixer = new AnimationMixer(vrm.scene);
             mixerRef.current = mixer;
@@ -296,24 +315,22 @@ export const useAnimationManager = (vrm, animationUrl = '/models/animations/Idle
                 isPlayingIdle: true,
                 isTransitioning: false,
                 hasMixer: true,
-                currentMode: 'idle'
+                currentMode: 'idle',
+                isLoading: false,
+                error: null
             });
+            
+            console.log('AnimationManager: 动画混合器初始化完成');
 
         } catch (error) {
-            console.error('AnimationManager: 初始化动画混合器失败', error);
+            console.error('AnimationManager: 初始化失败', error);
             setAnimationState(prev => ({
                 ...prev,
                 hasMixer: false,
-                isPlayingIdle: false
+                isPlayingIdle: false,
+                isLoading: false,
+                error: error.message
             }));
-        }
-
-        return () => {
-            if (mixerRef.current) {
-                mixerRef.current.stopAllAction();
-                mixerRef.current = null;
-                hasMixerRef.current = false;
-            }
         }
     }, [vrm, idleClip]);
 
