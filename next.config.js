@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -42,6 +46,7 @@ const nextConfig = {
     domains: [
       'cdn.jsdelivr.net',
       'unpkg.com',
+      'nextjs-vtuber-assets.s3.us-east-2.amazonaws.com',
     ],
   },
   
@@ -63,6 +68,18 @@ const nextConfig = {
       },
     ];
   },
+  
+  // TypeScript 配置
+  typescript: {
+    // 在生产构建时忽略 TypeScript 错误（开发时仍会显示）
+    ignoreBuildErrors: false,
+  },
+  
+  // ESLint 配置
+  eslint: {
+    // 在生产构建时忽略 ESLint 错误（开发时仍会显示）
+    ignoreDuringBuilds: false,
+  },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

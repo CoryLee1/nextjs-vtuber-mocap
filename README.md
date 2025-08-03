@@ -1,263 +1,150 @@
-# 🎭 VTuber Motion Capture Demo
+# VTuber Motion Capture Application
 
-[![VTuber Mocap Demo](JIETU.png)](https://nextjs-vtuber-mocap.vercel.app/)
+一个基于 Next.js 的 VTuber 动捕应用，支持实时面部表情、身体姿态和手部动作捕捉。
 
-**🌐 在线体验：** [https://nextjs-vtuber-mocap.vercel.app/](https://nextjs-vtuber-mocap.vercel.app/)
+## 🚀 功能特性
 
-一个基于 Next.js + Three.js + MediaPipe 的实时 VTuber 动作捕捉演示项目，支持 VRM 模型驱动、面部表情同步、手势识别和动画切换。
+### 核心功能
+- **实时动捕**: 使用 MediaPipe 进行面部、身体和手部动作捕捉
+- **VRM 模型支持**: 支持加载和显示 VRM 格式的 3D 模型
+- **多语言支持**: 支持中文、英文、日文
+- **调试工具**: 内置坐标轴调试面板，可实时调整动捕数据映射
 
-## ✨ 核心功能
-
-**一句话总结：** 这是一个完整的 VTuber 动捕系统，通过摄像头实时捕捉用户的面部表情、身体姿态和手势动作，驱动 VRM 虚拟角色进行同步表演，支持多种动画切换和云端资源管理。
-
-## 🚀 主要特性
-
-### 🎯 实时动作捕捉
-- **面部表情同步** - 实时捕捉面部表情，同步到 VRM 模型
-- **身体姿态追踪** - 捕捉上半身动作，驱动角色手臂和躯干
-- **手势识别** - 识别手部动作，控制角色手指和手部
-- **眨眼检测** - 自动检测眨眼动作，同步到角色眼睛
-
-### 🎨 VRM 模型支持
-- **多模型切换** - 支持多个 VRM 模型，可实时切换
-- **云端资源管理** - 模型和动画文件存储在 AWS S3，快速加载
-- **模型上传** - 支持上传自定义 VRM 模型到云端
-
-### 🎬 动画系统
-- **预制动画** - 内置多种动画，支持待机、舞蹈等
-- **动画切换** - 实时切换不同动画，支持平滑过渡
-- **动画上传** - 支持上传自定义 FBX 动画文件
-- **云端存储** - 动画文件存储在 S3，支持 CDN 加速
-
-### 🎛️ 控制面板
-- **灵敏度调节** - 可调节动作捕捉的灵敏度
-- **坐标轴调整** - 支持调整各部位动作的坐标轴映射
-- **相机控制** - 支持自动跟踪和手动控制相机视角
-- **调试工具** - 提供骨骼可视化、数据面板等调试功能
-
-### ☁️ 云端集成
-- **AWS S3 存储** - 模型和动画文件存储在 S3
-- **预签名上传** - 支持安全的文件上传到 S3
-- **CDN 加速** - 通过 S3 提供全球 CDN 加速
-- **环境变量管理** - 安全的 AWS 凭证管理
+### 动捕功能
+- **面部表情**: 眨眼、口型同步、头部旋转
+- **身体姿态**: 手臂、躯干、腿部动作
+- **手部动作**: 手掌旋转、手指弯曲
+- **实时预览**: 3D 场景中的实时动作预览
 
 ## 🛠️ 技术栈
 
-### 前端框架
-- **Next.js 14** - React 全栈框架
-- **React 18** - 用户界面库
-- **TypeScript** - 类型安全
+- **前端框架**: Next.js 14 (App Router)
+- **3D 渲染**: Three.js + @react-three/fiber
+- **VRM 支持**: @pixiv/three-vrm
+- **动捕库**: MediaPipe + Kalidokit
+- **UI 组件**: Tailwind CSS + shadcn/ui
+- **国际化**: next-intl
 
-### 3D 渲染
-- **Three.js** - 3D 图形库
-- **@react-three/fiber** - React Three.js 集成
-- **@react-three/drei** - Three.js 工具库
-- **@pixiv/three-vrm** - VRM 模型支持
+## 📁 项目结构
 
-### 动作捕捉
-- **MediaPipe** - Google 动作捕捉库
-- **Kalidokit** - 动作数据解析
-- **@mediapipe/holistic** - 全身动作捕捉
-- **@mediapipe/camera_utils** - 相机工具
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── [locale]/          # 国际化路由
+│   └── globals.css        # 全局样式
+├── components/             # React 组件
+│   ├── dressing-room/     # 主要功能组件
+│   ├── ui/               # UI 组件库
+│   └── layout/           # 布局组件
+├── hooks/                # 自定义 Hooks
+├── lib/                  # 工具库
+├── types/                # TypeScript 类型定义
+└── i18n/                # 国际化配置
+```
 
-### 状态管理
-- **Zustand** - 轻量级状态管理
-- **React Hooks** - 组件状态管理
+## 🎯 动捕逻辑说明
 
-### 云端服务
-- **AWS S3** - 文件存储
-- **AWS SDK** - AWS 服务集成
-- **Vercel** - 部署平台
+### 数据流程
+1. **摄像头输入** → MediaPipe 处理 → Kalidokit 转换 → VRM 模型应用
 
-## 📦 安装和运行
+### 坐标轴映射
+动捕数据需要经过坐标轴转换才能正确映射到 VRM 模型：
+
+#### 手臂映射
+- **左臂**: `X: -1, Y: 1, Z: -1`
+- **右臂**: `X: -1, Y: 1, Z: -1`
+
+#### 手掌映射
+- **左手**: `X: -1, Y: 1, Z: -1`
+- **右手**: `X: -1, Y: 1, Z: -1`
+
+#### 手指映射 (待调试)
+当前手指映射存在问题，需要进一步调试：
+- 每个手指关节都有独立的 X/Y/Z 轴向配置
+- 需要逐个调试每个手指的弯曲方向
+
+### 调试面板使用
+1. 开启调试模式：控制面板 → 显示调试信息
+2. 调整轴向：点击对应轴向按钮切换 1/-1
+3. 实时预览：观察 3D 模型响应
+4. 保存配置：点击"保存"按钮
+
+## 🐛 已知问题
+
+### 手指映射问题
+- **问题**: 手指弯曲方向不正确，难以看出变化
+- **原因**: 手指关节的坐标轴映射需要精细调整
+- **解决方案**: 使用详细手指调试面板逐个调试
+
+### 模型加载问题
+- **问题**: 模型加载时缺少进度提示
+- **解决方案**: 已添加加载状态指示器
+
+### 语言切换问题
+- **问题**: 语言切换功能不工作
+- **状态**: 需要检查 next-intl 配置
+
+## 🚀 快速开始
 
 ### 环境要求
-- Node.js 18+ 
+- Node.js 18+
 - npm 或 yarn
-- 摄像头设备
 
 ### 安装依赖
 ```bash
 npm install
 ```
 
-### 环境配置
-创建 `.env.local` 文件：
-```env
-# AWS S3 配置
-AWS_ACCESS_KEY_ID=your_access_key_id
-AWS_SECRET_ACCESS_KEY=your_secret_access_key
-
-# S3 配置
-NEXT_PUBLIC_S3_BUCKET=your-bucket-name
-NEXT_PUBLIC_S3_REGION=us-east-2
-```
-
 ### 开发模式
 ```bash
 npm run dev
 ```
-访问 http://localhost:3000
 
-### 生产构建
+### 构建生产版本
 ```bash
 npm run build
-npm start
 ```
 
-## 🚀 部署
+## 📖 使用指南
 
-### Vercel 部署（推荐）
+### 基本操作
+1. **开启摄像头**: 点击控制面板中的摄像头按钮
+2. **选择模型**: 使用模型管理器选择 VRM 模型
+3. **调整设置**: 在控制面板中调整各种参数
+4. **调试动捕**: 使用调试面板调整坐标轴映射
 
-1. **安装 Vercel CLI**
-```bash
-npm install -g vercel
-```
+### 调试技巧
+1. **手臂调试**: 举起手臂观察模型响应
+2. **手掌调试**: 旋转手掌观察方向
+3. **手指调试**: 逐个弯曲手指观察效果
+4. **保存配置**: 找到正确配置后及时保存
 
-2. **登录 Vercel**
-```bash
-vercel login
-```
+## 🔧 开发说明
 
-3. **部署项目**
-```bash
-vercel
-```
+### 添加新的动捕功能
+1. 在 `VRMAvatar.tsx` 中添加新的处理逻辑
+2. 在调试面板中添加对应的控制选项
+3. 更新类型定义和文档
 
-4. **设置环境变量**
-在 Vercel 控制台设置以下环境变量：
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `NEXT_PUBLIC_S3_BUCKET`
-- `NEXT_PUBLIC_S3_REGION`
+### 自定义坐标轴映射
+1. 修改 `ArmDebugPanel.jsx` 中的默认配置
+2. 在 `VTuberScene.tsx` 中更新状态管理
+3. 在 `VRMAvatar.tsx` 中应用新的映射逻辑
 
-### 其他部署方式
-- **Netlify** - 支持 Next.js 静态导出
-- **AWS Amplify** - AWS 全栈部署
-- **Docker** - 容器化部署
+## 📝 更新日志
 
-## 📁 项目结构
+### v1.0.0
+- ✅ 基础动捕功能
+- ✅ VRM 模型支持
+- ✅ 调试面板
+- ✅ 多语言支持
+- 🔄 手指映射调试中
+- 🔄 语言切换修复中
 
-```
-src/
-├── components/          # React 组件
-│   ├── CameraWidget.jsx    # 相机控制
-│   ├── VRMAvatar.jsx       # VRM 模型渲染
-│   ├── ModelManager.jsx    # 模型管理
-│   ├── AnimationLibrary.jsx # 动画库
-│   └── ...
-├── hooks/              # 自定义 Hooks
-│   ├── useVideoRecognition.js
-│   ├── useModelManager.js
-│   └── ...
-├── utils/              # 工具函数
-│   ├── resourceManager.js   # 资源管理
-│   ├── animationManager.js  # 动画管理
-│   ├── s3Uploader.js       # S3 上传
-│   └── ...
-├── pages/              # Next.js 页面
-│   ├── api/            # API 路由
-│   └── ...
-└── styles/             # 样式文件
-```
-
-## 🎮 使用指南
-
-### 1. 启动应用
-- 打开浏览器访问应用
-- 点击"开启摄像头"按钮
-- 允许摄像头权限
-
-### 2. 选择模型
-- 点击"模型管理"按钮
-- 从云端模型列表中选择
-- 或上传自定义 VRM 模型
-
-### 3. 选择动画
-- 点击"动画库"按钮
-- 选择预制动画或上传自定义动画
-- 支持实时切换动画
-
-### 4. 动作捕捉
-- 确保摄像头正常工作
-- 面对摄像头进行动作
-- 角色会实时跟随你的动作
-
-### 5. 调整设置
-- 使用控制面板调整灵敏度
-- 调整坐标轴映射
-- 开启/关闭调试功能
-
-## 🔧 配置说明
-
-### AWS S3 配置
-1. 创建 S3 存储桶
-2. 设置公共读取权限
-3. 配置 CORS 规则
-4. 上传模型和动画文件
-
-### 环境变量
-```env
-# AWS 凭证
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
-
-# S3 配置
-NEXT_PUBLIC_S3_BUCKET=your-bucket
-NEXT_PUBLIC_S3_REGION=us-east-2
-```
-
-## 🐛 故障排除
-
-### 常见问题
-
-1. **摄像头无法启动**
-   - 检查浏览器权限设置
-   - 确保摄像头未被其他应用占用
-   - 尝试刷新页面
-
-2. **模型加载失败**
-   - 检查网络连接
-   - 确认 S3 文件存在
-   - 检查 AWS 凭证配置
-
-3. **动作捕捉不准确**
-   - 调整摄像头位置
-   - 确保光线充足
-   - 调整灵敏度设置
-
-4. **性能问题**
-   - 关闭不必要的浏览器标签
-   - 降低摄像头分辨率
-   - 关闭调试功能
-
-## 🤝 贡献
+## 🤝 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
-
-### 开发指南
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 创建 Pull Request
 
 ## 📄 许可证
 
 MIT License
-
-## 🙏 致谢
-
-- [MediaPipe](https://mediapipe.dev/) - 动作捕捉技术
-- [Three.js](https://threejs.org/) - 3D 图形库
-- [VRM](https://vrm.dev/) - VRM 模型格式
-- [Kalidokit](https://github.com/yeemachine/kalidokit) - 动作数据解析
-- [Vercel](https://vercel.com/) - 部署平台
-
-## 📞 联系方式
-
-- 项目地址：https://github.com/your-username/nextjs-vtuber-mocap
-- 问题反馈：https://github.com/your-username/nextjs-vtuber-mocap/issues
-
----
-
-**🎯 一句话总结：** 这是一个完整的 VTuber 动捕系统，通过摄像头实时捕捉用户的面部表情、身体姿态和手势动作，驱动 VRM 虚拟角色进行同步表演，支持多种动画切换和云端资源管理。
