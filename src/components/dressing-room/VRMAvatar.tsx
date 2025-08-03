@@ -363,10 +363,10 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     }, [animationUrl]);
 
     // 动捕数据引用
-    const riggedFace = useRef(null);
-    const riggedPose = useRef(null);
-    const riggedLeftHand = useRef(null);
-    const riggedRightHand = useRef(null);
+    const riggedFace = useRef<any>(null);
+    const riggedPose = useRef<any>(null);
+    const riggedLeftHand = useRef<any>(null);
+    const riggedRightHand = useRef<any>(null);
     const blinkData = useRef({ leftEye: 1, rightEye: 1 }); // 添加眨眼数据引用
 
     // 动捕调试信息
@@ -469,13 +469,14 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         if (results.faceLandmarks) {
             const faceStartTime = performance.now();
             try {
-                riggedFace.current = Face.solve(results.faceLandmarks, {
+                const faceResult = Face.solve(results.faceLandmarks, {
                     runtime: "mediapipe",
                     video: directVideoElement,
                     imageSize: { width: 640, height: 480 },
                     smoothBlink: false,
                     blinkSettings: [0.25, 0.75],
                 });
+                riggedFace.current = faceResult || null;
                 
                 const faceProcessTime = performance.now() - faceStartTime;
                 mocapDebugInfo.current.lastFaceProcessTime = faceProcessTime;
@@ -704,7 +705,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
             'rightLittleDistal': 'rightLittleDistal',
         };
         
-        const mappedName = boneNameMap[kalidokitBoneName] || kalidokitBoneName;
+        const mappedName = (boneNameMap as any)[kalidokitBoneName] || kalidokitBoneName;
         
         return mappedName;
     }, []);
