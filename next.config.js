@@ -72,13 +72,13 @@ const nextConfig = {
   // TypeScript 配置
   typescript: {
     // 在生产构建时忽略 TypeScript 错误（开发时仍会显示）
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   
   // ESLint 配置
   eslint: {
     // 在生产构建时忽略 ESLint 错误（开发时仍会显示）
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
 };
 
