@@ -292,13 +292,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     // 动画管理器 - 移到vrm加载之后
     const {
         updateAnimation,
-        playAnimation,
-        stopAnimation,
-        switchAnimation,
         shouldPlayIdle,
         getAnimationState,
-        animationClip,
-        currentAnimation,
         handleModeSwitch, // 新增：模式切换方法
         switchToMocapMode, // 新增：切换到动捕模式
         switchToIdleMode, // 新增：切换到idle模式
@@ -399,7 +394,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     });
 
     // 视线追踪
-    const lookAtTarget = useRef();
+    const lookAtTarget = useRef<Object3D>();
     const lookAtDestination = useRef(new Vector3(0, 0, 0));
 
     const { camera } = useThree();
