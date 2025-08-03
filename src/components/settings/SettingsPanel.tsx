@@ -79,7 +79,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               </div>
               <div>
                 <CardTitle className="text-sky-900">{t('settings.title')}</CardTitle>
-                <p className="text-sm text-sky-600">配置应用设置和偏好</p>
+                <p className="text-sm text-sky-600">{t('settings.description')}</p>
               </div>
             </div>
             
@@ -89,7 +89,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               
               {hasChanges && (
                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200">
-                  未保存
+                  {t('settings.unsaved')}
                 </Badge>
               )}
               <Button
@@ -106,21 +106,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         <CardContent className="p-6 h-full flex flex-col">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
             <TabsList className="grid w-full grid-cols-5 bg-sky-50">
-              <TabsTrigger value="general" className="text-sky-700">常规</TabsTrigger>
-              <TabsTrigger value="performance" className="text-sky-700">性能</TabsTrigger>
-              <TabsTrigger value="language" className="text-sky-700">语言</TabsTrigger>
-              <TabsTrigger value="theme" className="text-sky-700">主题</TabsTrigger>
-              <TabsTrigger value="shortcuts" className="text-sky-700">快捷键</TabsTrigger>
+              <TabsTrigger value="general" className="text-sky-700">{t('settings.general')}</TabsTrigger>
+              <TabsTrigger value="performance" className="text-sky-700">{t('settings.performance')}</TabsTrigger>
+              <TabsTrigger value="language" className="text-sky-700">{t('settings.language')}</TabsTrigger>
+              <TabsTrigger value="theme" className="text-sky-700">{t('settings.theme')}</TabsTrigger>
+              <TabsTrigger value="shortcuts" className="text-sky-700">{t('settings.shortcuts')}</TabsTrigger>
             </TabsList>
 
             {/* 常规设置 */}
             <TabsContent value="general" className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">基本设置</h3>
+                  <h3 className="text-lg font-medium text-sky-900">{t('settings.basicSettings')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">应用名称</Label>
+                    <Label className="text-sky-700">{t('settings.appName')}</Label>
                     <Input 
                       value={t('app.title')} 
                       disabled 
@@ -129,7 +129,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">版本</Label>
+                    <Label className="text-sky-700">{t('settings.version')}</Label>
                     <Input 
                       value="1.0.0" 
                       disabled 
@@ -139,10 +139,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">系统信息</h3>
+                  <h3 className="text-lg font-medium text-sky-900">{t('settings.systemInfo')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">当前 FPS</Label>
+                    <Label className="text-sky-700">{t('performance.currentFps')}</Label>
                     <div className="flex items-center space-x-2">
                       <Monitor className="h-4 w-4 text-sky-600" />
                       <span className="text-sky-900 font-medium">{fps}</span>
@@ -150,7 +150,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">内存使用</Label>
+                    <Label className="text-sky-700">{t('performance.memoryUsage')}</Label>
                     <div className="flex items-center space-x-2">
                       <HardDrive className="h-4 w-4 text-sky-600" />
                       <span className="text-sky-900 font-medium">{memoryUsage}%</span>
@@ -164,10 +164,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             <TabsContent value="performance" className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">渲染质量</h3>
+                  <h3 className="text-lg font-medium text-sky-900">{t('performance.renderQuality')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">质量等级</Label>
+                    <Label className="text-sky-700">{t('performance.quality')}</Label>
                     <Select 
                       value={settings.quality} 
                       onValueChange={(value) => handleSettingChange('quality', value)}
@@ -176,15 +176,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">低</SelectItem>
-                        <SelectItem value="medium">中</SelectItem>
-                        <SelectItem value="high">高</SelectItem>
+                        <SelectItem value="low">{t('performance.low')}</SelectItem>
+                        <SelectItem value="medium">{t('performance.medium')}</SelectItem>
+                        <SelectItem value="high">{t('performance.high')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">目标 FPS</Label>
+                    <Label className="text-sky-700">{t('performance.targetFps')}</Label>
                     <Input 
                       type="number"
                       value={settings.fps}
@@ -194,7 +194,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">分辨率缩放</Label>
+                    <Label className="text-sky-700">{t('performance.resolutionScale')}</Label>
                     <Input 
                       type="number"
                       step="0.1"
@@ -208,10 +208,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">渲染选项</h3>
+                  <h3 className="text-lg font-medium text-sky-900">{t('performance.renderOptions')}</h3>
                   
                   <div className="flex items-center justify-between">
-                    <Label className="text-sky-700">抗锯齿</Label>
+                    <Label className="text-sky-700">{t('performance.antialiasing')}</Label>
                     <Switch 
                       checked={settings.antialiasing}
                       onCheckedChange={(checked) => handleSettingChange('antialiasing', checked)}
@@ -219,7 +219,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Label className="text-sky-700">阴影</Label>
+                    <Label className="text-sky-700">{t('performance.shadows')}</Label>
                     <Switch 
                       checked={settings.shadows}
                       onCheckedChange={(checked) => handleSettingChange('shadows', checked)}
@@ -227,7 +227,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <Label className="text-sky-700">泛光效果</Label>
+                    <Label className="text-sky-700">{t('performance.bloom')}</Label>
                     <Switch 
                       checked={settings.bloom}
                       onCheckedChange={(checked) => handleSettingChange('bloom', checked)}
@@ -235,7 +235,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">优化模式</Label>
+                    <Label className="text-sky-700">{t('performance.optimization')}</Label>
                     <Select 
                       value={settings.optimization} 
                       onValueChange={(value) => handleSettingChange('optimization', value)}
@@ -244,8 +244,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">自动</SelectItem>
-                        <SelectItem value="manual">手动</SelectItem>
+                        <SelectItem value="auto">{t('performance.auto')}</SelectItem>
+                        <SelectItem value="manual">{t('performance.manual')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -256,7 +256,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             {/* 语言设置 */}
             <TabsContent value="language" className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-sky-900">语言选择</h3>
+                <h3 className="text-lg font-medium text-sky-900">{t('languages.select')}</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {availableLocales.map((locale) => (
@@ -276,7 +276,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             <div className="font-medium text-sky-900">{locale.name}</div>
                             {locale.isCurrent && (
                               <Badge variant="secondary" className="text-xs bg-sky-100 text-sky-700">
-                                当前
+                                {t('languages.current')}
                               </Badge>
                             )}
                           </div>
@@ -292,24 +292,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             <TabsContent value="theme" className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">主题选择</h3>
+                  <h3 className="text-lg font-medium text-sky-900">{t('theme.title')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">主题模式</Label>
+                    <Label className="text-sky-700">{t('theme.mode')}</Label>
                     <Select defaultValue="light">
                       <SelectTrigger className="border-sky-200">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="light">浅色</SelectItem>
-                        <SelectItem value="dark">深色</SelectItem>
-                        <SelectItem value="auto">自动</SelectItem>
+                        <SelectItem value="light">{t('theme.light')}</SelectItem>
+                        <SelectItem value="dark">{t('theme.dark')}</SelectItem>
+                        <SelectItem value="auto">{t('theme.auto')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">主色调</Label>
+                    <Label className="text-sky-700">{t('theme.primaryColor')}</Label>
                     <div className="grid grid-cols-5 gap-2">
                       {['#0ea5e9', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'].map((color) => (
                         <div
@@ -323,11 +323,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">预览</h3>
+                  <h3 className="text-lg font-medium text-sky-900">{t('theme.preview')}</h3>
                   
                   <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
                     <div className="text-sm text-sky-700">
-                      主题预览区域
+                      {t('theme.previewArea')}
                     </div>
                   </div>
                 </div>
@@ -337,7 +337,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             {/* 快捷键设置 */}
             <TabsContent value="shortcuts" className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-sky-900">快捷键配置</h3>
+                <h3 className="text-lg font-medium text-sky-900">{t('shortcuts.title')}</h3>
                 
                 <div className="space-y-2">
                   {shortcuts.map((shortcut, index) => (
@@ -364,7 +364,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               className="border-sky-200 text-sky-700 hover:bg-sky-50"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
-              重置
+              {t('settings.reset')}
             </Button>
             
             <div className="flex items-center space-x-2">
@@ -373,7 +373,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 onClick={onClose}
                 className="border-sky-200 text-sky-700 hover:bg-sky-50"
               >
-                取消
+                {t('app.cancel')}
               </Button>
               <Button
                 onClick={handleSave}
@@ -381,7 +381,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 className="bg-sky-500 hover:bg-sky-600 text-white"
               >
                 <Save className="h-4 w-4 mr-2" />
-                保存
+                {t('app.save')}
               </Button>
             </div>
           </div>

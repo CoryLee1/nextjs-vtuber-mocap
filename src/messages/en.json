@@ -32,24 +32,24 @@
       "stop": "Stop Camera",
       "connected": "Camera Connected",
       "disconnected": "Camera Disconnected",
-      "error": "Camera failed to start",
-      "permission": "Camera permission required"
+      "error": "Camera Start Failed",
+      "permission": "Camera Permission Required"
     },
     "model": {
       "title": "Model Management",
       "manager": "Model Manager",
       "upload": "Upload Model",
       "select": "Select Model",
-      "loading": "Loading models...",
-      "noModels": "No models found",
-      "search": "Search models...",
+      "loading": "Loading Model...",
+      "noModels": "No Models Found",
+      "search": "Search Models...",
       "category": "Category",
       "allCategories": "All Categories",
       "uploadVRM": "Upload VRM Model",
       "selectVRMFile": "Select VRM File",
       "uploading": "Uploading...",
-      "uploadSuccess": "Upload successful",
-      "uploadError": "Upload failed",
+      "uploadSuccess": "Upload Successful",
+      "uploadError": "Upload Failed",
       "cloud": "Cloud",
       "local": "Local"
     },
@@ -58,19 +58,20 @@
       "library": "Animation Library",
       "upload": "Upload Animation",
       "select": "Select Animation",
-      "loading": "Loading animations...",
-      "noAnimations": "No animations found",
-      "search": "Search animations...",
+      "loading": "Loading Animation...",
+      "noAnimations": "No Animations Found",
+      "search": "Search Animations...",
       "category": "Category",
       "allCategories": "All Categories",
       "uploadFBX": "Upload Animation File",
       "selectFBXFile": "Select FBX File",
       "uploading": "Uploading...",
-      "uploadSuccess": "Upload successful",
-      "uploadError": "Upload failed",
+      "uploadSuccess": "Upload Successful",
+      "uploadError": "Upload Failed",
       "duration": "Duration",
       "type": "Type",
-      "current": "Current"
+      "current": "Current Animation",
+      "noAnimationSelected": "No Animation Selected"
     },
     "controls": {
       "title": "Control Panel",
@@ -81,7 +82,27 @@
       "showBones": "Show Bones",
       "hideBones": "Hide Bones",
       "debugMode": "Debug Mode",
-      "normalMode": "Normal Mode"
+      "normalMode": "Normal Mode",
+      "mocapStatus": "Mocap Status",
+      "cameraSettings": "Camera Settings",
+      "debugOptions": "Debug Options",
+      "quickActions": "Quick Actions",
+      "face": "Face",
+      "pose": "Pose",
+      "leftHand": "Left Hand",
+      "rightHand": "Right Hand",
+      "cameraControl": "Camera Control",
+      "enableUserControl": "Enable User Control",
+      "autoTrack": "Auto Track",
+      "showHint": "Show Hint",
+      "mouseControl": "Mouse Control",
+      "leftMouseRotate": "Left Mouse Rotate",
+      "rightMousePan": "Right Mouse Pan",
+      "middleMouseZoom": "Middle Mouse Zoom",
+      "showArmAxes": "Show Arm Axes",
+      "showDebug": "Show Debug Info",
+      "debugTools": "Debug Tools",
+      "sensitivity": "Sensitivity Settings"
     },
     "status": {
       "processing": "Processing...",
@@ -93,6 +114,7 @@
   },
   "settings": {
     "title": "Settings",
+    "description": "Configure application settings and preferences",
     "general": "General",
     "performance": "Performance",
     "display": "Display",
@@ -106,7 +128,11 @@
     "update": "Update",
     "reset": "Reset",
     "export": "Export",
-    "import": "Import"
+    "import": "Import",
+    "unsaved": "Unsaved",
+    "basicSettings": "Basic Settings",
+    "appName": "Application Name",
+    "systemInfo": "System Information"
   },
   "performance": {
     "title": "Performance Settings",
@@ -121,7 +147,13 @@
     "bloom": "Bloom",
     "optimization": "Optimization",
     "auto": "Auto",
-    "manual": "Manual"
+    "manual": "Manual",
+    "currentFps": "Current FPS",
+    "memoryUsage": "Memory Usage",
+    "renderQuality": "Render Quality",
+    "targetFps": "Target FPS",
+    "resolutionScale": "Resolution Scale",
+    "renderOptions": "Render Options"
   },
   "shortcuts": {
     "title": "Shortcuts",
@@ -150,7 +182,11 @@
     "background": "Background",
     "foreground": "Foreground",
     "border": "Border",
-    "text": "Text"
+    "text": "Text",
+    "mode": "Theme Mode",
+    "primaryColor": "Primary Color",
+    "preview": "Preview",
+    "previewArea": "Theme Preview Area"
   },
   "languages": {
     "title": "Language",

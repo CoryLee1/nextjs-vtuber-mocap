@@ -70,7 +70,8 @@
       "uploadError": "上传失败",
       "duration": "时长",
       "type": "类型",
-      "current": "当前"
+      "current": "当前动画",
+      "noAnimationSelected": "未选择动画"
     },
     "controls": {
       "title": "控制面板",
@@ -81,7 +82,27 @@
       "showBones": "显示骨骼",
       "hideBones": "隐藏骨骼",
       "debugMode": "调试模式",
-      "normalMode": "正常模式"
+      "normalMode": "正常模式",
+      "mocapStatus": "动捕状态",
+      "cameraSettings": "相机设置",
+      "debugOptions": "调试选项",
+      "quickActions": "快速操作",
+      "face": "面部",
+      "pose": "姿态",
+      "leftHand": "左手",
+      "rightHand": "右手",
+      "cameraControl": "相机控制",
+      "enableUserControl": "启用用户控制",
+      "autoTrack": "自动跟踪",
+      "showHint": "显示提示",
+      "mouseControl": "鼠标控制",
+      "leftMouseRotate": "左键旋转",
+      "rightMousePan": "右键平移",
+      "middleMouseZoom": "中键缩放",
+      "showArmAxes": "显示手臂坐标轴",
+      "showDebug": "显示调试信息",
+      "debugTools": "调试工具",
+      "sensitivity": "灵敏度设置"
     },
     "status": {
       "processing": "正在处理...",
@@ -93,6 +114,7 @@
   },
   "settings": {
     "title": "设置",
+    "description": "配置应用设置和偏好",
     "general": "常规",
     "performance": "性能",
     "display": "显示",
@@ -106,7 +128,11 @@
     "update": "更新",
     "reset": "重置",
     "export": "导出",
-    "import": "导入"
+    "import": "导入",
+    "unsaved": "未保存",
+    "basicSettings": "基本设置",
+    "appName": "应用名称",
+    "systemInfo": "系统信息"
   },
   "performance": {
     "title": "性能设置",
@@ -121,7 +147,13 @@
     "bloom": "泛光",
     "optimization": "优化",
     "auto": "自动",
-    "manual": "手动"
+    "manual": "手动",
+    "currentFps": "当前 FPS",
+    "memoryUsage": "内存使用",
+    "renderQuality": "渲染质量",
+    "targetFps": "目标 FPS",
+    "resolutionScale": "分辨率缩放",
+    "renderOptions": "渲染选项"
   },
   "shortcuts": {
     "title": "快捷键",
@@ -150,7 +182,11 @@
     "background": "背景",
     "foreground": "前景",
     "border": "边框",
-    "text": "文字"
+    "text": "文字",
+    "mode": "主题模式",
+    "primaryColor": "主色调",
+    "preview": "预览",
+    "previewArea": "主题预览区域"
   },
   "languages": {
     "title": "语言",

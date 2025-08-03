@@ -1,55 +1,28 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { VTuberLayout } from './VTuberLayout';
 import { VTuberSceneContainer } from './VTuberScene';
-import { VTuberLayout, StatusIndicator, ControlPanel } from './VTuberLayout';
-import { useVTuberControls } from './VTuberControls';
 import { CameraWidget } from './CameraWidget';
 import { ModelManager } from '../vtuber/ModelManager';
 import { AnimationLibrary } from '../vtuber/AnimationLibrary';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { DataFlowDebugPanel } from '../debug/DataFlowDebugPanel';
-import { useVideoRecognition } from '@/hooks/use-video-recognition';
-import { useModelManager } from '@/hooks/use-model-manager';
-import { useAnimationLibrary } from '@/hooks/use-animation-library';
-import { VTuberState, CameraSettings } from '@/types';
+import { useVTuberControls } from './VTuberControls';
+import { useI18n } from '@/hooks/use-i18n';
 
-// 主 VTuber 应用组件
 export default function VTuberApp() {
-  // 使用控制逻辑 Hook
+  const { t } = useI18n();
   const { state, uiState, handlers } = useVTuberControls();
   
-  // 使用现有的 Hooks
-  const videoRecognition = useVideoRecognition();
-  const modelManager = useModelManager();
-  const animationLibrary = useAnimationLibrary();
-
   // 设置面板状态
   const [showSettings, setShowSettings] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
 
-  // 引用
-  const vrmRef = useRef();
-  const animationManagerRef = useRef();
-  const handDetectionStateRef = useRef();
-
   // 设置引用
-  const setVrmRef = (ref: any) => {
-    vrmRef.current = ref;
-  };
-
-  const setAnimationManagerRef = (manager: any) => {
-    animationManagerRef.current = manager;
-  };
-
-  const setHandDetectionStateRef = (state: any) => {
-    handDetectionStateRef.current = state;
-  };
-
-  // 处理动作捕捉状态更新
-  const handleMocapStatusUpdate = (newStatus: any) => {
-    handlers.handleMocapDataUpdate(newStatus);
-  };
+  const [vrmRef, setVrmRef] = useState(null);
+  const [animationManagerRef, setAnimationManagerRef] = useState(null);
+  const [handDetectionStateRef, setHandDetectionStateRef] = useState(null);
 
   // 处理设置面板
   const handleOpenSettings = () => {
@@ -69,6 +42,12 @@ export default function VTuberApp() {
     setShowDebugPanel(false);
   };
 
+  // 处理动作捕捉状态更新
+  const handleMocapStatusUpdate = (newStatus: any) => {
+    // 可以在这里处理状态更新
+    console.log('Mocap status updated:', newStatus);
+  };
+
   // 场景属性
   const sceneProps = {
     selectedModel: state.selectedModel,
@@ -85,7 +64,7 @@ export default function VTuberApp() {
       enableUserControl: true,
       showHint: true,
       useGameStyle: false,
-    } as CameraSettings,
+    },
     onVrmRef: setVrmRef,
     onAnimationManagerRef: setAnimationManagerRef,
     onHandDetectionStateRef: setHandDetectionStateRef,
@@ -179,9 +158,9 @@ export default function VTuberApp() {
           <button
             onClick={handleOpenDebugPanel}
             className="px-3 py-2 bg-sky-500 text-white rounded-lg text-sm hover:bg-sky-600 transition-colors"
-            title="数据流调试面板 (Ctrl+Shift+D)"
+            title={`${t('vtuber.controls.debugTools')} (Ctrl+Shift+D)`}
           >
-            调试
+            {t('vtuber.controls.debug')}
           </button>
         </div>
       )}

@@ -1,10 +1,16 @@
 import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Vector3, Object3D, ArrowHelper, Color, CanvasTexture, SpriteMaterial, Sprite } from 'three';
+import { Vector3, Object3D, ArrowHelper, Color, CanvasTexture, SpriteMaterial, Sprite, Group } from 'three';
 import { Text } from '@react-three/drei';
 
 // 坐标轴显示组件
-export const CoordinateAxes = ({ position = [0, 0, 0], size = 1 }) => {
+export const CoordinateAxes = ({
+  position = [0, 0, 0] as [number, number, number],
+  size = 1
+}: {
+  position?: [number, number, number];
+  size?: number;
+}) => {
   return (
     <group position={position}>
       {/* X轴 - 红色（左右） */}
@@ -73,11 +79,15 @@ export const CoordinateAxes = ({ position = [0, 0, 0], size = 1 }) => {
   );
 };
 
-// 手臂方向调试组件
-export const ArmDirectionDebugger = ({ vrm, riggedPose, showDebug = true }) => {
-  const leftArrowRef = useRef();
-  const rightArrowRef = useRef();
-  const leftTextRef = useRef();
+interface ArmDirectionDebuggerProps {
+  vrm: any;
+  riggedPose?: any;
+  showDebug?: boolean;
+}
+export const ArmDirectionDebugger: React.FC<ArmDirectionDebuggerProps> = ({ vrm, riggedPose, showDebug = true }) => {
+  const leftArrowRef = useRef<Group>(null);
+  const rightArrowRef = useRef<Group>(null);
+  const leftTextRef = useRef<Group>(null);
   const rightTextRef = useRef();
 
   useFrame(() => {
@@ -172,7 +182,11 @@ export const ArmDirectionDebugger = ({ vrm, riggedPose, showDebug = true }) => {
 };
 
 // 数据显示面板
-export const DataDisplayPanel = ({ riggedPose, position = [-2, 2, 0] }) => {
+interface DataDisplayPanelProps {
+  riggedPose?: any;
+  position?: [number, number, number];
+}
+export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({ riggedPose, position = [-2, 2, 0] }) => {
   if (!riggedPose?.current) return null;
 
   const leftArm = riggedPose.current.LeftUpperArm;
@@ -216,17 +230,18 @@ Z: ${rightArm?.z?.toFixed(3) || 'N/A'} (前后)
   );
 };
 
-// 简化的手臂坐标轴可视化组件
-export const SimpleArmAxes = ({ vrm, showDebug }) => {
+interface SimpleArmAxesProps {
+  vrm: any;
+  showDebug?: boolean;
+}
+export const SimpleArmAxes: React.FC<SimpleArmAxesProps> = ({ vrm, showDebug }) => {
     const armBones = [
         'leftShoulder',    // 左肩
         'leftUpperArm',    // 左上臂
-        'leftLowerArm',    // 左下臂
-        'leftHand',        // 左手腕
+        'leftLowerArm',    // 左前臂
         'rightShoulder',   // 右肩
         'rightUpperArm',   // 右上臂
-        'rightLowerArm',   // 右下臂
-        'rightHand'        // 右手腕
+        'rightLowerArm',   // 右前臂
     ];
 
     if (!vrm || !showDebug) return null;
@@ -299,13 +314,13 @@ export const SimpleArmAxes = ({ vrm, showDebug }) => {
 };
 
 // 创建文本标签的辅助函数
-const createTextLabel = (text, position, color) => {
+const createTextLabel = (text: string, position: [number, number, number], color: string) => {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.width = 256;
     canvas.height = 64;
-
-    context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    if (!context) return null;
+    context.fillStyle = color;
     context.font = '24px Arial';
     context.fillText(text, 10, 40);
 
@@ -313,7 +328,7 @@ const createTextLabel = (text, position, color) => {
     const material = new SpriteMaterial({ map: texture });
     const sprite = new Sprite(material);
     
-    sprite.position.copy(position);
+    sprite.position.copy(new Vector3(...position));
     sprite.scale.set(0.1, 0.025, 1);
     
     return sprite;

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { Holistic, Camera } from '@mediapipe/holistic';
+import { Holistic } from '@mediapipe/holistic';
+import { Camera } from '@mediapipe/camera_utils';
 import { MocapData, FaceData, PoseData, HandsData } from '@/types';
 
 // MediaPipe 处理器类

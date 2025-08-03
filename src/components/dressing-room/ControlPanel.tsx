@@ -1,7 +1,32 @@
 import React, { useState } from 'react';
 import { DraggablePanel } from './DraggablePanel';
+import { useI18n } from '@/hooks/use-i18n';
 
-export const ControlPanel = ({ 
+interface ControlPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onOpenArmTest?: () => void;
+    onOpenHandDebug?: () => void;
+    onOpenSmoothSettings?: () => void;
+    mocapStatus?: any;
+    onOpenSensitivityPanel?: () => void;
+    onOpenModelManager?: () => void;
+    onOpenAnimationLibrary?: () => void;
+    onOpenConfigManager?: () => void;
+    selectedAnimation?: any;
+    showBones?: boolean;
+    onToggleBones?: () => void;
+    showArmAxes?: boolean;
+    onToggleArmAxes?: () => void;
+    axisSettings?: any;
+    onAxisAdjustment?: any;
+    cameraSettings?: any;
+    onCameraSettingsChange?: any;
+    debugSettings?: any;
+    onDebugSettingsChange?: any;
+}
+
+export const ControlPanel: React.FC<ControlPanelProps> = ({ 
     isOpen, 
     onClose, 
     onOpenArmTest, 
@@ -24,11 +49,12 @@ export const ControlPanel = ({
     debugSettings,
     onDebugSettingsChange
 }) => {
+    const { t } = useI18n();
     const [activeTab, setActiveTab] = useState('mocap');
 
     return (
         <DraggablePanel
-            title="🎛️ 控制面板"
+            title={`🎛️ ${t('vtuber.controls.title')}`}
             defaultPosition={{ x: 150, y: 150 }}
             minWidth={400}
             minHeight={500}
@@ -44,10 +70,10 @@ export const ControlPanel = ({
                 {/* 标签页导航 */}
                 <div className="flex border-b border-gray-200 mb-4">
                     {[
-                        { id: 'mocap', label: '动捕状态', icon: '📹' },
-                        { id: 'camera', label: '相机设置', icon: '📷' },
-                        { id: 'debug', label: '调试选项', icon: '🐛' },
-                        { id: 'quick', label: '快速操作', icon: '⚡' }
+                        { id: 'mocap', label: t('vtuber.controls.mocapStatus'), icon: '📹' },
+                        { id: 'camera', label: t('vtuber.controls.cameraSettings'), icon: '📷' },
+                        { id: 'debug', label: t('vtuber.controls.debugOptions'), icon: '🐛' },
+                        { id: 'quick', label: t('vtuber.controls.quickActions'), icon: '⚡' }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -70,29 +96,29 @@ export const ControlPanel = ({
                     {activeTab === 'mocap' && (
                         <div className="space-y-4">
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">动捕状态</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.controls.mocapStatus')}</h4>
                                 <div className="grid grid-cols-2 gap-2 text-xs">
                                     <div className={`flex items-center space-x-1 ${mocapStatus?.face ? 'text-green-600' : 'text-gray-400'}`}>
                                         <div className={`w-2 h-2 rounded-full ${mocapStatus?.face ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                                        <span>面部</span>
+                                        <span>{t('vtuber.controls.face')}</span>
                                     </div>
                                     <div className={`flex items-center space-x-1 ${mocapStatus?.pose ? 'text-green-600' : 'text-gray-400'}`}>
                                         <div className={`w-2 h-2 rounded-full ${mocapStatus?.pose ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                                        <span>姿态</span>
+                                        <span>{t('vtuber.controls.pose')}</span>
                                     </div>
                                     <div className={`flex items-center space-x-1 ${mocapStatus?.leftHand ? 'text-green-600' : 'text-gray-400'}`}>
                                         <div className={`w-2 h-2 rounded-full ${mocapStatus?.leftHand ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                                        <span>左手</span>
+                                        <span>{t('vtuber.controls.leftHand')}</span>
                                     </div>
                                     <div className={`flex items-center space-x-1 ${mocapStatus?.rightHand ? 'text-green-600' : 'text-gray-400'}`}>
                                         <div className={`w-2 h-2 rounded-full ${mocapStatus?.rightHand ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                                        <span>右手</span>
+                                        <span>{t('vtuber.controls.rightHand')}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">当前动画</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.animation.current')}</h4>
                                 <div className="text-xs text-gray-600">
                                     {selectedAnimation ? (
                                         <div className="bg-blue-50 p-2 rounded">
@@ -100,25 +126,25 @@ export const ControlPanel = ({
                                             <div className="text-gray-500">{selectedAnimation.description}</div>
                                         </div>
                                     ) : (
-                                        <div className="text-gray-400">未选择动画</div>
+                                        <div className="text-gray-400">{t('vtuber.animation.noAnimationSelected')}</div>
                                     )}
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700">快速操作</h4>
+                                <h4 className="text-sm font-semibold text-gray-700">{t('vtuber.controls.quickActions')}</h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={onOpenModelManager}
                                         className="px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                                     >
-                                        管理模型
+                                        {t('vtuber.model.manager')}
                                     </button>
                                     <button
                                         onClick={onOpenAnimationLibrary}
                                         className="px-3 py-2 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
                                     >
-                                        动画库
+                                        {t('vtuber.animation.library')}
                                     </button>
                                 </div>
                             </div>
@@ -129,7 +155,7 @@ export const ControlPanel = ({
                     {activeTab === 'camera' && (
                         <div className="space-y-4">
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">相机控制</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.controls.cameraControl')}</h4>
                                 <div className="space-y-2 text-xs">
                                     <label className="flex items-center space-x-2">
                                         <input
@@ -138,7 +164,7 @@ export const ControlPanel = ({
                                             onChange={(e) => onCameraSettingsChange('enableUserControl', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>启用用户控制</span>
+                                        <span>{t('vtuber.controls.enableUserControl')}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                         <input
@@ -147,7 +173,7 @@ export const ControlPanel = ({
                                             onChange={(e) => onCameraSettingsChange('enableAutoTrack', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>自动跟踪</span>
+                                        <span>{t('vtuber.controls.autoTrack')}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                         <input
@@ -156,13 +182,13 @@ export const ControlPanel = ({
                                             onChange={(e) => onCameraSettingsChange('showHint', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>显示提示</span>
+                                        <span>{t('vtuber.controls.showHint')}</span>
                                     </label>
                                 </div>
                             </div>
 
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">鼠标控制</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.controls.mouseControl')}</h4>
                                 <div className="space-y-2 text-xs">
                                     <label className="flex items-center space-x-2">
                                         <input
@@ -171,7 +197,7 @@ export const ControlPanel = ({
                                             onChange={(e) => onCameraSettingsChange('useLeftMouseButton', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>左键旋转</span>
+                                        <span>{t('vtuber.controls.leftMouseRotate')}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                         <input
@@ -180,7 +206,7 @@ export const ControlPanel = ({
                                             onChange={(e) => onCameraSettingsChange('useRightMouseButton', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>右键平移</span>
+                                        <span>{t('vtuber.controls.rightMousePan')}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                         <input
@@ -189,7 +215,7 @@ export const ControlPanel = ({
                                             onChange={(e) => onCameraSettingsChange('useMiddleMouseButton', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>中键缩放</span>
+                                        <span>{t('vtuber.controls.middleMouseZoom')}</span>
                                     </label>
                                 </div>
                             </div>
@@ -200,58 +226,52 @@ export const ControlPanel = ({
                     {activeTab === 'debug' && (
                         <div className="space-y-4">
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">显示选项</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.controls.debugOptions')}</h4>
                                 <div className="space-y-2 text-xs">
                                     <label className="flex items-center space-x-2">
                                         <input
                                             type="checkbox"
                                             checked={showBones}
-                                            onChange={(e) => onToggleBones(e.target.checked)}
+                                            onChange={onToggleBones}
                                             className="rounded"
                                         />
-                                        <span>显示骨骼</span>
+                                        <span>{t('vtuber.controls.showBones')}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                         <input
                                             type="checkbox"
                                             checked={showArmAxes}
-                                            onChange={(e) => onToggleArmAxes(e.target.checked)}
+                                            onChange={onToggleArmAxes}
                                             className="rounded"
                                         />
-                                        <span>显示手臂坐标轴</span>
+                                        <span>{t('vtuber.controls.showArmAxes')}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                         <input
                                             type="checkbox"
                                             checked={debugSettings?.showDebug}
-                                            onChange={(e) => onDebugSettingsChange({ ...debugSettings, showDebug: e.target.checked })}
+                                            onChange={(e) => onDebugSettingsChange('showDebug', e.target.checked)}
                                             className="rounded"
                                         />
-                                        <span>显示调试信息</span>
+                                        <span>{t('vtuber.controls.showDebug')}</span>
                                     </label>
                                 </div>
                             </div>
 
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">调试工具</h4>
-                                <div className="grid grid-cols-1 gap-2">
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.controls.debugTools')}</h4>
+                                <div className="grid grid-cols-2 gap-2">
                                     <button
-                                        onClick={onOpenArmTest}
-                                        className="px-3 py-2 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
-                                    >
-                                        手臂测试
-                                    </button>
-                                    <button
-                                        onClick={onOpenHandDebug}
+                                        onClick={onOpenSensitivityPanel}
                                         className="px-3 py-2 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                                     >
-                                        手部调试
+                                        {t('vtuber.controls.sensitivity')}
                                     </button>
                                     <button
-                                        onClick={onOpenSmoothSettings}
-                                        className="px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                        onClick={onOpenConfigManager}
+                                        className="px-3 py-2 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
                                     >
-                                        平滑设置
+                                        {t('vtuber.controls.config')}
                                     </button>
                                 </div>
                             </div>
@@ -262,48 +282,32 @@ export const ControlPanel = ({
                     {activeTab === 'quick' && (
                         <div className="space-y-4">
                             <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">常用操作</h4>
+                                <h4 className="text-sm font-semibold mb-2 text-gray-700">{t('vtuber.controls.quickActions')}</h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={onOpenModelManager}
                                         className="px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                                     >
-                                        切换模型
+                                        {t('vtuber.model.manager')}
                                     </button>
                                     <button
                                         onClick={onOpenAnimationLibrary}
                                         className="px-3 py-2 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
                                     >
-                                        切换动画
+                                        {t('vtuber.animation.library')}
                                     </button>
                                     <button
-                                        onClick={() => onToggleBones(!showBones)}
-                                        className="px-3 py-2 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                                        onClick={onOpenSensitivityPanel}
+                                        className="px-3 py-2 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                                     >
-                                        {showBones ? '隐藏' : '显示'}骨骼
-                                    </button>
-                                    <button
-                                        onClick={() => onToggleArmAxes(!showArmAxes)}
-                                        className="px-3 py-2 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
-                                    >
-                                        {showArmAxes ? '隐藏' : '显示'}坐标轴
+                                        {t('vtuber.controls.sensitivity')}
                                     </button>
                                     <button
                                         onClick={onOpenConfigManager}
-                                        className="px-3 py-2 text-xs bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors col-span-2"
+                                        className="px-3 py-2 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
                                     >
-                                        ⚙️ 配置管理器
+                                        {t('vtuber.controls.config')}
                                     </button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="text-sm font-semibold mb-2 text-gray-700">系统信息</h4>
-                                <div className="text-xs text-gray-600 space-y-1">
-                                    <div>当前模型: {selectedAnimation?.name || '默认模型'}</div>
-                                    <div>当前动画: {selectedAnimation?.name || '待机动画'}</div>
-                                    <div>骨骼显示: {showBones ? '开启' : '关闭'}</div>
-                                    <div>坐标轴: {showArmAxes ? '开启' : '关闭'}</div>
                                 </div>
                             </div>
                         </div>

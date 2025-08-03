@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "VTuber モーションキャプチャーシステム",
-    "description": "Next.jsとThree.jsベースのリアルタイム仮想アバター動作捕捉アプリケーション",
+    "title": "VTuberモーションキャプチャシステム",
+    "description": "Next.jsとThree.jsベースのリアルタイム仮想アバターモーションキャプチャアプリケーション",
     "loading": "読み込み中...",
     "error": "エラー",
     "success": "成功",
@@ -17,36 +17,36 @@
     "all": "すべて",
     "none": "なし",
     "loading": "読み込み中...",
-    "noData": "データがありません",
+    "noData": "データなし",
     "retry": "再試行",
     "back": "戻る",
     "next": "次へ",
     "previous": "前へ"
   },
   "vtuber": {
-    "title": "VTuber モーションキャプチャー",
-    "subtitle": "リアルタイム仮想アバター動作捕捉システム",
+    "title": "VTuberモーションキャプチャ",
+    "subtitle": "リアルタイム仮想アバターモーションキャプチャシステム",
     "camera": {
       "title": "カメラ",
       "start": "カメラ開始",
       "stop": "カメラ停止",
       "connected": "カメラ接続済み",
       "disconnected": "カメラ未接続",
-      "error": "カメラの開始に失敗しました",
-      "permission": "カメラの許可が必要です"
+      "error": "カメラ開始失敗",
+      "permission": "カメラ権限が必要"
     },
     "model": {
       "title": "モデル管理",
       "manager": "モデルマネージャー",
       "upload": "モデルアップロード",
       "select": "モデル選択",
-      "loading": "モデルを読み込み中...",
+      "loading": "モデル読み込み中...",
       "noModels": "モデルが見つかりません",
-      "search": "モデルを検索...",
-      "category": "カテゴリー",
-      "allCategories": "すべてのカテゴリー",
-      "uploadVRM": "VRMモデルをアップロード",
-      "selectVRMFile": "VRMファイルを選択",
+      "search": "モデル検索...",
+      "category": "カテゴリ",
+      "allCategories": "すべてのカテゴリ",
+      "uploadVRM": "VRMモデルアップロード",
+      "selectVRMFile": "VRMファイル選択",
       "uploading": "アップロード中...",
       "uploadSuccess": "アップロード成功",
       "uploadError": "アップロード失敗",
@@ -58,19 +58,20 @@
       "library": "アニメーションライブラリ",
       "upload": "アニメーションアップロード",
       "select": "アニメーション選択",
-      "loading": "アニメーションを読み込み中...",
+      "loading": "アニメーション読み込み中...",
       "noAnimations": "アニメーションが見つかりません",
-      "search": "アニメーションを検索...",
-      "category": "カテゴリー",
-      "allCategories": "すべてのカテゴリー",
-      "uploadFBX": "アニメーションファイルをアップロード",
-      "selectFBXFile": "FBXファイルを選択",
+      "search": "アニメーション検索...",
+      "category": "カテゴリ",
+      "allCategories": "すべてのカテゴリ",
+      "uploadFBX": "アニメーションファイルアップロード",
+      "selectFBXFile": "FBXファイル選択",
       "uploading": "アップロード中...",
       "uploadSuccess": "アップロード成功",
       "uploadError": "アップロード失敗",
       "duration": "時間",
       "type": "タイプ",
-      "current": "現在"
+      "current": "現在のアニメーション",
+      "noAnimationSelected": "アニメーション未選択"
     },
     "controls": {
       "title": "コントロールパネル",
@@ -78,21 +79,42 @@
       "debug": "デバッグ",
       "settings": "設定",
       "config": "設定",
-      "showBones": "ボーンを表示",
-      "hideBones": "ボーンを非表示",
+      "showBones": "ボーン表示",
+      "hideBones": "ボーン非表示",
       "debugMode": "デバッグモード",
-      "normalMode": "通常モード"
+      "normalMode": "通常モード",
+      "mocapStatus": "モーキャプ状態",
+      "cameraSettings": "カメラ設定",
+      "debugOptions": "デバッグオプション",
+      "quickActions": "クイックアクション",
+      "face": "顔",
+      "pose": "ポーズ",
+      "leftHand": "左手",
+      "rightHand": "右手",
+      "cameraControl": "カメラ制御",
+      "enableUserControl": "ユーザー制御を有効化",
+      "autoTrack": "自動追跡",
+      "showHint": "ヒントを表示",
+      "mouseControl": "マウス制御",
+      "leftMouseRotate": "左マウス回転",
+      "rightMousePan": "右マウスパン",
+      "middleMouseZoom": "中マウスズーム",
+      "showArmAxes": "腕の軸を表示",
+      "showDebug": "デバッグ情報を表示",
+      "debugTools": "デバッグツール",
+      "sensitivity": "感度設定"
     },
     "status": {
       "processing": "処理中...",
       "error": "エラーが発生しました",
-      "success": "操作が成功しました",
+      "success": "操作成功",
       "warning": "警告",
       "info": "情報"
     }
   },
   "settings": {
     "title": "設定",
+    "description": "アプリケーション設定とプリファレンスを構成",
     "general": "一般",
     "performance": "パフォーマンス",
     "display": "表示",
@@ -106,7 +128,11 @@
     "update": "更新",
     "reset": "リセット",
     "export": "エクスポート",
-    "import": "インポート"
+    "import": "インポート",
+    "unsaved": "未保存",
+    "basicSettings": "基本設定",
+    "appName": "アプリケーション名",
+    "systemInfo": "システム情報"
   },
   "performance": {
     "title": "パフォーマンス設定",
@@ -116,12 +142,18 @@
     "low": "低",
     "fps": "FPS",
     "resolution": "解像度",
-    "antialiasing": "アンチエイリアシング",
+    "antialiasing": "アンチエイリアス",
     "shadows": "シャドウ",
     "bloom": "ブルーム",
     "optimization": "最適化",
     "auto": "自動",
-    "manual": "手動"
+    "manual": "手動",
+    "currentFps": "現在のFPS",
+    "memoryUsage": "メモリ使用量",
+    "renderQuality": "レンダリング品質",
+    "targetFps": "目標FPS",
+    "resolutionScale": "解像度スケール",
+    "renderOptions": "レンダリングオプション"
   },
   "shortcuts": {
     "title": "ショートカット",
@@ -150,7 +182,11 @@
     "background": "背景",
     "foreground": "前景",
     "border": "ボーダー",
-    "text": "テキスト"
+    "text": "テキスト",
+    "mode": "テーマモード",
+    "primaryColor": "プライマリカラー",
+    "preview": "プレビュー",
+    "previewArea": "テーマプレビューエリア"
   },
   "languages": {
     "title": "言語",
@@ -158,6 +194,6 @@
     "en": "English",
     "ja": "日本語",
     "current": "現在の言語",
-    "select": "言語を選択"
+    "select": "言語選択"
   }
 } 

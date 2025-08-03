@@ -177,29 +177,15 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
             console.log('CameraWidget: 开始初始化 MediaPipe');
 
-            // 初始化 Holistic - 使用动态灵敏度设置
+            // 初始化 Holistic - 使用基本配置
             holisticRef.current = new Holistic({
                 locateFile: (file) => {
                     return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/${file}`;
                 },
-                // 启用手部检测
-                enableSegmentation: false,
-                smoothSegmentation: true,
-                // 使用动态灵敏度设置
-                minDetectionConfidence: settings.minDetectionConfidence,
-                minTrackingConfidence: settings.minTrackingConfidence,
-                // 确保启用手部检测
-                staticImageMode: false,
-                maxNumHands: 2,
-                // 启用 3D 姿态数据
-                enable3d: true,
-                // 手部检测配置 - 使用动态设置
-                minHandDetectionConfidence: settings.minHandDetectionConfidence,
-                minHandTrackingConfidence: settings.minHandTrackingConfidence,
             });
 
             // 设置结果回调
-            holisticRef.current.onResults((results) => {
+            holisticRef.current.onResults((results: any) => {
                 drawResults(results);
                 
                 // 眨眼检测 - 使用FaceMesh的眼睛关键点
@@ -273,7 +259,11 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
         } catch (error) {
             console.error('Camera start error:', error);
-            setError('摄像头启动失败: ' + error.message);
+            let msg = '摄像头启动失败';
+            if (typeof error === 'object' && error && 'message' in error) {
+                msg += ': ' + (error as any).message;
+            }
+            setError(msg);
         }
     };
 
