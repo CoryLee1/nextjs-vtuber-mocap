@@ -31,7 +31,6 @@ export class MediaPipeProcessor {
         minDetectionConfidence: 0.3,
         minTrackingConfidence: 0.3,
         refineFaceLandmarks: true,
-        maxNumHands: 2,
       });
 
       this.holistic.onResults(this.handleResults.bind(this));
@@ -155,7 +154,7 @@ export class MediaPipeProcessor {
     const center = landmarks.reduce(
       (acc, point) => [acc[0] + point.x, acc[1] + point.y, acc[2] + point.z],
       [0, 0, 0]
-    ).map(val => val / landmarks.length);
+    ).map((val: number) => val / landmarks.length);
 
     return center as [number, number, number];
   }
@@ -190,7 +189,7 @@ export class MediaPipeProcessor {
     const center = landmarks.reduce(
       (acc, point) => [acc[0] + point.x, acc[1] + point.y, acc[2] + point.z],
       [0, 0, 0]
-    ).map(val => val / landmarks.length);
+    ).map((val: number) => val / landmarks.length);
 
     return center as [number, number, number];
   }
@@ -212,7 +211,7 @@ export class MediaPipeProcessor {
     const center = landmarks.reduce(
       (acc, point) => [acc[0] + point.x, acc[1] + point.y, acc[2] + point.z],
       [0, 0, 0]
-    ).map(val => val / landmarks.length);
+    ).map((val: number) => val / landmarks.length);
 
     return center as [number, number, number];
   }

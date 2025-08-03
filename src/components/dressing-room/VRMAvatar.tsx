@@ -18,8 +18,14 @@ const tmpVec3 = new Vector3();
 const tmpQuat = new Quaternion();
 const tmpEuler = new Euler();
 
+interface ModelLoadingIndicatorProps {
+  isLoading?: boolean;
+  error?: string | null;
+  modelName?: string;
+}
+
 // 模型加载状态组件
-const ModelLoadingIndicator = ({ isLoading, error, modelName }) => {
+const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({ isLoading, error, modelName }) => {
   if (error) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -29,7 +35,9 @@ const ModelLoadingIndicator = ({ isLoading, error, modelName }) => {
             无法加载模型 &quot;{modelName}&quot;，请检查网络连接或稍后重试。
           </div>
           <div className="text-sm text-gray-500">
-            错误信息: {error.message || '未知错误'}
+            错误信息: {typeof error === 'object' && error && 'message' in error 
+            ? (error as any).message 
+            : error}
           </div>
         </div>
       </div>
@@ -61,10 +69,10 @@ const ModelLoadingIndicator = ({ isLoading, error, modelName }) => {
 };
 
 // 性能监控辅助函数
-const createPerformanceMonitor = (name) => {
+const createPerformanceMonitor = (name: string) => {
     const startTime = performance.now();
     return {
-        checkpoint: (checkpointName) => {
+        checkpoint: (checkpointName: string) => {
             const currentTime = performance.now();
             const duration = currentTime - startTime;
             if (duration > 5) { // 只记录超过5ms的检查点
@@ -83,19 +91,23 @@ const createPerformanceMonitor = (name) => {
 };
 
 // 性能优化的批量更新函数
-const batchUpdateDebugInfo = (debugInfo, updates) => {
+const batchUpdateDebugInfo = (debugInfo: any, updates: any) => {
     Object.assign(debugInfo, updates);
 };
 
 // 优化的错误处理函数
-const handleProcessingError = (error, processName, debugInfo) => {
+const handleProcessingError = (error: any, processName: string, debugInfo: any) => {
     console.error(`VRMAvatar: ${processName} 错误`, error.message);
     debugInfo.errorCount++;
 };
 
+interface BoneVisualizerProps {
+  vrm: any;
+}
+
 // 骨骼可视化组件 - 使用圆柱体
-const BoneVisualizer = ({ vrm }) => {
-    const [boneMeshes, setBoneMeshes] = useState([]);
+const BoneVisualizer: React.FC<BoneVisualizerProps> = ({ vrm }) => {
+    const [boneMeshes, setBoneMeshes] = useState<any[]>([]);
 
     useEffect(() => {
         if (!vrm?.humanoid) {
@@ -106,7 +118,7 @@ const BoneVisualizer = ({ vrm }) => {
         const humanBones = vrm.humanoid.humanBones;
         const boneNames = Object.keys(humanBones);
 
-        const meshes = [];
+        const meshes: any[] = [];
 
         // 创建骨骼可视化 - 使用圆柱体
         boneNames.forEach((boneName) => {
@@ -163,7 +175,7 @@ const BoneVisualizer = ({ vrm }) => {
         const humanBones = vrm.humanoid.humanBones;
         const boneNames = Object.keys(humanBones);
 
-        boneMeshes.forEach((mesh, index) => {
+        (boneMeshes as any[]).forEach((mesh: any, index: number) => {
             const boneName = boneNames[index];
             if (!boneName) return;
 
@@ -206,38 +218,60 @@ const BoneVisualizer = ({ vrm }) => {
     );
 };
 
-export const VRMAvatar = forwardRef(({
+// VRMAvatar props interface for forwardRef
+interface VRMAvatarProps {
+    modelUrl?: string;
+    animationUrl?: string;
+    scale?: number;
+    position?: [number, number, number];
+    showBones?: boolean;
+    showDebug?: boolean;
+    testSettings?: any;
+    showArmAxes?: boolean;
+    axisSettings?: any;
+    onAnimationManagerRef?: any;
+    onHandDetectionStateRef?: any;
+    onMocapStatusUpdate?: any;
+    debugAxisConfig?: any;
+    onAxisChange?: any;
+    onRiggedPoseUpdate?: any;
+    handDebugAxisConfig?: any;
+    onHandAxisChange?: any;
+    onRiggedHandUpdate?: any;
+    [key: string]: any;
+}
+export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     modelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
-    animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx', // 新增：动画URL参数
+    animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
     scale = 1,
     position = [0, 0, 0],
-    showBones = false, // 添加骨骼可视化控制
-    showDebug = false,  // 添加这个
-    testSettings = null, // 添加这个
-    showArmAxes = false, // 新增手臂坐标轴控制
-    axisSettings = { 
-        leftArm: { x: 1, y: 1, z: 1 }, 
+    showBones = false,
+    showDebug = false,
+    testSettings = null,
+    showArmAxes = false,
+    axisSettings = {
+        leftArm: { x: 1, y: 1, z: 1 },
         rightArm: { x: -1, y: 1, z: 1 },
         leftHand: { x: 1, y: 1, z: -1 },
         rightHand: { x: -1, y: 1, z: -1 },
-        neck: { x: -1, y: 1, z: -1 } // 新增脖子设置
-    }, // 新增坐标轴设置，因为这个确实要矫正
-    onAnimationManagerRef = null, // 新增：动画管理器引用回调
-    onHandDetectionStateRef = null, // 新增：手部检测状态引用回调
-    onMocapStatusUpdate = null, // 新增：动捕状态更新回调
-    debugAxisConfig = null, // 新增：调试面板坐标轴配置
-    onAxisChange = null, // 新增：坐标轴配置变化回调
-    onRiggedPoseUpdate = null, // 新增：riggedPose更新回调
-    handDebugAxisConfig = null, // 新增：手部调试面板坐标轴配置
-    onHandAxisChange = null, // 新增：手部坐标轴配置变化回调
-    onRiggedHandUpdate = null, // 新增：riggedHand更新回调
+        neck: { x: -1, y: 1, z: -1 }
+    },
+    onAnimationManagerRef = null,
+    onHandDetectionStateRef = null,
+    onMocapStatusUpdate = null,
+    debugAxisConfig = null,
+    onAxisChange = null,
+    onRiggedPoseUpdate = null,
+    handDebugAxisConfig = null,
+    onHandAxisChange = null,
+    onRiggedHandUpdate = null,
     ...props
 }, ref) => {
     // 获取灵敏度设置
     const { settings } = useSensitivitySettings();
 
     // 加载 VRM 模型 - 参考提供的文件
-    const { scene, userData, errors, isLoading } = useGLTF(
+    const gltfResult: any = useGLTF(
         modelUrl,
         undefined,
         undefined,
@@ -247,6 +281,7 @@ export const VRMAvatar = forwardRef(({
             });
         }
     );
+    const { scene, userData, errors, isLoading } = gltfResult;
 
     // 检查加载错误
     if (errors) {
@@ -381,7 +416,7 @@ export const VRMAvatar = forwardRef(({
         VRMUtils.combineMorphs(vrm);
 
         // 禁用视锥剔除以提高性能
-        vrm.scene.traverse((obj) => {
+        scene.traverse((obj: any) => {
             obj.frustumCulled = false;
         });
 
@@ -417,7 +452,7 @@ export const VRMAvatar = forwardRef(({
     }, [vrm, scene, camera]);
 
     // MediaPipe 结果处理回调 - 性能优化版本
-    const resultsCallback = useCallback((results) => {
+    const resultsCallback = useCallback((results: any) => {
         // 创建性能监控器
         const monitor = createPerformanceMonitor('MediaPipe回调');
         const startTime = performance.now();
@@ -602,7 +637,7 @@ export const VRMAvatar = forwardRef(({
     }, [resultsCallback, setResultsCallback]);
 
     // 表情插值函数
-    const lerpExpression = useCallback((name, value, lerpFactor) => {
+    const lerpExpression = useCallback((name: string, value: number, lerpFactor: number) => {
         if (!vrm?.expressionManager) return;
 
         const currentValue = vrm.expressionManager.getValue(name) || 0;
@@ -611,7 +646,7 @@ export const VRMAvatar = forwardRef(({
     }, [vrm]);
 
     // 骨骼名称映射函数
-    const mapBoneName = useCallback((kalidokitBoneName) => {
+    const mapBoneName = useCallback((kalidokitBoneName: string) => {
         const boneNameMap = {
             // 躯干
             'Spine': 'spine',
@@ -682,7 +717,7 @@ export const VRMAvatar = forwardRef(({
     }, []);
 
     // 骨骼旋转函数
-    const rotateBone = useCallback((boneName, value, slerpFactor, flip = { x: 1, y: 1, z: 1 }) => {
+    const rotateBone = useCallback((boneName: string, value: any, slerpFactor: number, flip = { x: 1, y: 1, z: 1 }) => {
         if (!vrm?.humanoid || !value) {
             return;
         }
