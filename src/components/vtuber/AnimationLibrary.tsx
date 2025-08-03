@@ -42,15 +42,15 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
   const selectedAnimation = getSelectedAnimation();
 
   // 过滤动画 - 添加安全检查
-  const filteredAnimations = (animations || []).filter(animation => {
+  const filteredAnimations = (animations || []).filter((animation: any) => {
     const matchesSearch = animation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (animation.description && animation.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      (animation.description && animation.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || animation.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   // 获取所有分类 - 添加安全检查
-  const categories = ['all', ...new Set((animations || []).map(animation => animation.category))];
+  const categories = ['all', ...new Set((animations || []).map((animation: any) => animation.category))];
 
   // 处理动画选择
   const handleAnimationSelect = (animation: Animation) => {
@@ -245,7 +245,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
               <span>找到 {filteredAnimations.length} 个动画</span>
               {selectedAnimation && (
                 <span className="text-sky-700 font-medium">
-                  {t('vtuber.animation.current')}: {selectedAnimation.name}
+                  {t('vtuber.animation.current')}: {(selectedAnimation as any).name}
                 </span>
               )}
             </div>
@@ -283,12 +283,12 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAnimations.map((animation) => (
+                {filteredAnimations.map((animation: any) => (
                   <Card
                     key={animation.id}
                     onClick={() => handleAnimationSelect(animation)}
                     className={`cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white ${
-                      selectedAnimation?.id === animation.id ? 'ring-2 ring-sky-500' : ''
+                      (selectedAnimation as any)?.id === animation.id ? 'ring-2 ring-sky-500' : ''
                     }`}
                   >
                     <CardContent className="p-4">
@@ -330,7 +330,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                         {/* 标签 */}
                         {animation.tags && animation.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
-                            {animation.tags.slice(0, 3).map((tag, index) => (
+                            {animation.tags.slice(0, 3).map((tag: any, index: number) => (
                               <Badge
                                 key={index}
                                 variant="secondary"

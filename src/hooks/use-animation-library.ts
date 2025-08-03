@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { getAnimations } from '@/lib/resource-manager';
 
 export const useAnimationLibrary = () => {
-    const [animations, setAnimations] = useState([]);
-    const [selectedAnimation, setSelectedAnimation] = useState(null);
+    const [animations, setAnimations] = useState<any[]>([]);
+    const [selectedAnimation, setSelectedAnimation] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     // 从云端加载动画
     useEffect(() => {
@@ -14,7 +14,7 @@ export const useAnimationLibrary = () => {
             setError(null);
             
             try {
-                const cloudAnimations = await getAnimations();
+                const cloudAnimations = await getAnimations(undefined);
                 
                 // 添加默认动画作为备用
                 const defaultAnimations = [
@@ -72,7 +72,7 @@ export const useAnimationLibrary = () => {
     }, []);
 
     // 选择动画
-    const selectAnimation = (animation) => {
+    const selectAnimation = (animation: any) => {
         setSelectedAnimation(animation);
         console.log('动画选择成功:', animation.name);
     };
@@ -89,7 +89,7 @@ export const useAnimationLibrary = () => {
     const getSelectedAnimation = () => selectedAnimation;
 
     // 按分类获取动画
-    const getAnimationsByCategory = (category) => {
+    const getAnimationsByCategory = (category: any) => {
         return animations.filter(anim => anim.category === category);
     };
 

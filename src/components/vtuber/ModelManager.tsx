@@ -18,7 +18,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
-import { getModels, uploadModel } from '@/lib/resource-manager';
+import { getModels } from '@/lib/resource-manager';
 import { VRMModel } from '@/types';
 import { useI18n } from '@/hooks/use-i18n';
 
@@ -43,7 +43,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
     const loadModels = async () => {
       setLoading(true);
       try {
-        const data = await getModels();
+        const data = await getModels(undefined);
         setModels(data || []);
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -59,14 +59,14 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
   useEffect(() => {
     const search = async () => {
       if (!searchTerm.trim()) {
-        const data = await getModels();
+        const data = await getModels(undefined);
         setModels(data || []);
         return;
       }
 
       setLoading(true);
       try {
-        const results = await getModels();
+        const results = await getModels(undefined);
         const filtered = results.filter(model => 
           model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (model.tags && model.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
@@ -156,7 +156,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
   const loadModels = async () => {
     setLoading(true);
     try {
-      const data = await getModels();
+      const data = await getModels(undefined);
       setModels(data || []);
     } catch (error) {
       console.error('Failed to load models:', error);
@@ -338,7 +338,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling!.style.display = 'flex';
+                              (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = 'flex';
                             }}
                           />
                         ) : (

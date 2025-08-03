@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { DraggablePanel } from './DraggablePanel';
+import { DraggablePanel } from '../dressing-room/DraggablePanel';
 import { resourceManager, getModels, getAnimations, searchResources } from '@/lib/resource-manager';
 
-export const ResourceSelector = ({ 
-  isOpen, 
-  onClose, 
-  type = 'models', // 'models' or 'animations'
+interface ResourceSelectorProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type?: string;
+  onSelect?: (item: any) => void;
+  selectedId?: string | null;
+}
+export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
+  isOpen,
+  onClose,
+  type = 'models',
   onSelect,
   selectedId = null
 }) => {
-  const [resources, setResources] = useState([]);
+  const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -21,9 +28,9 @@ export const ResourceSelector = ({
       try {
         let data;
         if (type === 'models') {
-          data = await getModels();
+          data = await getModels(undefined);
         } else if (type === 'animations') {
-          data = await getAnimations();
+          data = await getAnimations(undefined);
         }
         setResources(data || []);
       } catch (error) {
@@ -43,7 +50,7 @@ export const ResourceSelector = ({
     const search = async () => {
       if (!searchTerm.trim()) {
         // 重新加载所有资源
-        const data = type === 'models' ? await getModels() : await getAnimations();
+        const data = type === 'models' ? await getModels(undefined) : await getAnimations(undefined);
         setResources(data || []);
         return;
       }
@@ -73,17 +80,17 @@ export const ResourceSelector = ({
   const categories = ['all', ...new Set(resources.map(r => r.category))];
 
   // 处理选择
-  const handleSelect = (resource) => {
-    onSelect(resource);
+  const handleSelect = (resource: any) => {
+    onSelect?.(resource);
     onClose();
   };
 
   // 格式化文件大小
-  const formatFileSize = (size) => {
+  const formatFileSize = (size: any) => {
     if (typeof size === 'string') return size;
     if (size < 1024) return `${size}B`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}KB`;
-    return `${(size / (1024 * 1024)).toFixed(1)}MB`;
+    return `${(size / 1024 / 1024).toFixed(1)}MB`;
   };
 
   return (
@@ -157,8 +164,11 @@ export const ResourceSelector = ({
                         alt={resource.name}
                         className="w-full h-full object-cover rounded"
                         onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
+                          const target = e.target as HTMLElement;
+                          target.style.display = 'none';
+                          if (target.nextSibling && target.nextSibling instanceof HTMLElement) {
+                            (target.nextSibling as HTMLElement).style.display = 'flex';
+                          }
                         }}
                       />
                     ) : (
@@ -185,7 +195,7 @@ export const ResourceSelector = ({
                     {/* 标签 */}
                     {resource.tags && resource.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {resource.tags.slice(0, 3).map((tag, index) => (
+                        {resource.tags.slice(0, 3).map((tag: any, index: number) => (
                           <span
                             key={index}
                             className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"

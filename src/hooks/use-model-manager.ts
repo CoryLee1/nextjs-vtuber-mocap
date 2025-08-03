@@ -50,12 +50,12 @@ const ONLINE_MODELS = [
 ];
 
 export const useModelManager = () => {
-  const [uploadedModels, setUploadedModels] = useState([]);
+  const [uploadedModels, setUploadedModels] = useState<any[]>([]);
   const [selectedModelId, setSelectedModelId] = useState('avatar-sample-a');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [downloadingIds, setDownloadingIds] = useState(new Set());
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   
   // 清除错误
   const clearError = useCallback(() => {
@@ -74,14 +74,14 @@ export const useModelManager = () => {
   }, [getAllModels, selectedModelId]);
 
   // 生成缩略图（占位符实现）
-  const generateThumbnail = useCallback(async (file) => {
+  const generateThumbnail = useCallback(async (file: any) => {
     // TODO: 实现真实的 VRM 缩略图生成
     // 现在返回 1111.jpg
     return '/images/1111.jpg';
   }, []);
 
   // 上传模型到 S3
-  const uploadModel = useCallback(async (file) => {
+  const uploadModel = useCallback(async (file: any) => {
     setIsUploading(true);
     setUploadProgress(0);
     clearError();
@@ -94,9 +94,7 @@ export const useModelManager = () => {
       }
 
       // 上传到 S3
-      const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
-        setUploadProgress(progress);
-      });
+      const uploadResult = await s3Uploader.uploadFile(file);
       
       // 生成缩略图
       const thumbnail = await generateThumbnail(file);
@@ -104,13 +102,13 @@ export const useModelManager = () => {
       const newModel = {
         id: `uploaded-${Date.now()}`,
         name: file.name.replace(/\.(vrm|fbx)$/i, ''),
-        url: uploadResult.url,
+        url: (uploadResult as any).url,
         thumbnail: thumbnail,
         isUploaded: true,
         size: s3Uploader.formatFileSize(file.size),
         uploadDate: new Date().toLocaleDateString('zh-CN'),
         originalName: file.name,
-        s3Key: uploadResult.fileName,
+        s3Key: (uploadResult as any).fileName,
         category: file.name.toLowerCase().endsWith('.vrm') ? 'vrm' : 'fbx'
       };
 
