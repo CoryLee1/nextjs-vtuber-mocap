@@ -6,10 +6,10 @@ export const ArmDebugPanel = ({
   currentSettings,
   showPanel = true,
   // 新增手部相关props
-  onHandAxisChange = null,
-  riggedLeftHand = null,
-  riggedRightHand = null,
-  handDebugAxisConfig = null
+  onHandAxisChange,
+  riggedLeftHand,
+  riggedRightHand,
+  handDebugAxisConfig
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [axisConfig, setAxisConfig] = useState({
