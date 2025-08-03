@@ -276,9 +276,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         undefined,
         undefined,
         (loader) => {
-            loader.register((parser) => {
-                return new VRMLoaderPlugin(parser);
-            });
+            loader.register((parser: any) => new VRMLoaderPlugin(parser) as any);
         }
     );
     const { scene, userData, errors, isLoading } = gltfResult;
