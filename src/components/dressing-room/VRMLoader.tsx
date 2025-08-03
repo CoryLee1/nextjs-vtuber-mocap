@@ -76,7 +76,8 @@ export const VRMLoader = forwardRef<VRMLoaderRef, VRMLoaderProps>(({
   const [progress, setProgress] = useState(0);
 
   // 使用 useGLTF 加载模型 - 移到组件级别
-  const { scene, userData, errors } = useGLTF(modelUrl);
+  const gltfResult: any = useGLTF(modelUrl);
+  const { scene, userData, errors } = gltfResult;
 
   // 处理 VRM 加载
   useEffect(() => {

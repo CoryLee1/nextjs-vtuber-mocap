@@ -5,7 +5,7 @@ import { CameraController } from './CameraController';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { ArmDebugPanel } from './ArmDebugPanel';
 import { Environment, OrbitControls, Loader, Grid } from '@react-three/drei';
-import { Vector3, MathUtils } from 'three';
+import { Vector3, MathUtils, Group } from 'three';
 import { VTuberState, CameraSettings } from '@/types';
 
 // 优化的加载指示器组件
@@ -120,7 +120,7 @@ export const VTuberScene: React.FC<VTuberSceneProps> = ({
   onRiggedPoseUpdate,
   onRiggedHandUpdate
 }) => {
-  const vrmRef = useRef();
+  const vrmRef = useRef<Group | null>(null);
 
   // 传递引用给父组件
   useEffect(() => {
@@ -165,10 +165,10 @@ export const VTuberScene: React.FC<VTuberSceneProps> = ({
             handDebugAxisConfig={handDebugAxisConfig}
             onAxisChange={onAxisChange}
             onHandAxisChange={onHandAxisChange}
-            onRiggedPoseUpdate={(pose) => {
+            onRiggedPoseUpdate={(pose: any) => {
               onRiggedPoseUpdate?.(pose);
             }}
-            onRiggedHandUpdate={(leftHand, rightHand) => {
+            onRiggedHandUpdate={(leftHand: any, rightHand: any) => {
               onRiggedHandUpdate?.(leftHand, rightHand);
             }}
             onAnimationManagerRef={onAnimationManagerRef}
