@@ -27,14 +27,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 检查环境变量
     let accessKeyId = process.env.AWS_ACCESS_KEY_ID
     let secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+    let envBucketName = process.env.NEXT_PUBLIC_S3_BUCKET
     let region = process.env.NEXT_PUBLIC_S3_REGION
 
-    // 如果环境变量未加载，使用硬编码值（临时解决方案）
+    // 如果环境变量未加载，返回错误
     if (!accessKeyId || !secretAccessKey) {
-      console.log('环境变量未加载，使用硬编码值')
-      accessKeyId = 'AKIA2YUYL2OOHJJCAFUA'
-      secretAccessKey = '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'
-      region = 'us-east-2'
+      console.log('环境变量未加载，AWS密钥未配置')
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: { 
+            message: 'AWS credentials not configured. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.',
+            code: 'AWS_NOT_CONFIGURED'
+          }
+        },
+        { status: 500 }
+      )
     }
 
     console.log('环境变量检查:', {
