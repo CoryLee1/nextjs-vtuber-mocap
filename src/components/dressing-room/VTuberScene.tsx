@@ -26,27 +26,35 @@ const LoadingIndicator = () => (
 
 // 网格地板组件
 const GridFloor = () => (
-  <Grid
-    args={[20, 20]}
-    cellSize={1}
-    cellThickness={0.5}
-    cellColor="#e2e8f0"
-    sectionSize={5}
-    sectionThickness={1}
-    sectionColor="#cbd5e1"
-    fadeDistance={25}
-    fadeStrength={1}
-    followCamera={false}
-    infiniteGrid={true}
-  />
+  <>
+    {/* 透明地面 - 用于接收影子 */}
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+      <planeGeometry args={[50, 50]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>
+    
+    {/* 网格地板 */}
+    <Grid
+      args={[20, 20]}
+      cellSize={1}
+      cellThickness={0.5}
+      cellColor="#ffffff"
+      sectionSize={5}
+      sectionThickness={1}
+      sectionColor="#ffffff"
+      fadeDistance={25}
+      fadeStrength={1}
+      followCamera={false}
+      infiniteGrid={true}
+      opacity={0.3}
+      transparent={true}
+    />
+  </>
 );
 
 // 优化的光照组件
 const Lighting = () => (
   <>
-    {/* 环境光照 */}
-    <Environment preset="sunset" />
-    
     {/* 主要光源 - 前方 */}
     <directionalLight
       intensity={1.2}
@@ -59,6 +67,7 @@ const Lighting = () => (
       shadow-camera-right={10}
       shadow-camera-top={10}
       shadow-camera-bottom={-10}
+      shadow-color="#ffffff"
     />
     
     {/* 补光 - 后方 */}
@@ -131,6 +140,9 @@ export const VTuberScene: React.FC<VTuberSceneProps> = ({
 
   return (
     <>
+      {/* 设置场景背景色 */}
+      <color attach="background" args={['#0036FF']} />
+      
       {/* 相机控制器 */}
       <CameraController
         vrmRef={vrmRef}
@@ -255,11 +267,12 @@ export const VTuberSceneContainer: React.FC<VTuberSceneContainerProps> = ({ scen
         shadows
         gl={{ 
           antialias: true, 
-          alpha: true,
+          alpha: false, // 改为false以确保背景色显示
           preserveDrawingBuffer: true,
           powerPreference: "high-performance"
         }}
         dpr={[1, 2]}
+        style={{ background: '#0036FF' }}
       >
         <VTuberScene 
           {...sceneProps} 

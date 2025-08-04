@@ -357,6 +357,19 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         }
     }, [modelUrl, vrm]);
 
+    // 设置VRM模型的影子
+    useEffect(() => {
+        if (scene) {
+            // 遍历所有网格，设置影子
+            scene.traverse((child: any) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+        }
+    }, [scene]);
+
     // 新增：监听动画URL变化
     useEffect(() => {
         // 动画管理器会自动重新加载新的动画
@@ -986,6 +999,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     object={scene}
                     scale={scale}
                     position={position}
+                    castShadow
                 />
                 
                 {/* 原有的骨骼可视化 */}

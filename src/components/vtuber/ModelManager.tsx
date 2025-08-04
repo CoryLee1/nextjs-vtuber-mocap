@@ -21,6 +21,7 @@ import {
 import { getModels } from '@/lib/resource-manager';
 import { VRMModel } from '@/types';
 import { useI18n } from '@/hooks/use-i18n';
+import { s3Uploader } from '@/lib/s3-uploader';
 
 interface ModelManagerProps {
   onClose: () => void;
@@ -36,15 +37,39 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
+  const [uploadResults, setUploadResults] = useState<any[]>([]);
 
   // 加载模型
   useEffect(() => {
     const loadModels = async () => {
       setLoading(true);
       try {
-        const data = await getModels(undefined);
-        setModels(data || []);
+        // 获取本地模型
+        const localModels = await getModels(undefined) || [];
+        
+        // 获取S3中的模型
+        const s3Response = await fetch('/api/s3/resources?type=models');
+        let s3Models = [];
+        
+        if (s3Response.ok) {
+          const s3Data = await s3Response.json();
+          s3Models = s3Data.data || [];
+        }
+        
+        // 合并本地模型和S3模型，去重
+        const allModels = [...localModels];
+        const existingIds = new Set(localModels.map(m => m.id));
+        
+        s3Models.forEach(s3Model => {
+          if (!existingIds.has(s3Model.id)) {
+            allModels.push(s3Model);
+          }
+        });
+        
+        setModels(allModels);
       } catch (error) {
         console.error('Failed to load models:', error);
       } finally {
@@ -59,15 +84,52 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
   useEffect(() => {
     const search = async () => {
       if (!searchTerm.trim()) {
-        const data = await getModels(undefined);
-        setModels(data || []);
+        // 重新加载所有模型
+        const localModels = await getModels(undefined) || [];
+        const s3Response = await fetch('/api/s3/resources?type=models');
+        let s3Models = [];
+        
+        if (s3Response.ok) {
+          const s3Data = await s3Response.json();
+          s3Models = s3Data.data || [];
+        }
+        
+        const allModels = [...localModels];
+        const existingIds = new Set(localModels.map(m => m.id));
+        
+        s3Models.forEach(s3Model => {
+          if (!existingIds.has(s3Model.id)) {
+            allModels.push(s3Model);
+          }
+        });
+        
+        setModels(allModels);
         return;
       }
 
       setLoading(true);
       try {
-        const results = await getModels(undefined);
-        const filtered = results.filter(model => 
+        // 获取所有模型（本地+S3）
+        const localModels = await getModels(undefined) || [];
+        const s3Response = await fetch('/api/s3/resources?type=models');
+        let s3Models = [];
+        
+        if (s3Response.ok) {
+          const s3Data = await s3Response.json();
+          s3Models = s3Data.data || [];
+        }
+        
+        const allModels = [...localModels];
+        const existingIds = new Set(localModels.map(m => m.id));
+        
+        s3Models.forEach(s3Model => {
+          if (!existingIds.has(s3Model.id)) {
+            allModels.push(s3Model);
+          }
+        });
+        
+        // 在合并的模型中搜索
+        const filtered = allModels.filter(model => 
           model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (model.tags && model.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
         );
@@ -100,56 +162,131 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
 
   // 处理文件上传
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'model/vrm') {
-      setUploadFile(file);
-    } else {
-      alert(t('vtuber.model.uploadError'));
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      const validFiles: File[] = [];
+      const errors: string[] = [];
+      
+      // 验证每个文件
+      fileArray.forEach((file, index) => {
+        const validationErrors = s3Uploader.validateVRMFile(file);
+        if (validationErrors.length > 0) {
+          errors.push(`${file.name}: ${validationErrors.join(', ')}`);
+        } else {
+          validFiles.push(file);
+        }
+      });
+      
+      // 显示错误信息
+      if (errors.length > 0) {
+        alert(`以下文件验证失败：\n${errors.join('\n')}`);
+      }
+      
+      // 设置有效文件
+      if (validFiles.length > 0) {
+        setUploadFiles(validFiles);
+        setUploadFile(validFiles[0]); // 保持兼容性
+      }
     }
   };
 
   // 处理模型上传
   const handleUpload = async () => {
-    if (!uploadFile) return;
+    if (uploadFiles.length === 0) return;
 
     setUploading(true);
     setUploadProgress(0);
+    setCurrentUploadIndex(0);
+    setUploadResults([]);
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('type', 'model');
-      formData.append('category', 'custom');
-
-      // 模拟上传进度
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      // 这里应该调用实际的上传API
-      // await uploadModel(formData);
+      const uploadedModels: VRMModel[] = [];
       
-      // 模拟上传完成
-      setTimeout(() => {
-        setUploadProgress(100);
-        setUploading(false);
-        setUploadDialogOpen(false);
-        setUploadFile(null);
-        setUploadProgress(0);
+      // 逐个上传文件
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const file = uploadFiles[i];
+        setCurrentUploadIndex(i);
         
-        // 重新加载模型列表
-        loadModels();
-      }, 1000);
+        console.log(`开始上传VRM模型 ${i + 1}/${uploadFiles.length}:`, file.name);
+        
+        // 使用S3上传器上传文件
+        const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
+          // 计算总体进度
+          const totalProgress = ((i + progress / 100) / uploadFiles.length) * 100;
+          setUploadProgress(totalProgress);
+          console.log(`上传进度 ${i + 1}/${uploadFiles.length}:`, progress);
+        });
+
+        console.log(`上传完成 ${i + 1}/${uploadFiles.length}:`, uploadResult);
+        
+        // 创建新的模型对象 - 强制设置为VRM
+        const newModel: VRMModel = {
+          id: `uploaded-${Date.now()}-${i}`,
+          name: file.name.replace('.vrm', ''), // 移除.vrm扩展名
+          url: uploadResult.url,
+          category: 'vrm', // 强制设置为VRM类别
+          thumbnail: null, // 可以后续添加缩略图生成功能
+          tags: ['uploaded', 'VRM'], // 强制设置为VRM标签
+          description: `用户上传的VRM模型文件`,
+          createdAt: new Date().toISOString(),
+          size: uploadResult.size,
+          type: 'model/vrm' // 强制设置为VRM类型
+        };
+
+        uploadedModels.push(newModel);
+        setUploadResults(prev => [...prev, { file: file.name, success: true }]);
+      }
+
+      // 添加到模型列表
+      setModels(prevModels => [...uploadedModels, ...prevModels]);
+      
+      // 重新加载S3模型列表
+      const loadModels = async () => {
+        try {
+          const localModels = await getModels(undefined) || [];
+          const s3Response = await fetch('/api/s3/resources?type=models');
+          let s3Models = [];
+          
+          if (s3Response.ok) {
+            const s3Data = await s3Response.json();
+            s3Models = s3Data.data || [];
+          }
+          
+          const allModels = [...localModels];
+          const existingIds = new Set(localModels.map(m => m.id));
+          
+          s3Models.forEach(s3Model => {
+            if (!existingIds.has(s3Model.id)) {
+              allModels.push(s3Model);
+            }
+          });
+          
+          setModels(allModels);
+        } catch (error) {
+          console.error('Failed to reload models:', error);
+        }
+      };
+      
+      loadModels();
+      
+      // 上传成功后关闭对话框并重置状态
+      setUploading(false);
+      setUploadDialogOpen(false);
+      setUploadFiles([]);
+      setUploadFile(null);
+      setUploadProgress(0);
+      setCurrentUploadIndex(0);
+      setUploadResults([]);
+      
+      // 显示成功消息
+      alert(`成功上传 ${uploadedModels.length} 个VRM模型！已添加到模型列表。`);
 
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('上传失败:', error);
+      alert(`上传失败: ${error instanceof Error ? error.message : String(error)}`);
       setUploading(false);
+      setCurrentUploadIndex(0);
     }
   };
 
@@ -199,16 +336,29 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                         id="model-file"
                         type="file"
                         accept=".vrm"
+                        multiple
                         onChange={handleFileChange}
                         className="border-sky-200 focus:border-sky-500"
                       />
                     </div>
                     
-                    {uploadFile && (
-                      <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <File className="h-4 w-4 text-sky-600" />
-                          <span className="text-sm text-sky-700">{uploadFile.name}</span>
+                    {uploadFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm text-sky-700 font-medium">
+                          已选择 {uploadFiles.length} 个文件：
+                        </div>
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {uploadFiles.map((file, index) => (
+                            <div key={index} className="p-2 bg-sky-50 border border-sky-200 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <File className="h-4 w-4 text-sky-600" />
+                                <span className="text-sm text-sky-700">{file.name}</span>
+                                <span className="text-xs text-sky-500">
+                                  ({s3Uploader.formatFileSize(file.size)})
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -217,7 +367,14 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
                           <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-                          <span className="text-sm text-sky-700">{t('vtuber.model.uploading')} {uploadProgress}%</span>
+                          <span className="text-sm text-sky-700">
+                            {t('vtuber.model.uploading')} {uploadProgress.toFixed(1)}%
+                            {uploadFiles.length > 1 && (
+                              <span className="ml-2 text-xs">
+                                ({currentUploadIndex + 1}/{uploadFiles.length})
+                              </span>
+                            )}
+                          </span>
                         </div>
                         <div className="w-full bg-sky-100 rounded-full h-2">
                           <div 
@@ -225,20 +382,29 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>
+                        {uploadResults.length > 0 && (
+                          <div className="text-xs text-sky-600">
+                            已完成: {uploadResults.length}/{uploadFiles.length}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     <div className="flex justify-end space-x-2">
                       <Button
                         variant="outline"
-                        onClick={() => setUploadDialogOpen(false)}
+                        onClick={() => {
+                          setUploadDialogOpen(false);
+                          setUploadFiles([]);
+                          setUploadFile(null);
+                        }}
                         className="border-sky-200 text-sky-700 hover:bg-sky-50"
                       >
                         {t('app.cancel')}
                       </Button>
                       <Button
                         onClick={handleUpload}
-                        disabled={!uploadFile || uploading}
+                        disabled={uploadFiles.length === 0 || uploading}
                         className="bg-sky-500 hover:bg-sky-600 text-white"
                       >
                         {uploading ? (
@@ -249,7 +415,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                         ) : (
                           <>
                             <Upload className="h-4 w-4 mr-2" />
-                            {t('vtuber.model.upload')}
+                            {uploadFiles.length > 1 ? `上传 ${uploadFiles.length} 个文件` : t('vtuber.model.upload')}
                           </>
                         )}
                       </Button>
@@ -362,6 +528,14 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                             </div>
                           )}
                         </div>
+                        
+                        {/* 文件信息 */}
+                        {model.size && (
+                          <div className="text-xs text-sky-500">
+                            {s3Uploader.formatFileSize(model.size)}
+                            {model.type && ` • ${model.type.split('/').pop()?.toUpperCase()}`}
+                          </div>
+                        )}
                         
                         {/* 标签 */}
                         {model.tags && model.tags.length > 0 && (

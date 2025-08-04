@@ -7,6 +7,9 @@ export interface VRMModel {
   category: string;
   description?: string;
   tags?: string[];
+  size?: number; // 文件大小（字节）
+  type?: string; // MIME类型
+  createdAt?: string; // 创建时间
 }
 
 export interface Animation {
@@ -18,6 +21,8 @@ export interface Animation {
   thumbnail?: string;
   description?: string;
   tags?: string[];
+  size?: number; // 文件大小（字节）
+  mimeType?: string; // MIME类型
 }
 
 export interface MocapData {

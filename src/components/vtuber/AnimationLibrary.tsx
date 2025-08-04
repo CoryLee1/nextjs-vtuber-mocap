@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,11 +18,15 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  Music
+  Music,
+  Trash2,
+  User
 } from 'lucide-react';
 import { useAnimationLibrary } from '@/hooks/use-animation-library';
 import { Animation } from '@/types';
 import { useI18n } from '@/hooks/use-i18n';
+import { s3Uploader } from '@/lib/s3-uploader';
+import { animationStorage } from '@/lib/animation-storage';
 
 interface AnimationLibraryProps {
   onClose: () => void;
@@ -31,18 +35,70 @@ interface AnimationLibraryProps {
 
 export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onSelect }) => {
   const { t } = useI18n();
-  const { animations, loading, error, getSelectedAnimation, selectAnimation } = useAnimationLibrary();
+  const { 
+    animations, 
+    loading, 
+    error, 
+    getSelectedAnimation, 
+    selectAnimation,
+    addUserAnimation,
+    removeUserAnimation,
+    getUserAnimationStats
+  } = useAnimationLibrary();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
+  const [uploadResults, setUploadResults] = useState<any[]>([]);
+  const [allAnimations, setAllAnimations] = useState<Animation[]>([]);
+  const [isLoadingS3, setIsLoadingS3] = useState(false);
 
   const selectedAnimation = getSelectedAnimation();
 
+  // 加载动画（本地+S3）
+  useEffect(() => {
+    const loadAnimations = async () => {
+      setIsLoadingS3(true);
+      try {
+        // 获取本地动画
+        const localAnimations = animations || [];
+        
+        // 获取S3中的动画
+        const s3Response = await fetch('/api/s3/resources?type=animations');
+        let s3Animations = [];
+        
+        if (s3Response.ok) {
+          const s3Data = await s3Response.json();
+          s3Animations = s3Data.data || [];
+        }
+        
+        // 合并本地动画和S3动画，去重
+        const allAnimations = [...localAnimations];
+        const existingIds = new Set(localAnimations.map(a => a.id));
+        
+        s3Animations.forEach(s3Animation => {
+          if (!existingIds.has(s3Animation.id)) {
+            allAnimations.push(s3Animation);
+          }
+        });
+        
+        setAllAnimations(allAnimations);
+      } catch (error) {
+        console.error('Failed to load animations:', error);
+      } finally {
+        setIsLoadingS3(false);
+      }
+    };
+
+    loadAnimations();
+  }, [animations]);
+
   // 过滤动画 - 添加安全检查
-  const filteredAnimations = (animations || []).filter((animation: any) => {
+  const filteredAnimations = allAnimations.filter((animation: any) => {
     const matchesSearch = animation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (animation.description && animation.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || animation.category === selectedCategory;
@@ -50,7 +106,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
   });
 
   // 获取所有分类 - 添加安全检查
-  const categories = ['all', ...new Set((animations || []).map((animation: any) => animation.category))];
+  const categories = ['all', ...new Set(allAnimations.map((animation: any) => animation.category))];
 
   // 处理动画选择
   const handleAnimationSelect = (animation: Animation) => {
@@ -60,55 +116,153 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
 
   // 处理文件上传
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && (file.type === 'application/octet-stream' || file.name.endsWith('.fbx'))) {
-      setUploadFile(file);
-    } else {
-      alert(t('vtuber.animation.uploadError'));
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      const validFiles: File[] = [];
+      const errors: string[] = [];
+      
+      // 验证每个文件
+      fileArray.forEach((file, index) => {
+        const validationErrors = s3Uploader.validateFile(file);
+        if (validationErrors.length > 0) {
+          errors.push(`${file.name}: ${validationErrors.join(', ')}`);
+        } else {
+          validFiles.push(file);
+        }
+      });
+      
+      // 显示错误信息
+      if (errors.length > 0) {
+        alert(`以下文件验证失败：\n${errors.join('\n')}`);
+      }
+      
+      // 设置有效文件
+      if (validFiles.length > 0) {
+        setUploadFiles(validFiles);
+        setUploadFile(validFiles[0]); // 保持兼容性
+      }
     }
   };
 
   // 处理动画上传
   const handleUpload = async () => {
-    if (!uploadFile) return;
+    if (uploadFiles.length === 0) return;
 
     setUploading(true);
     setUploadProgress(0);
+    setCurrentUploadIndex(0);
+    setUploadResults([]);
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('type', 'animation');
-      formData.append('category', 'custom');
-
-      // 模拟上传进度
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      // 这里应该调用实际的上传API
-      // await uploadAnimation(formData);
+      const uploadedAnimations: Animation[] = [];
       
-      // 模拟上传完成
-      setTimeout(() => {
-        setUploadProgress(100);
-        setUploading(false);
-        setUploadDialogOpen(false);
-        setUploadFile(null);
-        setUploadProgress(0);
-      }, 1000);
+      // 逐个上传文件
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const file = uploadFiles[i];
+        setCurrentUploadIndex(i);
+        
+        console.log(`开始上传动画 ${i + 1}/${uploadFiles.length}:`, file.name);
+        
+        // 使用S3上传器上传文件
+        const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
+          // 计算总体进度
+          const totalProgress = ((i + progress / 100) / uploadFiles.length) * 100;
+          setUploadProgress(totalProgress);
+          console.log(`上传进度 ${i + 1}/${uploadFiles.length}:`, progress);
+        });
+
+        console.log(`上传完成 ${i + 1}/${uploadFiles.length}:`, uploadResult);
+        
+        // 创建新的动画对象
+        const newAnimation: Animation = {
+          id: `user-${Date.now()}-${i}-${file.name}`,
+          name: file.name.replace('.fbx', ''),
+          url: uploadResult.url,
+          type: 'custom',
+          thumbnail: null,
+          tags: ['uploaded', 'FBX', 'user'],
+          description: `用户上传的动画文件`,
+          duration: 0, // 可以后续添加动画时长检测
+          size: uploadResult.size,
+          mimeType: uploadResult.type,
+          category: 'user-uploaded',
+          createdAt: new Date().toISOString()
+        };
+
+        uploadedAnimations.push(newAnimation);
+        setUploadResults(prev => [...prev, { file: file.name, success: true }]);
+        
+        // 保存到本地存储
+        addUserAnimation(newAnimation);
+      }
+
+      // 立即添加到当前显示的动画列表中
+      setAllAnimations(prevAnimations => [...uploadedAnimations, ...prevAnimations]);
+      
+      // 重新加载S3动画列表以确保数据同步
+      const loadAnimations = async () => {
+        try {
+          const localAnimations = animations || [];
+          const s3Response = await fetch('/api/s3/resources?type=animations');
+          let s3Animations = [];
+          
+          if (s3Response.ok) {
+            const s3Data = await s3Response.json();
+            s3Animations = s3Data.data || [];
+          }
+          
+          const allAnimations = [...localAnimations];
+          const existingIds = new Set(localAnimations.map(a => a.id));
+          
+          s3Animations.forEach(s3Animation => {
+            if (!existingIds.has(s3Animation.id)) {
+              allAnimations.push(s3Animation);
+            }
+          });
+          
+          setAllAnimations(allAnimations);
+        } catch (error) {
+          console.error('Failed to reload animations:', error);
+        }
+      };
+      
+      loadAnimations();
+      
+      // 上传成功后关闭对话框并重置状态
+      setUploading(false);
+      setUploadDialogOpen(false);
+      setUploadFiles([]);
+      setUploadFile(null);
+      setUploadProgress(0);
+      setCurrentUploadIndex(0);
+      setUploadResults([]);
+      
+      // 显示成功消息
+      alert(`成功上传 ${uploadedAnimations.length} 个动画！已添加到动画列表。`);
 
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('上传失败:', error);
+      alert(`上传失败: ${error instanceof Error ? error.message : String(error)}`);
       setUploading(false);
+      setCurrentUploadIndex(0);
     }
   };
+
+  // 处理删除用户动画
+  const handleDeleteAnimation = (animation: Animation) => {
+    if (animationStorage.isUserAnimation(animation.id)) {
+      if (confirm(`确定要删除动画 "${animation.name}" 吗？`)) {
+        removeUserAnimation(animation.id);
+        alert('动画已从本地库中删除');
+      }
+    } else {
+      alert('只能删除用户上传的动画');
+    }
+  };
+
+  // 获取用户动画统计
+  const userStats = getUserAnimationStats();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -121,7 +275,14 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
               </div>
               <div>
                 <CardTitle className="text-sky-900">{t('vtuber.animation.library')}</CardTitle>
-                <p className="text-sm text-sky-600">{t('vtuber.animation.title')}</p>
+                <p className="text-sm text-sky-600">
+                  {t('vtuber.animation.title')} 
+                  {userStats.totalUserAnimations > 0 && (
+                    <span className="ml-2 text-xs bg-sky-200 px-2 py-1 rounded">
+                      本地: {userStats.totalUserAnimations} 个
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
             
@@ -144,16 +305,29 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                         id="animation-file"
                         type="file"
                         accept=".fbx"
+                        multiple
                         onChange={handleFileChange}
                         className="border-sky-200 focus:border-sky-500"
                       />
                     </div>
                     
-                    {uploadFile && (
-                      <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <File className="h-4 w-4 text-sky-600" />
-                          <span className="text-sm text-sky-700">{uploadFile.name}</span>
+                    {uploadFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm text-sky-700 font-medium">
+                          已选择 {uploadFiles.length} 个文件：
+                        </div>
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {uploadFiles.map((file, index) => (
+                            <div key={index} className="p-2 bg-sky-50 border border-sky-200 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <File className="h-4 w-4 text-sky-600" />
+                                <span className="text-sm text-sky-700">{file.name}</span>
+                                <span className="text-xs text-sky-500">
+                                  ({s3Uploader.formatFileSize(file.size)})
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -162,7 +336,14 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
                           <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-                          <span className="text-sm text-sky-700">{t('vtuber.animation.uploading')} {uploadProgress}%</span>
+                          <span className="text-sm text-sky-700">
+                            {t('vtuber.animation.uploading')} {uploadProgress.toFixed(1)}%
+                            {uploadFiles.length > 1 && (
+                              <span className="ml-2 text-xs">
+                                ({currentUploadIndex + 1}/{uploadFiles.length})
+                              </span>
+                            )}
+                          </span>
                         </div>
                         <div className="w-full bg-sky-100 rounded-full h-2">
                           <div 
@@ -170,20 +351,29 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>
+                        {uploadResults.length > 0 && (
+                          <div className="text-xs text-sky-600">
+                            已完成: {uploadResults.length}/{uploadFiles.length}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     <div className="flex justify-end space-x-2">
                       <Button
                         variant="outline"
-                        onClick={() => setUploadDialogOpen(false)}
+                        onClick={() => {
+                          setUploadDialogOpen(false);
+                          setUploadFiles([]);
+                          setUploadFile(null);
+                        }}
                         className="border-sky-200 text-sky-700 hover:bg-sky-50"
                       >
                         {t('app.cancel')}
                       </Button>
                       <Button
                         onClick={handleUpload}
-                        disabled={!uploadFile || uploading}
+                        disabled={uploadFiles.length === 0 || uploading}
                         className="bg-sky-500 hover:bg-sky-600 text-white"
                       >
                         {uploading ? (
@@ -194,7 +384,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                         ) : (
                           <>
                             <Upload className="h-4 w-4 mr-2" />
-                            {t('vtuber.animation.upload')}
+                            {uploadFiles.length > 1 ? `上传 ${uploadFiles.length} 个文件` : t('vtuber.animation.upload')}
                           </>
                         )}
                       </Button>
@@ -263,7 +453,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
 
           {/* 动画列表 */}
           <div className="flex-1 overflow-y-auto">
-            {loading ? (
+            {isLoadingS3 ? (
               <div className="flex flex-col items-center justify-center h-32 space-y-4">
                 <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
                 <div className="text-sky-600 text-center">
@@ -286,14 +476,41 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                 {filteredAnimations.map((animation: any) => (
                   <Card
                     key={animation.id}
-                    onClick={() => handleAnimationSelect(animation)}
-                    className={`cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white ${
+                    className={`cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white relative ${
                       (selectedAnimation as any)?.id === animation.id ? 'ring-2 ring-sky-500' : ''
                     }`}
                   >
                     <CardContent className="p-4">
+                      {/* 用户动画标识 */}
+                      {animationStorage.isUserAnimation(animation.id) && (
+                        <div className="absolute top-2 right-2">
+                          <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
+                            <User className="h-3 w-3 mr-1" />
+                            本地
+                          </Badge>
+                        </div>
+                      )}
+
+                      {/* 删除按钮（仅用户动画） */}
+                      {animationStorage.isUserAnimation(animation.id) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAnimation(animation);
+                          }}
+                          className="absolute top-2 left-2 h-6 w-6 p-0 bg-red-50 hover:bg-red-100 text-red-600"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+
                       {/* 缩略图 */}
-                      <div className="aspect-square bg-sky-50 rounded-lg mb-3 flex items-center justify-center border border-sky-100">
+                      <div 
+                        className="aspect-square bg-sky-50 rounded-lg mb-3 flex items-center justify-center border border-sky-100 cursor-pointer"
+                        onClick={() => handleAnimationSelect(animation)}
+                      >
                         {animation.thumbnail ? (
                           <img
                             src={animation.thumbnail}
@@ -319,6 +536,14 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                             </div>
                           )}
                         </div>
+                        
+                        {/* 文件信息 */}
+                        {animation.size && (
+                          <div className="text-xs text-sky-500">
+                            {s3Uploader.formatFileSize(animation.size)}
+                            {animation.mimeType && ` • ${animation.mimeType.split('/').pop()?.toUpperCase()}`}
+                          </div>
+                        )}
                         
                         {animation.url.startsWith('http') && (
                           <div className="flex items-center space-x-1 text-xs text-sky-500">
@@ -362,6 +587,11 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
             <div className="text-sm text-sky-600">
               共 {filteredAnimations.length} 个动画
               {searchTerm && ` (搜索: "${searchTerm}")`}
+              {userStats.totalUserAnimations > 0 && (
+                <span className="ml-2 text-green-600">
+                  • 本地保存: {userStats.totalUserAnimations} 个
+                </span>
+              )}
             </div>
           </div>
         </CardContent>

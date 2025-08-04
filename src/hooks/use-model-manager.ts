@@ -94,7 +94,9 @@ export const useModelManager = () => {
       }
 
       // 上传到 S3
-      const uploadResult = await s3Uploader.uploadFile(file);
+      const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
+        setUploadProgress(progress);
+      });
       
       // 生成缩略图
       const thumbnail = await generateThumbnail(file);
@@ -102,13 +104,13 @@ export const useModelManager = () => {
       const newModel = {
         id: `uploaded-${Date.now()}`,
         name: file.name.replace(/\.(vrm|fbx)$/i, ''),
-        url: (uploadResult as any).url,
+        url: uploadResult.url,
         thumbnail: thumbnail,
         isUploaded: true,
         size: s3Uploader.formatFileSize(file.size),
         uploadDate: new Date().toLocaleDateString('zh-CN'),
         originalName: file.name,
-        s3Key: (uploadResult as any).fileName,
+        s3Key: uploadResult.fileName,
         category: file.name.toLowerCase().endsWith('.vrm') ? 'vrm' : 'fbx'
       };
 
@@ -119,7 +121,7 @@ export const useModelManager = () => {
       
     } catch (error) {
       console.error('Upload error:', error);
-      setError('模型上传失败: ' + error.message);
+      setError('模型上传失败: ' + (error instanceof Error ? error.message : String(error)));
       throw error;
     } finally {
       setIsUploading(false);

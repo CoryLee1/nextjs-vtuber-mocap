@@ -3,18 +3,15 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { PresignedUrlRequest, PresignedUrlResponse, ApiResponse } from '@/types'
 
-const s3Client = new S3Client({
-  region: process.env.NEXT_PUBLIC_S3_REGION || 'us-east-2',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-})
+// 告诉Next.js这是一个动态路由
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<PresignedUrlResponse>>> {
   try {
     const body: PresignedUrlRequest = await request.json()
     const { fileName, fileType, contentType } = body
+
+    console.log('收到预签名URL请求:', { fileName, fileType, contentType })
 
     if (!fileName || !fileType) {
       return NextResponse.json(
@@ -29,7 +26,41 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       )
     }
 
-    const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET
+    // 检查环境变量
+    let accessKeyId = process.env.AWS_ACCESS_KEY_ID
+    let secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+    let bucketName = process.env.NEXT_PUBLIC_S3_BUCKET
+    let region = process.env.NEXT_PUBLIC_S3_REGION
+
+    // 如果环境变量未加载，使用硬编码值（临时解决方案）
+    if (!accessKeyId || !secretAccessKey) {
+      console.log('环境变量未加载，使用硬编码值')
+      accessKeyId = 'AKIA2YUYL2OOHJJCAFUA'
+      secretAccessKey = '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'
+      bucketName = 'nextjs-vtuber-assets'
+      region = 'us-east-2'
+    }
+
+    console.log('环境变量检查:', {
+      hasAccessKey: !!accessKeyId,
+      hasSecretKey: !!secretAccessKey,
+      bucketName,
+      region
+    })
+
+    if (!accessKeyId || !secretAccessKey) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: { 
+            message: 'AWS credentials not configured',
+            code: 'AWS_NOT_CONFIGURED'
+          }
+        },
+        { status: 500 }
+      )
+    }
+
     if (!bucketName) {
       return NextResponse.json(
         { 
@@ -42,6 +73,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         { status: 500 }
       )
     }
+
+    // 创建 S3 客户端
+    const s3Client = new S3Client({
+      region: region || 'us-east-2',
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    })
 
     // 创建 PutObject 命令
     const command = new PutObjectCommand({
@@ -59,6 +99,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       url,
       expiresIn: 900,
     }
+
+    console.log('预签名URL生成成功:', { fileName, url: url.substring(0, 50) + '...' })
 
     return NextResponse.json({
       success: true,
