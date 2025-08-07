@@ -1,11 +1,12 @@
 import createMiddleware from 'next-intl/middleware';
+import { locales, defaultLocale } from './i18n/config';
 
 export default createMiddleware({
   // 支持的语言列表
-  locales: ['zh', 'en', 'ja'],
+  locales: locales,
   
   // 默认语言
-  defaultLocale: 'zh',
+  defaultLocale: defaultLocale,
   
   // 本地化检测
   localeDetection: true,

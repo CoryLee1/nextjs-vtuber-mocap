@@ -7,6 +7,7 @@ import { ArmDebugPanel } from './ArmDebugPanel';
 import { Environment, OrbitControls, Loader, Grid } from '@react-three/drei';
 import { Vector3, MathUtils, Group } from 'three';
 import { VTuberState, CameraSettings } from '@/types';
+import { usePerformance } from '@/hooks/use-performance';
 
 // 优化的加载指示器组件
 const LoadingIndicator = () => (
@@ -214,6 +215,32 @@ export const VTuberSceneContainer: React.FC<VTuberSceneContainerProps> = ({ scen
   const riggedLeftHandRef = useRef(null);
   const riggedRightHandRef = useRef(null);
   
+  // 使用性能设置
+  const { settings } = usePerformance();
+  
+  // 根据性能设置计算DPR
+  const getDPR = () => {
+    switch (settings.quality) {
+      case 'low':
+        return [0.5, 1];
+      case 'high':
+        return [1, 2];
+      case 'medium':
+      default:
+        return [0.75, 1.5];
+    }
+  };
+  
+  // 根据分辨率设置计算DPR
+  const getResolutionDPR = () => {
+    const baseDPR = getDPR();
+    const resolutionMultiplier = settings.resolution;
+    return [
+      Math.max(0.5, baseDPR[0] * resolutionMultiplier),
+      Math.max(1, baseDPR[1] * resolutionMultiplier)
+    ];
+  };
+  
   // 调试面板坐标轴配置状态
   const [debugAxisConfig, setDebugAxisConfig] = React.useState({
     leftArm: { x: -1, y: 1, z: -1 },
@@ -264,14 +291,14 @@ export const VTuberSceneContainer: React.FC<VTuberSceneContainerProps> = ({ scen
     <div className="canvas-container">
       <Canvas
         camera={{ position: [0, 1.5, 3], fov: 50 }}
-        shadows
+        shadows={settings.shadows}
         gl={{ 
-          antialias: true, 
+          antialias: settings.antialiasing, 
           alpha: false, // 改为false以确保背景色显示
           preserveDrawingBuffer: true,
           powerPreference: "high-performance"
         }}
-        dpr={[1, 2]}
+        dpr={getResolutionDPR()}
         style={{ background: '#0036FF' }}
       >
         <VTuberScene 

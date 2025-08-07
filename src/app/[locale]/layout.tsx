@@ -41,8 +41,8 @@ export default async function RootLayout({
     notFound();
   }
 
-  // 获取消息
-  const messages = await getMessages();
+  // 获取消息，传递正确的 locale 参数
+  const messages = await getMessages({ locale });
 
   return (
     <html lang={locale}>

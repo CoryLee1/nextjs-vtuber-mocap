@@ -1,19 +1,52 @@
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { locales, type Locale } from '@/i18n/config';
 
 export const useI18n = () => {
   const t = useTranslations();
-  const locale = useLocale() as Locale;
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
+  
+  // 直接从 URL 解析当前语言
+  const getCurrentLocaleFromPath = (): Locale => {
+    for (const loc of locales) {
+      if (pathname.startsWith(`/${loc}`)) {
+        return loc;
+      }
+    }
+    return 'zh'; // 默认语言
+  };
+  
+  const locale = getCurrentLocaleFromPath();
 
-  // 切换语言
+  // 修复的语言切换逻辑
   const changeLocale = (newLocale: Locale) => {
-    const currentPathname = pathname;
-    const newPathname = currentPathname.replace(`/${locale}`, `/${newLocale}`);
-    router.push(newPathname);
+    // 获取当前路径，移除所有可能的语言前缀
+    let pathWithoutLocale = pathname;
+    
+    // 移除所有可能的语言前缀
+    for (const loc of locales) {
+      const prefix = `/${loc}`;
+      if (pathWithoutLocale.startsWith(prefix)) {
+        pathWithoutLocale = pathWithoutLocale.substring(prefix.length) || '/';
+        break; // 找到第一个匹配的前缀后立即停止
+      }
+    }
+    
+    // 构建新路径
+    const newPath = `/${newLocale}${pathWithoutLocale}`;
+    
+    console.log('Language change:', {
+      from: locale,
+      to: newLocale,
+      originalPath: pathname,
+      pathWithoutLocale,
+      newPath
+    });
+    
+    router.push(newPath);
   };
 
   // 获取当前语言信息

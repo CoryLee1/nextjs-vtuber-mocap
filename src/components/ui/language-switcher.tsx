@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,16 +13,61 @@ import {
 import { useI18n } from '@/hooks/use-i18n';
 
 export const LanguageSwitcher: React.FC = () => {
-  const { t, getCurrentLocale, getAvailableLocales, changeLocale } = useI18n();
+  const { t, locale, getCurrentLocale, getAvailableLocales, changeLocale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   
-  const currentLocale = getCurrentLocale();
-  const availableLocales = getAvailableLocales();
+  // 直接使用 locale 和 t 函数来确保正确的状态同步
+  const currentLocale = useMemo(() => {
+    const flags = {
+      zh: '🇨🇳',
+      en: '🇺🇸',
+      ja: '🇯🇵',
+    };
+    
+    return {
+      code: locale,
+      name: t(`languages.${locale}`),
+      flag: flags[locale],
+    };
+  }, [locale, t]);
+  
+  const availableLocales = useMemo(() => {
+    const flags = {
+      zh: '🇨🇳',
+      en: '🇺🇸',
+      ja: '🇯🇵',
+    };
+    
+    return ['zh', 'en', 'ja'].map(loc => ({
+      code: loc,
+      name: t(`languages.${loc}`),
+      flag: flags[loc],
+      isCurrent: loc === locale,
+    }));
+  }, [locale, t]);
+
+  // 监听语言变化，关闭下拉菜单
+  useEffect(() => {
+    setIsOpen(false);
+  }, [locale]);
 
   const handleLanguageChange = (localeCode: string) => {
+    console.log('Language change requested:', {
+      from: currentLocale.code,
+      to: localeCode,
+      currentPath: window.location.pathname
+    });
+    
     changeLocale(localeCode as any);
     setIsOpen(false);
   };
+
+  console.log('LanguageSwitcher render:', {
+    currentLocale,
+    availableLocales,
+    isOpen,
+    locale
+  });
 
   return (
     <div className="relative">

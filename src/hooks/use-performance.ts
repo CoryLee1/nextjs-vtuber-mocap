@@ -23,7 +23,20 @@ const defaultSettings: PerformanceSettings = {
 };
 
 export const usePerformance = () => {
-  const [settings, setSettings] = useState<PerformanceSettings>(defaultSettings);
+  const [settings, setSettings] = useState<PerformanceSettings>(() => {
+    // 从本地存储加载设置
+    if (typeof window !== 'undefined') {
+      const savedSettings = localStorage.getItem('vtuber-settings');
+      if (savedSettings) {
+        try {
+          return { ...defaultSettings, ...JSON.parse(savedSettings) };
+        } catch (error) {
+          console.error('Failed to parse saved settings:', error);
+        }
+      }
+    }
+    return defaultSettings;
+  });
   const [fps, setFps] = useState(60);
   const [memoryUsage, setMemoryUsage] = useState(0);
   const [gpuUsage, setGpuUsage] = useState(0);
@@ -32,7 +45,14 @@ export const usePerformance = () => {
 
   // 更新性能设置
   const updateSettings = useCallback((newSettings: Partial<PerformanceSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    setSettings(prev => {
+      const updatedSettings = { ...prev, ...newSettings };
+      // 保存到本地存储
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vtuber-settings', JSON.stringify(updatedSettings));
+      }
+      return updatedSettings;
+    });
   }, []);
 
   // 自动性能优化
