@@ -1,26 +1,50 @@
 // Stripe 配置
-// 支持中国和国际支付方式
+// 支持中国和国际支付方式，区分测试和生产环境
 
 export const STRIPE_CONFIG = {
   // 测试环境配置
   test: {
-    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
-    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_test_publishable_key_here',
+    secretKey: process.env.STRIPE_SECRET_KEY || 'sk_test_your_test_secret_key_here',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    environment: 'test'
   },
   
   // 生产环境配置
   production: {
-    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-    secretKey: process.env.STRIPE_SECRET_KEY,
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_live_your_live_publishable_key_here',
+    secretKey: process.env.STRIPE_SECRET_KEY || 'sk_live_your_live_secret_key_here',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    environment: 'live'
   }
 }
 
 // 获取当前环境配置
 export const getStripeConfig = () => {
   const isProduction = process.env.NODE_ENV === 'production';
+  const isTestEnv = process.env.STRIPE_ENV === 'test' || process.env.NODE_ENV === 'development';
+  
+  // 优先使用 STRIPE_ENV 环境变量
+  if (process.env.STRIPE_ENV === 'test') {
+    return STRIPE_CONFIG.test;
+  } else if (process.env.STRIPE_ENV === 'live') {
+    return STRIPE_CONFIG.production;
+  }
+  
+  // 回退到 NODE_ENV 检测
   return isProduction ? STRIPE_CONFIG.production : STRIPE_CONFIG.test;
+}
+
+// 获取当前环境信息
+export const getStripeEnvironment = () => {
+  const config = getStripeConfig();
+  return {
+    environment: config.environment,
+    isTest: config.environment === 'test',
+    isLive: config.environment === 'live',
+    publishableKey: config.publishableKey,
+    secretKey: config.secretKey ? '***' + config.secretKey.slice(-4) : 'not configured'
+  };
 }
 
 // 支付方式配置
@@ -160,4 +184,18 @@ export const getAvailablePaymentMethods = () => {
 export const getUserCurrency = (): string => {
   const region = detectUserRegion();
   return region === 'china' ? 'CNY' : 'USD';
+}
+
+// 测试卡号配置
+export const TEST_CARD_NUMBERS = {
+  success: {
+    visa: '4242424242424242',
+    mastercard: '5555555555554444',
+    amex: '378282246310005'
+  },
+  failure: {
+    declined: '4000000000000002',
+    requiresAuth: '4000002500003155',
+    insufficientFunds: '4000000000009995'
+  }
 } 

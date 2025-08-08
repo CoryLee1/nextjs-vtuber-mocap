@@ -1,0 +1,27 @@
+{
+  "products": [
+    {
+      "name": "VTuber 基础版",
+      "description": "专业的 VTuber 创作平台基础版\n包含：\n• 基础 VTuber 功能\n• 5 个模型\n• 10 个动画\n• 基础技术支持",
+      "price": 9.99,
+      "currency": "USD",
+      "interval": "month"
+    },
+    {
+      "name": "VTuber 专业版",
+      "description": "专业的 VTuber 创作平台专业版\n包含：\n• 所有基础功能\n• 无限模型\n• 无限动画\n• 高级技术支持\n• 优先更新",
+      "price": 19.99,
+      "currency": "USD",
+      "interval": "month"
+    },
+    {
+      "name": "VTuber 高级版",
+      "description": "专业的 VTuber 创作平台高级版\n包含：\n• 所有专业功能\n• 自定义模型\n• 专属动画\n• 24/7 技术支持\n• API 访问\n• 白标解决方案",
+      "price": 39.99,
+      "currency": "USD",
+      "interval": "month"
+    }
+  ],
+  "created_at": "2025-08-08T14:00:51.419Z",
+  "notes": "VTuber 应用产品配置"
+}
