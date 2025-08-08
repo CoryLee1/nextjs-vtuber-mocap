@@ -25,6 +25,13 @@ export const ENV_CONFIG = {
     ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
   },
+
+  // Stripe 配置
+  STRIPE: {
+    PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+    SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
+    WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  },
   
   // 应用配置
   APP: {
@@ -40,6 +47,8 @@ if (typeof window !== 'undefined') {
     POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'default',
     S3_BUCKET: process.env.NEXT_PUBLIC_S3_BUCKET ? 'configured' : 'not configured',
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID ? 'configured' : 'not configured',
+    STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'configured' : 'not configured',
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'configured' : 'not configured',
     NODE_ENV: process.env.NODE_ENV
   })
 }
@@ -55,6 +64,12 @@ export const getCurrentConfig = () => {
   return {
     posthog: configManager.getPostHogConfig(),
     s3: configManager.getS3Config(),
+    stripe: {
+      publishableKey: ENV_CONFIG.STRIPE.PUBLISHABLE_KEY,
+      secretKey: ENV_CONFIG.STRIPE.SECRET_KEY,
+      webhookSecret: ENV_CONFIG.STRIPE.WEBHOOK_SECRET,
+      isConfigured: !!ENV_CONFIG.STRIPE.PUBLISHABLE_KEY && !!ENV_CONFIG.STRIPE.SECRET_KEY
+    },
     app: configManager.getAppConfig()
   }
 } 
