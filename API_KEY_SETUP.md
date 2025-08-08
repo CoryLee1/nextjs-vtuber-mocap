@@ -15,13 +15,13 @@
 
 ```bash
 # PostHog 配置
-NEXT_PUBLIC_POSTHOG_KEY=your_posthog_key_here
+NEXT_PUBLIC_POSTHOG_KEY=phc_kLObnPt4Xrt7MQfYJnCpQkV6ZqScmSzsNETtDck1iWp
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 
 # AWS S3 配置
-AWS_ACCESS_KEY_ID=your_aws_access_key_here
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
-NEXT_PUBLIC_S3_BUCKET=your_bucket_name_here
+AWS_ACCESS_KEY_ID=AKIA2YUYL2OOHJJCAFUA
+AWS_SECRET_ACCESS_KEY=TUWD0gzQGuKebD8KdezEujo+umpKBAEnaOQwoNsl
+NEXT_PUBLIC_S3_BUCKET=nextjs-vtuber-assets
 NEXT_PUBLIC_S3_REGION=us-east-2
 NEXT_PUBLIC_S3_BASE_URL=https://your-bucket.s3.us-east-2.amazonaws.com
 
