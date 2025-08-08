@@ -22,6 +22,7 @@ import {
 import { useI18n } from '@/hooks/use-i18n';
 import { usePerformance } from '@/hooks/use-performance';
 import { useShortcuts } from '@/hooks/use-shortcuts';
+import { useTheme } from '@/hooks/use-theme';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 interface SettingsPanelProps {
@@ -33,6 +34,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const { t, getCurrentLocale, getAvailableLocales, changeLocale } = useI18n();
   const { settings, fps, memoryUsage, updateSettings } = usePerformance();
   const { shortcuts, getShortcutDescription, checkConflicts } = useShortcuts();
+  const { 
+    themeMode, 
+    primaryColor, 
+    updateThemeMode, 
+    updatePrimaryColor, 
+    resetTheme 
+  } = useTheme();
 
   const [activeTab, setActiveTab] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
@@ -44,6 +52,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
   const handleSettingChange = (key: string, value: any) => {
     updateSettings({ [key]: value });
+    setHasChanges(true);
+  };
+
+  const handleThemeModeChange = (value: string) => {
+    updateThemeMode(value as 'light' | 'dark' | 'auto');
+    setHasChanges(true);
+  };
+
+  const handlePrimaryColorChange = (color: string) => {
+    updatePrimaryColor(color);
     setHasChanges(true);
   };
 
@@ -64,8 +82,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       bloom: true,
       optimization: 'auto',
     });
+    
+    // 重置主题设置
+    resetTheme();
+    
     setHasChanges(false);
   };
+
+  // 主题颜色选项
+  const themeColors = [
+    { color: '#0ea5e9', name: 'Sky Blue' },
+    { color: '#3b82f6', name: 'Blue' },
+    { color: '#8b5cf6', name: 'Purple' },
+    { color: '#f59e0b', name: 'Orange' },
+    { color: '#ef4444', name: 'Red' },
+    { color: '#10b981', name: 'Green' },
+    { color: '#f97316', name: 'Orange' },
+    { color: '#ec4899', name: 'Pink' }
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -295,7 +329,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   
                   <div className="space-y-2">
                     <Label className="text-sky-700">{t('theme.mode')}</Label>
-                    <Select defaultValue="light">
+                    <Select value={themeMode} onValueChange={handleThemeModeChange}>
                       <SelectTrigger className="border-sky-200">
                         <SelectValue />
                       </SelectTrigger>
@@ -309,14 +343,38 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
                   <div className="space-y-2">
                     <Label className="text-sky-700">{t('theme.primaryColor')}</Label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {['#0ea5e9', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'].map((color) => (
+                    <div className="grid grid-cols-4 gap-3">
+                      {themeColors.map((themeColor) => (
                         <div
-                          key={color}
-                          className="w-8 h-8 rounded-full cursor-pointer border-2 border-sky-200"
-                          style={{ backgroundColor: color }}
+                          key={themeColor.color}
+                          className={`w-12 h-12 rounded-full cursor-pointer border-2 transition-all hover:scale-110 ${
+                            primaryColor === themeColor.color 
+                              ? 'border-sky-500 ring-2 ring-sky-200' 
+                              : 'border-gray-200'
+                          }`}
+                          style={{ backgroundColor: themeColor.color }}
+                          onClick={() => handlePrimaryColorChange(themeColor.color)}
+                          title={themeColor.name}
                         />
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sky-700">自定义颜色</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => handlePrimaryColorChange(e.target.value)}
+                        className="w-16 h-10 p-1 border-sky-200"
+                      />
+                      <Input
+                        value={primaryColor}
+                        onChange={(e) => handlePrimaryColorChange(e.target.value)}
+                        className="flex-1 border-sky-200"
+                        placeholder="#0ea5e9"
+                      />
                     </div>
                   </div>
                 </div>
@@ -324,9 +382,44 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-sky-900">{t('theme.preview')}</h3>
                   
-                  <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
-                    <div className="text-sm text-sky-700">
-                      {t('theme.previewArea')}
+                  <div className="p-6 bg-white rounded-lg border border-sky-200 shadow-sm">
+                    <div className="space-y-4">
+                      <div className="text-sm text-gray-600">
+                        {t('theme.previewArea')}
+                      </div>
+                      
+                      {/* 主题预览 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: primaryColor }}
+                          />
+                          <span className="text-sm font-medium">主色调</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Button 
+                            size="sm"
+                            style={{ backgroundColor: primaryColor }}
+                            className="text-white hover:opacity-90"
+                          >
+                            主要按钮
+                          </Button>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            style={{ borderColor: primaryColor, color: primaryColor }}
+                          >
+                            次要按钮
+                          </Button>
+                        </div>
+                        
+                        <div className="text-xs text-gray-500">
+                          当前主题模式: {themeMode === 'auto' ? '自动' : themeMode === 'dark' ? '深色' : '浅色'}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
