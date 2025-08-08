@@ -21,6 +21,7 @@ import {
 import { getModels } from '@/lib/resource-manager';
 import { VRMModel } from '@/types';
 import { useI18n } from '@/hooks/use-i18n';
+import { useTracking } from '@/hooks/use-tracking';
 import { s3Uploader } from '@/lib/s3-uploader';
 
 interface ModelManagerProps {
@@ -30,6 +31,7 @@ interface ModelManagerProps {
 
 export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect }) => {
   const { t } = useI18n();
+  const { trackFeatureUsed, trackError } = useTracking();
   const [models, setModels] = useState<VRMModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,15 +72,17 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
         });
         
         setModels(allModels);
+        trackFeatureUsed('models_loaded', 'model_management');
       } catch (error) {
         console.error('Failed to load models:', error);
+        trackError('model_load_error', error.toString(), 'model_manager');
       } finally {
         setLoading(false);
       }
     };
 
     loadModels();
-  }, []);
+  }, [trackFeatureUsed, trackError]);
 
   // 搜索模型
   useEffect(() => {
@@ -156,6 +160,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
 
   // 处理模型选择
   const handleModelSelect = (model: VRMModel) => {
+    trackFeatureUsed('model_selected', 'model_management');
     onSelect(model);
     onClose();
   };
@@ -171,7 +176,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
       // 验证每个文件
       fileArray.forEach((file, index) => {
         const validationErrors = s3Uploader.validateVRMFile(file);
-        if (validationErrors.length > 0) {
+      if (validationErrors.length > 0) {
           errors.push(`${file.name}: ${validationErrors.join(', ')}`);
         } else {
           validFiles.push(file);
@@ -180,6 +185,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
       
       // 显示错误信息
       if (errors.length > 0) {
+        trackError('file_validation_error', errors.join(', '), 'model_manager');
         alert(`以下文件验证失败：\n${errors.join('\n')}`);
       }
       
@@ -187,6 +193,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
       if (validFiles.length > 0) {
         setUploadFiles(validFiles);
         setUploadFile(validFiles[0]); // 保持兼容性
+        trackFeatureUsed('files_selected', 'model_upload', validFiles.length);
       }
     }
   };
@@ -201,6 +208,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
     setUploadResults([]);
 
     try {
+      trackFeatureUsed('upload_started', 'model_upload', uploadFiles.length);
       const uploadedModels: VRMModel[] = [];
       
       // 逐个上传文件
@@ -209,30 +217,30 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
         setCurrentUploadIndex(i);
         
         console.log(`开始上传VRM模型 ${i + 1}/${uploadFiles.length}:`, file.name);
-        
-        // 使用S3上传器上传文件
+      
+      // 使用S3上传器上传文件
         const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
           // 计算总体进度
           const totalProgress = ((i + progress / 100) / uploadFiles.length) * 100;
           setUploadProgress(totalProgress);
           console.log(`上传进度 ${i + 1}/${uploadFiles.length}:`, progress);
-        });
+      });
 
         console.log(`上传完成 ${i + 1}/${uploadFiles.length}:`, uploadResult);
-        
+      
         // 创建新的模型对象 - 强制设置为VRM
-        const newModel: VRMModel = {
+      const newModel: VRMModel = {
           id: `uploaded-${Date.now()}-${i}`,
           name: file.name.replace('.vrm', ''), // 移除.vrm扩展名
-          url: uploadResult.url,
+        url: uploadResult.url,
           category: 'vrm', // 强制设置为VRM类别
-          thumbnail: null, // 可以后续添加缩略图生成功能
+        thumbnail: null, // 可以后续添加缩略图生成功能
           tags: ['uploaded', 'VRM'], // 强制设置为VRM标签
           description: `用户上传的VRM模型文件`,
-          createdAt: new Date().toISOString(),
-          size: uploadResult.size,
+        createdAt: new Date().toISOString(),
+        size: uploadResult.size,
           type: 'model/vrm' // 强制设置为VRM类型
-        };
+      };
 
         uploadedModels.push(newModel);
         setUploadResults(prev => [...prev, { file: file.name, success: true }]);
@@ -240,6 +248,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
 
       // 添加到模型列表
       setModels(prevModels => [...uploadedModels, ...prevModels]);
+      trackFeatureUsed('upload_completed', 'model_upload', uploadedModels.length);
       
       // 重新加载S3模型列表
       const loadModels = async () => {
@@ -350,8 +359,8 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                         <div className="max-h-32 overflow-y-auto space-y-1">
                           {uploadFiles.map((file, index) => (
                             <div key={index} className="p-2 bg-sky-50 border border-sky-200 rounded-lg">
-                              <div className="flex items-center space-x-2">
-                                <File className="h-4 w-4 text-sky-600" />
+                        <div className="flex items-center space-x-2">
+                          <File className="h-4 w-4 text-sky-600" />
                                 <span className="text-sm text-sky-700">{file.name}</span>
                                 <span className="text-xs text-sky-500">
                                   ({s3Uploader.formatFileSize(file.size)})

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { s3ResourceManager } from '@/lib/s3-resource-manager'
+import s3ResourceManager from '@/lib/s3-resource-manager'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'

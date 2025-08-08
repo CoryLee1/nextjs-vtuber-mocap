@@ -25,6 +25,7 @@ import {
 import { useAnimationLibrary } from '@/hooks/use-animation-library';
 import { Animation } from '@/types';
 import { useI18n } from '@/hooks/use-i18n';
+import { useTracking } from '@/hooks/use-tracking';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { animationStorage } from '@/lib/animation-storage';
 
@@ -35,6 +36,7 @@ interface AnimationLibraryProps {
 
 export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onSelect }) => {
   const { t } = useI18n();
+  const { trackFeatureUsed, trackError } = useTracking();
   const { 
     animations, 
     loading, 
@@ -87,15 +89,17 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
         });
         
         setAllAnimations(allAnimations);
+        trackFeatureUsed('animations_loaded', 'animation_management');
       } catch (error) {
         console.error('Failed to load animations:', error);
+        trackError('animation_load_error', error.toString(), 'animation_library');
       } finally {
         setIsLoadingS3(false);
       }
     };
 
     loadAnimations();
-  }, [animations]);
+  }, [animations, trackFeatureUsed, trackError]);
 
   // 过滤动画 - 添加安全检查
   const filteredAnimations = allAnimations.filter((animation: any) => {
@@ -110,6 +114,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
 
   // 处理动画选择
   const handleAnimationSelect = (animation: Animation) => {
+    trackFeatureUsed('animation_selected', 'animation_management');
     onSelect(animation);
     onClose();
   };
@@ -134,6 +139,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
       
       // 显示错误信息
       if (errors.length > 0) {
+        trackError('file_validation_error', errors.join(', '), 'animation_library');
         alert(`以下文件验证失败：\n${errors.join('\n')}`);
       }
       
@@ -141,6 +147,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
       if (validFiles.length > 0) {
         setUploadFiles(validFiles);
         setUploadFile(validFiles[0]); // 保持兼容性
+        trackFeatureUsed('animation_files_selected', 'animation_upload', validFiles.length);
       }
     }
   };
@@ -155,6 +162,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
     setUploadResults([]);
 
     try {
+      trackFeatureUsed('animation_upload_started', 'animation_upload', uploadFiles.length);
       const uploadedAnimations: Animation[] = [];
       
       // 逐个上传文件
@@ -199,6 +207,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
 
       // 立即添加到当前显示的动画列表中
       setAllAnimations(prevAnimations => [...uploadedAnimations, ...prevAnimations]);
+      trackFeatureUsed('animation_upload_completed', 'animation_upload', uploadedAnimations.length);
       
       // 重新加载S3动画列表以确保数据同步
       const loadAnimations = async () => {
@@ -254,6 +263,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
     if (animationStorage.isUserAnimation(animation.id)) {
       if (confirm(`确定要删除动画 "${animation.name}" 吗？`)) {
         removeUserAnimation(animation.id);
+        trackFeatureUsed('animation_deleted', 'animation_management');
         alert('动画已从本地库中删除');
       }
     } else {

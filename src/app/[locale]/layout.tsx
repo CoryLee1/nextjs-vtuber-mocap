@@ -5,6 +5,8 @@ import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import '../globals.css'
 import { Toaster } from '@/components/ui/toaster'
+import { PostHogProvider } from '@/components/tracking/PostHogProvider'
+import { InternationalizationTracker } from '@/components/tracking/InternationalizationTracker'
 import { locales } from '@/i18n/config'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -36,22 +38,46 @@ export default async function RootLayout({
   children,
   params: { locale }
 }: RootLayoutProps) {
-  // 验证语言是否支持
-  if (!locales.includes(locale as any)) {
-    notFound();
+  try {
+    // 验证语言是否支持
+    if (!locale || !locales.includes(locale as any)) {
+      console.warn(`Unsupported locale: ${locale}, redirecting to default`)
+      notFound();
+    }
+
+    // 获取消息，传递正确的 locale 参数
+    const messages = await getMessages({ locale }).catch(() => {
+      console.warn(`Failed to load messages for locale: ${locale}`)
+      return {}
+    });
+
+    return (
+      <html lang={locale}>
+        <body className={inter.className}>
+          <NextIntlClientProvider messages={messages}>
+            <PostHogProvider>
+              <InternationalizationTracker currentLocale={locale} />
+              {children}
+              <Toaster />
+            </PostHogProvider>
+          </NextIntlClientProvider>
+        </body>
+      </html>
+    )
+  } catch (error) {
+    console.error('Error in RootLayout:', error)
+    // 返回一个基本的错误页面
+    return (
+      <html lang="zh">
+        <body className={inter.className}>
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-red-600 mb-4">加载错误</h1>
+              <p className="text-gray-600">页面加载时发生错误，请刷新页面重试。</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    )
   }
-
-  // 获取消息，传递正确的 locale 参数
-  const messages = await getMessages({ locale });
-
-  return (
-    <html lang={locale}>
-      <body className={inter.className}>
-        <NextIntlClientProvider messages={messages}>
-          {children}
-          <Toaster />
-        </NextIntlClientProvider>
-      </body>
-    </html>
-  )
 } 

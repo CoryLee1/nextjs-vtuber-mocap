@@ -1,5 +1,6 @@
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { VRMModel, Animation } from '@/types';
+import { ENV_CONFIG } from '../../env.config';
 
 export class S3ResourceManager {
   private s3Config: {
@@ -10,19 +11,19 @@ export class S3ResourceManager {
 
   constructor() {
     this.s3Config = {
-      bucketName: process.env.NEXT_PUBLIC_S3_BUCKET || 'nextjs-vtuber-assets',
-      region: process.env.NEXT_PUBLIC_S3_REGION || 'us-east-2',
-      baseUrl: process.env.NEXT_PUBLIC_S3_BASE_URL || 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com'
+      bucketName: ENV_CONFIG.S3.BUCKET,
+      region: ENV_CONFIG.S3.REGION,
+      baseUrl: ENV_CONFIG.S3.BASE_URL
     };
   }
 
   // 获取S3客户端
   private getS3Client() {
     // 检查环境变量
-    let accessKeyId = process.env.AWS_ACCESS_KEY_ID
-    let secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
-    let bucketName = process.env.NEXT_PUBLIC_S3_BUCKET
-    let region = process.env.NEXT_PUBLIC_S3_REGION
+    let accessKeyId = ENV_CONFIG.S3.ACCESS_KEY_ID
+    let secretAccessKey = ENV_CONFIG.S3.SECRET_ACCESS_KEY
+    let bucketName = ENV_CONFIG.S3.BUCKET
+    let region = ENV_CONFIG.S3.REGION
 
     // 如果环境变量未加载，返回错误
     if (!accessKeyId || !secretAccessKey) {
@@ -106,50 +107,16 @@ export class S3ResourceManager {
               id: `s3-${object.Key}`,
               name: animationName,
               url: `${this.s3Config.baseUrl}/${object.Key}`,
-              type: 'custom',
+              type: 'fbx',
               thumbnail: null,
-              tags: ['FBX', 'S3', 'Animation'],
+              tags: ['FBX', 'S3'],
               description: `S3中的动画文件`,
-              duration: 0, // 可以后续添加动画时长检测
+              duration: 0,
               size: object.Size,
               mimeType: 'application/octet-stream',
+              category: 'animation',
               createdAt: object.LastModified?.toISOString()
             });
-          }
-        }
-      }
-
-      // 获取fbx文件夹中的动画文件
-      const fbxCommand = new ListObjectsV2Command({
-        Bucket: this.s3Config.bucketName,
-        Prefix: 'fbx/',
-      });
-
-      const fbxResponse = await s3Client.send(fbxCommand);
-
-      if (fbxResponse.Contents) {
-        for (const object of fbxResponse.Contents) {
-          if (object.Key && object.Key.endsWith('.fbx')) {
-            const fileName = object.Key.split('/').pop() || '';
-            const animationName = fileName.replace('.fbx', '');
-            
-            // 检查是否已经添加过（避免重复）
-            const existingAnimation = animations.find(a => a.name === animationName);
-            if (!existingAnimation) {
-              animations.push({
-                id: `s3-${object.Key}`,
-                name: animationName,
-                url: `${this.s3Config.baseUrl}/${object.Key}`,
-                type: 'custom',
-                thumbnail: null,
-                tags: ['FBX', 'S3', 'Animation'],
-                description: `S3中的动画文件`,
-                duration: 0, // 可以后续添加动画时长检测
-                size: object.Size,
-                mimeType: 'application/octet-stream',
-                createdAt: object.LastModified?.toISOString()
-              });
-            }
           }
         }
       }
@@ -164,12 +131,13 @@ export class S3ResourceManager {
   // 格式化文件大小
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
+    
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }
 
-// 创建全局实例
-export const s3ResourceManager = new S3ResourceManager(); 
+export default new S3ResourceManager(); 
