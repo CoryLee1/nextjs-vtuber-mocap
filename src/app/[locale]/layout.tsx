@@ -7,6 +7,7 @@ import '../globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { PostHogProvider } from '@/components/tracking/PostHogProvider'
 import { InternationalizationTracker } from '@/components/tracking/InternationalizationTracker'
+import { ThemeProvider } from '@/providers/ThemeProvider'
 import { locales } from '@/i18n/config'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -56,9 +57,11 @@ export default async function RootLayout({
         <body className={inter.className}>
           <NextIntlClientProvider messages={messages}>
             <PostHogProvider>
-              <InternationalizationTracker currentLocale={locale} />
-              {children}
-              <Toaster />
+              <ThemeProvider>
+                <InternationalizationTracker currentLocale={locale} />
+                {children}
+                <Toaster />
+              </ThemeProvider>
             </PostHogProvider>
           </NextIntlClientProvider>
         </body>

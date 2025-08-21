@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 // 状态指示器组件
 interface StatusIndicatorProps {
@@ -37,34 +38,35 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
 
   return (
     <div className="fixed top-4 right-4 z-50 space-y-2">
-      {/* 语言切换器 */}
-      <div className="flex justify-end">
+      {/* 语言切换器和主题切换器 */}
+      <div className="flex justify-end space-x-2">
+        <ThemeToggle />
         <LanguageSwitcher />
       </div>
 
       {/* 处理状态 */}
       {isProcessing && (
-        <Card className="bg-sky-50 border-sky-200 shadow-lg">
+        <Card className="bg-muted/50 backdrop-blur-sm border-border shadow-lg">
           <CardContent className="p-3 flex items-center space-x-2">
-            <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-            <span className="text-sm text-sky-700">{t('vtuber.status.processing')}</span>
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-foreground">{t('vtuber.status.processing')}</span>
           </CardContent>
         </Card>
       )}
 
       {/* 错误状态 */}
       {error && (
-        <Card className="bg-red-50 border-red-200 shadow-lg">
+        <Card className="bg-destructive/10 backdrop-blur-sm border-destructive/20 shadow-lg">
           <CardContent className="p-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <span className="text-sm text-red-700">{error}</span>
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <span className="text-sm text-destructive-foreground">{error}</span>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClearError}
-              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-100"
+              className="h-6 w-6 p-0 text-destructive hover:text-destructive-foreground hover:bg-destructive/10"
             >
               <X className="h-3 w-3" />
             </Button>
@@ -73,10 +75,10 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
       )}
 
       {/* 摄像头状态 */}
-      <Card className="bg-white/95 backdrop-blur-sm border-sky-200 shadow-lg">
+      <Card className="bg-card/95 backdrop-blur-sm border-border shadow-lg">
         <CardContent className="p-3 flex items-center space-x-2">
-          <div className={`h-2 w-2 rounded-full ${isActive ? 'bg-sky-500' : 'bg-sky-300'}`} />
-          <span className="text-sm text-sky-700">
+          <div className={`h-2 w-2 rounded-full ${isActive ? 'bg-primary' : 'bg-muted-foreground'}`} />
+          <span className="text-sm text-card-foreground">
             {isActive ? t('vtuber.camera.connected') : t('vtuber.camera.disconnected')}
           </span>
         </CardContent>
@@ -113,11 +115,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   return (
     <div className="fixed bottom-4 left-4 z-50">
-      <Card className="bg-white/95 backdrop-blur-sm border-sky-200 shadow-xl">
+      <Card className="bg-card/95 backdrop-blur-sm border-border shadow-xl">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2 mb-4">
-            <h3 className="text-sm font-medium text-sky-900">{t('vtuber.controls.title')}</h3>
-            <Badge variant="secondary" className="text-xs bg-sky-100 text-sky-700 border-sky-200">
+            <h3 className="text-sm font-medium text-card-foreground">{t('vtuber.controls.title')}</h3>
+            <Badge variant="secondary" className="text-xs">
               VTuber
             </Badge>
           </div>
@@ -128,11 +130,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               variant={isCameraActive ? "default" : "outline"}
               size="sm"
               onClick={onCameraToggle}
-              className={`w-full justify-start ${
-                isCameraActive 
-                  ? 'bg-sky-500 hover:bg-sky-600 text-white' 
-                  : 'border-sky-200 text-sky-700 hover:bg-sky-50'
-              }`}
+              className="w-full justify-start"
             >
               <Camera className="h-4 w-4 mr-2" />
               {isCameraActive ? t('vtuber.camera.stop') : t('vtuber.camera.start')}
@@ -144,11 +142,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 variant={showBones ? "default" : "outline"}
                 size="sm"
                 onClick={onToggleBones}
-                className={`justify-start ${
-                  showBones 
-                    ? 'bg-sky-500 hover:bg-sky-600 text-white' 
-                    : 'border-sky-200 text-sky-700 hover:bg-sky-50'
-                }`}
+                className="justify-start"
               >
                 {showBones ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
                 {t('vtuber.controls.bones')}
@@ -158,11 +152,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 variant={showDebug ? "default" : "outline"}
                 size="sm"
                 onClick={onToggleDebug}
-                className={`justify-start ${
-                  showDebug 
-                    ? 'bg-sky-500 hover:bg-sky-600 text-white' 
-                    : 'border-sky-200 text-sky-700 hover:bg-sky-50'
-                }`}
+                className="justify-start"
               >
                 <Bug className="h-4 w-4 mr-2" />
                 {t('vtuber.controls.debug')}
@@ -175,7 +165,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={onOpenModelManager}
-                className="w-full justify-start border-sky-200 text-sky-700 hover:bg-sky-50"
+                className="w-full justify-start"
               >
                 <Users className="h-4 w-4 mr-2" />
                 {t('vtuber.model.manager')}
@@ -185,7 +175,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={onOpenAnimationLibrary}
-                className="w-full justify-start border-sky-200 text-sky-700 hover:bg-sky-50"
+                className="w-full justify-start"
               >
                 <Play className="h-4 w-4 mr-2" />
                 {t('vtuber.animation.library')}
@@ -195,7 +185,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={onOpenConfigManager}
-                className="w-full justify-start border-sky-200 text-sky-700 hover:bg-sky-50"
+                className="w-full justify-start"
               >
                 <Settings className="h-4 w-4 mr-2" />
                 {t('settings.title')}
@@ -221,16 +211,16 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
   controlProps
 }) => {
   return (
-    <div className="relative w-full h-screen bg-gradient-to-br from-white via-sky-50 to-blue-50 overflow-hidden">
-      {/* 主内容区域 */}
-      <div className="w-full h-full">
+    <div className="relative w-full h-screen overflow-hidden theme-transition">
+      {/* 3D场景容器 - 占据整个屏幕 */}
+      <div className="absolute inset-0 w-full h-full">
         {children}
       </div>
 
-      {/* 状态指示器 */}
+      {/* UI覆盖层 - 状态指示器 */}
       <StatusIndicator {...statusProps} />
 
-      {/* 控制面板 */}
+      {/* UI覆盖层 - 控制面板 */}
       <ControlPanel {...controlProps} />
     </div>
   );

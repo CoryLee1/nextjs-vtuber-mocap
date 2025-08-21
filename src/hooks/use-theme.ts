@@ -51,26 +51,17 @@ export const useTheme = () => {
   // 应用主色调
   const applyPrimaryColor = (color: string) => {
     const root = document.documentElement;
-    root.style.setProperty('--primary-color', color);
     
     // 更新 CSS 变量
-    const style = document.createElement('style');
-    style.textContent = `
-      :root {
-        --primary-color: ${color};
-        --primary-hover: ${adjustBrightness(color, -10)};
-        --primary-light: ${adjustBrightness(color, 90)};
-      }
-    `;
+    root.style.setProperty('--primary-color', color);
+    root.style.setProperty('--primary-hover', adjustBrightness(color, -10));
+    root.style.setProperty('--primary-light', adjustBrightness(color, 90));
+    root.style.setProperty('--ring', color);
     
-    // 移除旧的样式
-    const oldStyle = document.getElementById('theme-color-style');
-    if (oldStyle) {
-      oldStyle.remove();
-    }
-    
-    style.id = 'theme-color-style';
-    document.head.appendChild(style);
+    // 更新 VTuber 主题变量
+    root.style.setProperty('--vtuber-primary', color);
+    root.style.setProperty('--vtuber-secondary', adjustBrightness(color, 20));
+    root.style.setProperty('--vtuber-accent', adjustBrightness(color, 30));
   };
 
   // 调整颜色亮度

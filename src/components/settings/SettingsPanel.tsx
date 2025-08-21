@@ -22,7 +22,7 @@ import {
 import { useI18n } from '@/hooks/use-i18n';
 import { usePerformance } from '@/hooks/use-performance';
 import { useShortcuts } from '@/hooks/use-shortcuts';
-import { useTheme } from '@/hooks/use-theme';
+import { useThemeContext } from '@/providers/ThemeProvider';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 interface SettingsPanelProps {
@@ -40,7 +40,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     updateThemeMode, 
     updatePrimaryColor, 
     resetTheme 
-  } = useTheme();
+  } = useThemeContext();
 
   const [activeTab, setActiveTab] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
@@ -103,16 +103,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-4xl h-[80vh] bg-white/95 backdrop-blur-sm border-sky-200">
-        <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-200">
+      <Card className="w-full max-w-4xl h-[80vh] bg-card/95 backdrop-blur-sm border-border">
+        <CardHeader className="bg-gradient-to-r from-muted/50 to-muted/30 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-sky-100 rounded-lg">
-                <Settings className="h-5 w-5 text-sky-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Settings className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-sky-900">{t('settings.title')}</CardTitle>
-                <p className="text-sm text-sky-600">{t('settings.description')}</p>
+                <CardTitle className="text-card-foreground">{t('settings.title')}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t('settings.description')}</p>
               </div>
             </div>
             
@@ -128,7 +128,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               <Button
                 variant="outline"
                 onClick={onClose}
-                className="border-sky-200 text-sky-700 hover:bg-sky-50"
+                className="border-border text-foreground hover:bg-muted"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -138,55 +138,55 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
         <CardContent className="p-6 h-full flex flex-col">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-            <TabsList className="grid w-full grid-cols-5 bg-sky-50">
-              <TabsTrigger value="general" className="text-sky-700">{t('settings.general')}</TabsTrigger>
-              <TabsTrigger value="performance" className="text-sky-700">{t('settings.performance')}</TabsTrigger>
-              <TabsTrigger value="language" className="text-sky-700">{t('settings.language')}</TabsTrigger>
-              <TabsTrigger value="theme" className="text-sky-700">{t('settings.theme')}</TabsTrigger>
-              <TabsTrigger value="shortcuts" className="text-sky-700">{t('settings.shortcuts')}</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5 bg-muted/50">
+              <TabsTrigger value="general" className="text-foreground">{t('settings.general')}</TabsTrigger>
+              <TabsTrigger value="performance" className="text-foreground">{t('settings.performance')}</TabsTrigger>
+              <TabsTrigger value="language" className="text-foreground">{t('settings.language')}</TabsTrigger>
+              <TabsTrigger value="theme" className="text-foreground">{t('settings.theme')}</TabsTrigger>
+              <TabsTrigger value="shortcuts" className="text-foreground">{t('settings.shortcuts')}</TabsTrigger>
             </TabsList>
 
             {/* 常规设置 */}
             <TabsContent value="general" className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">{t('settings.basicSettings')}</h3>
+                  <h3 className="text-lg font-medium text-card-foreground">{t('settings.basicSettings')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('settings.appName')}</Label>
+                    <Label className="text-foreground">{t('settings.appName')}</Label>
                     <Input 
                       value={t('app.title')} 
                       disabled 
-                      className="border-sky-200"
+                      className="border-border"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('settings.version')}</Label>
+                    <Label className="text-foreground">{t('settings.version')}</Label>
                     <Input 
                       value="1.0.0" 
                       disabled 
-                      className="border-sky-200"
+                      className="border-border"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">{t('settings.systemInfo')}</h3>
+                  <h3 className="text-lg font-medium text-card-foreground">{t('settings.systemInfo')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('performance.currentFps')}</Label>
+                    <Label className="text-foreground">{t('performance.currentFps')}</Label>
                     <div className="flex items-center space-x-2">
-                      <Monitor className="h-4 w-4 text-sky-600" />
-                      <span className="text-sky-900 font-medium">{fps}</span>
+                      <Monitor className="h-4 w-4 text-primary" />
+                      <span className="text-card-foreground font-medium">{fps}</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('performance.memoryUsage')}</Label>
+                    <Label className="text-foreground">{t('performance.memoryUsage')}</Label>
                     <div className="flex items-center space-x-2">
-                      <HardDrive className="h-4 w-4 text-sky-600" />
-                      <span className="text-sky-900 font-medium">{memoryUsage}%</span>
+                      <HardDrive className="h-4 w-4 text-primary" />
+                      <span className="text-card-foreground font-medium">{memoryUsage}%</span>
                     </div>
                   </div>
                 </div>
@@ -197,90 +197,97 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             <TabsContent value="performance" className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">{t('performance.renderQuality')}</h3>
+                  <h3 className="text-lg font-medium text-card-foreground">{t('performance.renderQuality')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('performance.quality')}</Label>
+                    <Label className="text-foreground">{t('performance.quality')}</Label>
                     <Select 
                       value={settings.quality} 
                       onValueChange={(value) => handleSettingChange('quality', value)}
                     >
-                      <SelectTrigger className="border-sky-200">
+                      <SelectTrigger className="border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">{t('performance.low')}</SelectItem>
-                        <SelectItem value="medium">{t('performance.medium')}</SelectItem>
-                        <SelectItem value="high">{t('performance.high')}</SelectItem>
+                        <SelectItem value="low">{t('performance.qualityLow')}</SelectItem>
+                        <SelectItem value="medium">{t('performance.qualityMedium')}</SelectItem>
+                        <SelectItem value="high">{t('performance.qualityHigh')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('performance.targetFps')}</Label>
-                    <Input 
-                      type="number"
-                      value={settings.fps}
-                      onChange={(e) => handleSettingChange('fps', parseInt(e.target.value))}
-                      className="border-sky-200"
-                    />
+                    <Label className="text-foreground">{t('performance.fps')}</Label>
+                    <Select 
+                      value={settings.fps.toString()} 
+                      onValueChange={(value) => handleSettingChange('fps', parseInt(value))}
+                    >
+                      <SelectTrigger className="border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 FPS</SelectItem>
+                        <SelectItem value="60">60 FPS</SelectItem>
+                        <SelectItem value="120">120 FPS</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('performance.resolutionScale')}</Label>
-                    <Input 
-                      type="number"
-                      step="0.1"
-                      min="0.5"
-                      max="2"
-                      value={settings.resolution}
-                      onChange={(e) => handleSettingChange('resolution', parseFloat(e.target.value))}
-                      className="border-sky-200"
-                    />
+                    <Label className="text-foreground">{t('performance.resolution')}</Label>
+                    <Select 
+                      value={settings.resolution.toString()} 
+                      onValueChange={(value) => handleSettingChange('resolution', parseFloat(value))}
+                    >
+                      <SelectTrigger className="border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0.5">0.5x</SelectItem>
+                        <SelectItem value="1">1x</SelectItem>
+                        <SelectItem value="1.5">1.5x</SelectItem>
+                        <SelectItem value="2">2x</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">{t('performance.renderOptions')}</h3>
+                  <h3 className="text-lg font-medium text-card-foreground">{t('performance.advanced')}</h3>
                   
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sky-700">{t('performance.antialiasing')}</Label>
-                    <Switch 
-                      checked={settings.antialiasing}
-                      onCheckedChange={(checked) => handleSettingChange('antialiasing', checked)}
-                    />
-                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="text-foreground">{t('performance.antialiasing')}</Label>
+                        <p className="text-sm text-muted-foreground">{t('performance.antialiasingDesc')}</p>
+                      </div>
+                      <Switch
+                        checked={settings.antialiasing}
+                        onCheckedChange={(checked) => handleSettingChange('antialiasing', checked)}
+                      />
+                    </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sky-700">{t('performance.shadows')}</Label>
-                    <Switch 
-                      checked={settings.shadows}
-                      onCheckedChange={(checked) => handleSettingChange('shadows', checked)}
-                    />
-                  </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="text-foreground">{t('performance.shadows')}</Label>
+                        <p className="text-sm text-muted-foreground">{t('performance.shadowsDesc')}</p>
+                      </div>
+                      <Switch
+                        checked={settings.shadows}
+                        onCheckedChange={(checked) => handleSettingChange('shadows', checked)}
+                      />
+                    </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sky-700">{t('performance.bloom')}</Label>
-                    <Switch 
-                      checked={settings.bloom}
-                      onCheckedChange={(checked) => handleSettingChange('bloom', checked)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sky-700">{t('performance.optimization')}</Label>
-                    <Select 
-                      value={settings.optimization} 
-                      onValueChange={(value) => handleSettingChange('optimization', value)}
-                    >
-                      <SelectTrigger className="border-sky-200">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">{t('performance.auto')}</SelectItem>
-                        <SelectItem value="manual">{t('performance.manual')}</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="text-foreground">{t('performance.bloom')}</Label>
+                        <p className="text-sm text-muted-foreground">{t('performance.bloomDesc')}</p>
+                      </div>
+                      <Switch
+                        checked={settings.bloom}
+                        onCheckedChange={(checked) => handleSettingChange('bloom', checked)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -289,16 +296,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             {/* 语言设置 */}
             <TabsContent value="language" className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-sky-900">{t('languages.select')}</h3>
+                <h3 className="text-lg font-medium text-card-foreground">{t('languages.title')}</h3>
+                <p className="text-sm text-muted-foreground">{t('languages.description')}</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {availableLocales.map((locale) => (
                     <Card
                       key={locale.code}
-                      className={`cursor-pointer transition-all ${
+                      className={`cursor-pointer transition-all hover:shadow-md ${
                         locale.isCurrent 
-                          ? 'border-sky-500 bg-sky-50' 
-                          : 'border-sky-200 hover:border-sky-300'
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-primary/50'
                       }`}
                       onClick={() => changeLocale(locale.code)}
                     >
@@ -306,9 +314,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">{locale.flag}</span>
                           <div>
-                            <div className="font-medium text-sky-900">{locale.name}</div>
+                            <div className="font-medium text-card-foreground">{locale.name}</div>
                             {locale.isCurrent && (
-                              <Badge variant="secondary" className="text-xs bg-sky-100 text-sky-700">
+                              <Badge variant="secondary" className="text-xs">
                                 {t('languages.current')}
                               </Badge>
                             )}
@@ -325,12 +333,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             <TabsContent value="theme" className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">{t('theme.title')}</h3>
+                  <h3 className="text-lg font-medium text-card-foreground">{t('theme.title')}</h3>
                   
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('theme.mode')}</Label>
+                    <Label className="text-foreground">{t('theme.mode')}</Label>
                     <Select value={themeMode} onValueChange={handleThemeModeChange}>
-                      <SelectTrigger className="border-sky-200">
+                      <SelectTrigger className="border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -342,15 +350,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">{t('theme.primaryColor')}</Label>
+                    <Label className="text-foreground">{t('theme.primaryColor')}</Label>
                     <div className="grid grid-cols-4 gap-3">
                       {themeColors.map((themeColor) => (
                         <div
                           key={themeColor.color}
                           className={`w-12 h-12 rounded-full cursor-pointer border-2 transition-all hover:scale-110 ${
                             primaryColor === themeColor.color 
-                              ? 'border-sky-500 ring-2 ring-sky-200' 
-                              : 'border-gray-200'
+                              ? 'border-primary ring-2 ring-primary/20' 
+                              : 'border-border'
                           }`}
                           style={{ backgroundColor: themeColor.color }}
                           onClick={() => handlePrimaryColorChange(themeColor.color)}
@@ -361,18 +369,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sky-700">自定义颜色</Label>
+                    <Label className="text-foreground">自定义颜色</Label>
                     <div className="flex items-center space-x-2">
                       <Input
                         type="color"
                         value={primaryColor}
                         onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                        className="w-16 h-10 p-1 border-sky-200"
+                        className="w-16 h-10 p-1 border-border"
                       />
                       <Input
                         value={primaryColor}
                         onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                        className="flex-1 border-sky-200"
+                        className="flex-1 border-border"
                         placeholder="#0ea5e9"
                       />
                     </div>
@@ -380,11 +388,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-sky-900">{t('theme.preview')}</h3>
+                  <h3 className="text-lg font-medium text-card-foreground">{t('theme.preview')}</h3>
                   
-                  <div className="p-6 bg-white rounded-lg border border-sky-200 shadow-sm">
+                  <div className="p-6 bg-card rounded-lg border border-border shadow-sm">
                     <div className="space-y-4">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {t('theme.previewArea')}
                       </div>
                       
@@ -395,7 +403,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             className="w-4 h-4 rounded"
                             style={{ backgroundColor: primaryColor }}
                           />
-                          <span className="text-sm font-medium">主色调</span>
+                          <span className="text-sm font-medium text-card-foreground">主色调</span>
                         </div>
                         
                         <div className="space-y-2">
@@ -416,7 +424,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           </Button>
                         </div>
                         
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           当前主题模式: {themeMode === 'auto' ? '自动' : themeMode === 'dark' ? '深色' : '浅色'}
                         </div>
                       </div>
@@ -429,16 +437,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             {/* 快捷键设置 */}
             <TabsContent value="shortcuts" className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-sky-900">{t('shortcuts.title')}</h3>
+                <h3 className="text-lg font-medium text-card-foreground">{t('shortcuts.title')}</h3>
                 
                 <div className="space-y-2">
                   {shortcuts.map((shortcut, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-sky-50 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <Keyboard className="h-4 w-4 text-sky-600" />
-                        <span className="text-sky-900">{shortcut.description}</span>
+                        <Keyboard className="h-4 w-4 text-primary" />
+                        <span className="text-card-foreground">{shortcut.description}</span>
                       </div>
-                      <Badge variant="secondary" className="bg-sky-100 text-sky-700 border-sky-200">
+                      <Badge variant="secondary">
                         {getShortcutDescription(shortcut)}
                       </Badge>
                     </div>
@@ -449,11 +457,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           </Tabs>
 
           {/* 底部操作按钮 */}
-          <div className="flex items-center justify-between pt-6 border-t border-sky-200">
+          <div className="flex items-center justify-between pt-6 border-t border-border">
             <Button
               variant="outline"
               onClick={handleReset}
-              className="border-sky-200 text-sky-700 hover:bg-sky-50"
+              className="border-border text-foreground hover:bg-muted"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
               {t('settings.reset')}
@@ -463,14 +471,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               <Button
                 variant="outline"
                 onClick={onClose}
-                className="border-sky-200 text-sky-700 hover:bg-sky-50"
+                className="border-border text-foreground hover:bg-muted"
               >
                 {t('app.cancel')}
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={!hasChanges}
-                className="bg-sky-500 hover:bg-sky-600 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {t('app.save')}
