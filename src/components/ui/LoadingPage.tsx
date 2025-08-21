@@ -66,28 +66,33 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
       container.appendChild(canvasContainer);
       containerRef.current.appendChild(container);
 
-      // 执行完全相同的JavaScript代码（包裹在 IIFE 中避免全局变量冲突）
-      const p5Script = `(function(){
+      // 执行完全相同的JavaScript代码（不使用IIFE，因为p5.js需要全局函数）
+      const p5Script = `
+        // 清除可能存在的变量（避免重复声明错误）
+        if (typeof originalFrames !== 'undefined') {
+          console.log('清理已存在的变量');
+        }
+        
         // 全局变量
-        let originalFrames = [];
-        let backgroundVideo;
-        let currentFrame = 0;
-        let isPlaying = true; // 默认自动播放
-        let canvasWidth, canvasHeight;
-        let videoFitMode = 'contain'; // 默认完整显示
-        let frameRate = 30;
-        let lastFrameTime = 0;
-        let frameInterval = 1000 / frameRate;
-        let mousePixelSize = 8; // 鼠标控制的像素大小（现在改为Loading控制）
-        let currentFrameImg = null; // 当前帧图像
-        let framePixels = null; // 当前帧像素数据
-        let lastProcessedFrame = -1; // 记录上次处理的帧，避免重复加载像素数据
-        let customFont; // 自定义字体
-        let loadingProgress = 0; // 加载进度
-        let isLoading = true; // 是否正在加载
-        let targetBackgroundColor = {r: 0, g: 0, b: 255}; // 目标蓝色
-        let currentBackgroundColor = {r: 240, g: 240, b: 252}; // 当前浅蓝紫色
-        let finalTransitionProgress = 0; // 99%-100%阶段的过渡进度
+        var originalFrames = [];
+        var backgroundVideo;
+        var currentFrame = 0;
+        var isPlaying = true; // 默认自动播放
+        var canvasWidth, canvasHeight;
+        var videoFitMode = 'contain'; // 默认完整显示
+        var frameRate = 30;
+        var lastFrameTime = 0;
+        var frameInterval = 1000 / frameRate;
+        var mousePixelSize = 8; // 鼠标控制的像素大小（现在改为Loading控制）
+        var currentFrameImg = null; // 当前帧图像
+        var framePixels = null; // 当前帧像素数据
+        var lastProcessedFrame = -1; // 记录上次处理的帧，避免重复加载像素数据
+        var customFont; // 自定义字体
+        var loadingProgress = 0; // 加载进度
+        var isLoading = true; // 是否正在加载
+        var targetBackgroundColor = {r: 0, g: 0, b: 255}; // 目标蓝色
+        var currentBackgroundColor = {r: 240, g: 240, b: 252}; // 当前浅蓝紫色
+        var finalTransitionProgress = 0; // 99%-100%阶段的过渡进度
 
         function updateCanvasSize() {
             canvasWidth = window.innerWidth;
@@ -111,27 +116,27 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
         // 自动加载PNG序列
         async function loadPNGSequence() {
             originalFrames = [];
-            let loadedCount = 0;
+            var loadedCount = 0;
             
             try {
                 // 从opening1_2000.png到opening1_2133.png
-                for (let i = 2000; i <= 2133; i++) {
+                for (var i = 2000; i <= 2133; i++) {
                     try {
                         // 使用正确的路径
-                        const img = await loadImageAsync(\`/project-resources/opening1_\${i}.png\`);
+                        var img = await loadImageAsync('/project-resources/opening1_' + i + '.png');
                         originalFrames.push(img);
                         loadedCount++;
                         
                         // 每加载10个文件显示一次进度
                         if (loadedCount % 10 === 0) {
-                            console.log(\`已加载 \${loadedCount}/134 帧\`);
+                            console.log('已加载 ' + loadedCount + '/134 帧');
                         }
                     } catch (error) {
-                        console.log(\`加载图片失败: opening1_\${i}.png\`, error);
+                        console.log('加载图片失败: opening1_' + i + '.png', error);
                     }
                 }
                 
-                console.log(\`成功加载 \${loadedCount} 帧PNG序列\`);
+                console.log('成功加载 ' + loadedCount + ' 帧PNG序列');
                 return loadedCount > 0;
             } catch (error) {
                 console.log('加载PNG序列时出错:', error);
@@ -141,12 +146,12 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
 
         // 异步加载图片的辅助函数
         function loadImageAsync(src) {
-            return new Promise((resolve, reject) => {
-                loadImage(src, img => {
+            return new Promise(function(resolve, reject) {
+                loadImage(src, function(img) {
                     if (img) {
                         resolve(img);
                     } else {
-                        reject(new Error(\`Failed to load image: \${src}\`));
+                        reject(new Error('Failed to load image: ' + src));
                     }
                 });
             });
@@ -158,34 +163,34 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
                 console.log('开始加载背景视频...');
                 
                 // 尝试多个可能的视频文件路径
-                const videoPaths = [
+                var videoPaths = [
                     '/project-resources/6130625_Skyscrapers Japan Shibuya City_By_21_Aerials_Artlist_HD.mp4'
                 ];
                 
-                for (let i = 0; i < videoPaths.length; i++) {
+                for (var i = 0; i < videoPaths.length; i++) {
                     try {
-                        console.log(\`尝试加载视频: \${videoPaths[i]}\`);
+                        console.log('尝试加载视频: ' + videoPaths[i]);
                         
                         // 创建视频元素
                         backgroundVideo = createVideo(videoPaths[i]);
                         
                         // 等待视频加载
-                        await new Promise((resolve, reject) => {
-                            const timeout = setTimeout(() => {
+                        await new Promise(function(resolve, reject) {
+                            var timeout = setTimeout(function() {
                                 reject(new Error('视频加载超时'));
                             }, 15000); // 15秒超时
                             
-                            backgroundVideo.elt.addEventListener('loadeddata', () => {
+                            backgroundVideo.elt.addEventListener('loadeddata', function() {
                                 clearTimeout(timeout);
                                 console.log('视频数据已加载，尺寸:', backgroundVideo.videoWidth, 'x', backgroundVideo.videoHeight);
                                 resolve();
                             });
                             
-                            backgroundVideo.elt.addEventListener('canplay', () => {
+                            backgroundVideo.elt.addEventListener('canplay', function() {
                                 console.log('视频可以播放');
                             });
                             
-                            backgroundVideo.elt.addEventListener('error', (e) => {
+                            backgroundVideo.elt.addEventListener('error', function(e) {
                                 clearTimeout(timeout);
                                 console.error('视频加载错误:', e);
                                 console.error('错误详情:', backgroundVideo.elt.error);
@@ -198,11 +203,11 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
                         backgroundVideo.play();
                         backgroundVideo.hide(); // 隐藏原始视频元素
                         
-                        console.log(\`成功加载视频: \${videoPaths[i]}\`);
+                        console.log('成功加载视频: ' + videoPaths[i]);
                         return true;
                         
                     } catch (error) {
-                        console.log(\`视频 \${videoPaths[i]} 加载失败:\`, error);
+                        console.log('视频 ' + videoPaths[i] + ' 加载失败:', error);
                         if (backgroundVideo) {
                             backgroundVideo.remove();
                             backgroundVideo = null;
@@ -233,7 +238,7 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             
             createCanvas(canvasWidth, canvasHeight);
             
-            let mainCanvas = select('canvas');
+            var mainCanvas = select('canvas');
             mainCanvas.parent('canvas2');
 
             // 监听窗口大小变化
@@ -251,10 +256,10 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             try {
                 // 尝试加载Helvetica Neue Ultra Light字体
                 customFont = loadFont('/project-resources/helvetica-neue-ultra-light.ttf', 
-                    () => {
+                    function() {
                         console.log('字体加载成功');
                     },
-                    (error) => {
+                    function(error) {
                         console.log('字体加载失败，使用默认字体:', error);
                         customFont = null;
                     }
@@ -271,30 +276,25 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             
             try {
                 // 并行加载PNG序列和背景视频
-                const [pngLoaded, videoLoaded] = await Promise.all([
+                var results = await Promise.all([
                     loadPNGSequence(),
                     loadBackgroundVideo()
                 ]);
+                var pngLoaded = results[0];
+                var videoLoaded = results[1];
                 
                 if (pngLoaded && videoLoaded) {
                     console.log('所有资源加载完成！开始播放动画');
-                    // 不直接设置100%，让Loading进度平滑增长
-                    // isLoading = false;
-                    // loadingProgress = 100;
                 } else {
                     console.log('部分资源加载失败');
-                    // isLoading = false;
-                    // loadingProgress = 50;
                 }
             } catch (error) {
                 console.log('资源加载出错:', error);
-                // isLoading = false;
-                // loadingProgress = 25;
             }
         }
 
         function draw() {
-            const currentTime = millis();
+            var currentTime = millis();
             
             // 控制帧率
             if (currentTime - lastFrameTime < frameInterval) {
@@ -303,7 +303,7 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             lastFrameTime = currentTime;
             
             // 设置画布背景 - 根据Loading进度丝滑过渡
-            let bgR, bgG, bgB;
+            var bgR, bgG, bgB;
             
             if (loadingProgress < 99) {
                 // 0%-99%阶段：保持浅蓝紫色
@@ -323,12 +323,12 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             // 实时渲染主画面
             if (originalFrames && originalFrames.length > 0 && backgroundVideo) {
                 try {
-                    const frameIndex = currentFrame % originalFrames.length;
+                    var frameIndex = currentFrame % originalFrames.length;
                     currentFrameImg = originalFrames[frameIndex];
                     
                     if (currentFrameImg) {
                         // 绘制背景视频
-                        const videoDrawParams = calculateVideoDrawParams();
+                        var videoDrawParams = calculateVideoDrawParams();
                         if (videoDrawParams && backgroundVideo && backgroundVideo.elt) {
                             try {
                                 // 检查视频是否真的在播放
@@ -359,52 +359,52 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
                         }
                         
                         // 使用Loading进度控制像素大小：Loading越大，像素越小
-                        const stepSize = round(constrain(map(loadingProgress, 0, 100, 32, 2), 2, 32));
+                        var stepSize = round(constrain(map(loadingProgress, 0, 100, 32, 2), 2, 32));
                         noStroke();
                         
-                        for (let y = 0; y < canvasHeight; y += stepSize) {
-                            for (let x = 0; x < canvasWidth; x += stepSize) {
+                        for (var y = 0; y < canvasHeight; y += stepSize) {
+                            for (var x = 0; x < canvasWidth; x += stepSize) {
                                 // 计算在原始帧中的对应位置
-                                const srcX = round((x / canvasWidth) * currentFrameImg.width);
-                                const srcY = round((y / canvasHeight) * currentFrameImg.height);
+                                var srcX = round((x / canvasWidth) * currentFrameImg.width);
+                                var srcY = round((y / canvasHeight) * currentFrameImg.height);
                                 
                                 // 边界检查
                                 if (srcX >= 0 && srcX < currentFrameImg.width && 
                                     srcY >= 0 && srcY < currentFrameImg.height) {
                                     
-                                    const i = srcY * currentFrameImg.width + srcX;
+                                    var i = srcY * currentFrameImg.width + srcX;
                                     if (i * 4 + 2 < framePixels.length) {
-                                        const r = framePixels[i * 4];
-                                        const g = framePixels[i * 4 + 1];
-                                        const b = framePixels[i * 4 + 2];
+                                        var r = framePixels[i * 4];
+                                        var g = framePixels[i * 4 + 1];
+                                        var b = framePixels[i * 4 + 2];
                                         
                                         // 计算亮度
-                                        const brightness = (r + g + b) / 3;
+                                        var brightness = (r + g + b) / 3;
                                         
                                         // 根据亮度绘制方块
                                         if (brightness > 50) { // 不是黑色背景
                                             // 统一方块大小，由Loading进度控制
-                                            const rectSize = stepSize * 0.99; // 固定大小
+                                            var rectSize = stepSize * 0.99; // 固定大小
                                             
                                             // 从背景视频采样颜色（如果视频可用）
-                                            let rectColor = {r, g, b};
+                                            var rectColor = {r: r, g: g, b: b};
                                             if (backgroundVideo && backgroundVideo.elt && backgroundVideo.elt.readyState >= 2) {
                                                 try {
                                                     // 计算在视频中的对应位置
-                                                    const videoX = round((x / canvasWidth) * backgroundVideo.videoWidth);
-                                                    const videoY = round((y / canvasHeight) * backgroundVideo.videoHeight);
+                                                    var videoX = round((x / canvasWidth) * backgroundVideo.videoWidth);
+                                                    var videoY = round((y / canvasHeight) * backgroundVideo.videoHeight);
                                                     
                                                     if (videoX >= 0 && videoX < backgroundVideo.videoWidth && 
                                                         videoY >= 0 && videoY < backgroundVideo.videoHeight) {
                                                         
                                                         // 创建临时canvas来采样视频颜色
-                                                        const tempCanvas = document.createElement('canvas');
-                                                        const tempCtx = tempCanvas.getContext('2d');
+                                                        var tempCanvas = document.createElement('canvas');
+                                                        var tempCtx = tempCanvas.getContext('2d');
                                                         tempCanvas.width = 1;
                                                         tempCanvas.height = 1;
                                                         
                                                         tempCtx.drawImage(backgroundVideo.elt, videoX, videoY, 1, 1, 0, 0, 1, 1);
-                                                        const videoPixel = tempCtx.getImageData(0, 0, 1, 1).data;
+                                                        var videoPixel = tempCtx.getImageData(0, 0, 1, 1).data;
                                                         
                                                         rectColor = {
                                                             r: videoPixel[0],
@@ -420,7 +420,7 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
                                             
                                             // 使用采样到的颜色绘制方块
                                             // 使用发光效果
-                                            drawingContext.shadowColor = \`rgb(\${rectColor.r}, \${rectColor.g}, \${rectColor.b})\`;
+                                            drawingContext.shadowColor = 'rgb(' + rectColor.r + ', ' + rectColor.g + ', ' + rectColor.b + ')';
                                             drawingContext.shadowBlur = 10;
                                             
                                             fill(rectColor.r, rectColor.g, rectColor.b, 200);
@@ -470,7 +470,7 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             }
             
             // 根据Loading进度计算文字颜色
-            let textColor;
+            var textColor;
             if (loadingProgress < 99) {
                 // 0%-99%阶段：黑色文字
                 textColor = 50;
@@ -501,12 +501,12 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             // 角色旁边的Loading信息
             if (isLoading) {
                 // 计算角色位置（假设在画布中央偏左）
-                const characterX = canvasWidth * 0.6;
-                const characterY = canvasHeight * 0.5;
+                var characterX = canvasWidth * 0.6;
+                var characterY = canvasHeight * 0.5;
                 
                 textAlign(LEFT, CENTER);
                 textSize(64);
-                text(\`\${Math.round(loadingProgress)}%\`, characterX + 55, characterY);
+                text(Math.round(loadingProgress) + '%', characterX + 55, characterY);
                 
                 textSize(24);
                 text('Loading...', characterX + 60, characterY + 50);
@@ -533,8 +533,8 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
                 }
             } else {
                 // 加载完成
-                const characterX = canvasWidth * 0.6;
-                const characterY = canvasHeight * 0.5;
+                var characterX = canvasWidth * 0.6;
+                var characterY = canvasHeight * 0.5;
                 
                 textAlign(LEFT, CENTER);
                 textSize(64);
@@ -552,7 +552,6 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             // 重置字体
             textFont('Arial');
         }
-      })();
       `;
 
       const existingInline = document.getElementById('p5-loading-inline');
