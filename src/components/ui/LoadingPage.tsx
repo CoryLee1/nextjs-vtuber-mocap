@@ -140,8 +140,8 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
                 // 从opening1_2000.png到opening1_2133.png
                 for (var i = 2000; i <= 2133; i++) {
                     try {
-                        // 使用正确的路径
-                        var img = await loadImageAsync('/project-resources/opening1_' + i + '.png');
+                        // 使用GitHub raw链接路径
+                        var img = await loadImageAsync('https://raw.githubusercontent.com/CoryLee1/nextjs-vtuber-mocap/main/public/project-resources/opening1_' + i + '.png');
                         originalFrames.push(img);
                         loadedCount++;
                         
@@ -182,7 +182,7 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
                 
                 // 尝试多个可能的视频文件路径
                 var videoPaths = [
-                    '/project-resources/6130625_Skyscrapers Japan Shibuya City_By_21_Aerials_Artlist_HD.mp4'
+                    'https://raw.githubusercontent.com/CoryLee1/nextjs-vtuber-mocap/main/public/project-resources/6130625_Skyscrapers%20Japan%20Shibuya%20City_By_21_Aerials_Artlist_HD.mp4'
                 ];
                 
                 for (var i = 0; i < videoPaths.length; i++) {
@@ -279,7 +279,7 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
         function loadCustomFont() {
             try {
                 // 尝试加载Helvetica Neue Ultra Light字体
-                customFont = loadFont('/project-resources/helvetica-neue-ultra-light.ttf', 
+                customFont = loadFont('https://raw.githubusercontent.com/CoryLee1/nextjs-vtuber-mocap/main/public/project-resources/helvetica-neue-ultra-light.ttf', 
                     function() {
                         console.log('字体加载成功');
                     },
