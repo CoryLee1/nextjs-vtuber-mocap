@@ -4,74 +4,90 @@ import { useEffect, useRef } from 'react';
 
 interface LoadingPageProps {
   onComplete?: () => void;
+  message?: string;
+  duration?: number;
 }
 
-export default function LoadingPage({ onComplete }: LoadingPageProps) {
+export default function LoadingPage({ onComplete, message = "Initializing...", duration = 3000 }: LoadingPageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const p5LoadedRef = useRef(false);
+  const scriptInjectedRef = useRef(false);
 
   useEffect(() => {
-    // 动态加载p5.js
+    // 防止重复执行
+    if (p5LoadedRef.current) {
+      console.log('p5.js已经加载过，跳过重复加载');
+      return;
+    }
+
+    // 简化的p5.js测试版本
     const loadP5 = () => {
-      if (window.p5) {
+      console.log('开始加载p5.js...');
+      
+      // 检查是否已经加载过p5.js
+      if (window.p5 && window.p5.prototype) {
+        console.log('p5.js已存在，直接初始化');
+        p5LoadedRef.current = true;
         initP5App();
+        return;
+      }
+
+      // 检查是否正在加载中
+      if (document.querySelector('script[src*="p5.js"]')) {
+        console.log('p5.js正在加载中，等待完成...');
+        const checkP5Loaded = setInterval(() => {
+          if (window.p5 && window.p5.prototype) {
+            clearInterval(checkP5Loaded);
+            console.log('p5.js加载完成');
+            p5LoadedRef.current = true;
+            initP5App();
+          }
+        }, 100);
         return;
       }
 
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/p5@1.11.8/lib/p5.js';
       script.onload = () => {
+        console.log('p5.js加载完成');
+        p5LoadedRef.current = true;
         initP5App();
+      };
+      script.onerror = (error) => {
+        console.error('p5.js加载失败:', error);
+        // 如果p5.js加载失败，显示备用内容
+        showFallbackContent();
       };
       document.head.appendChild(script);
     };
 
     const initP5App = () => {
-      if (!containerRef.current) return;
-
-      // 清除之前的实例
-      if (containerRef.current.children.length > 0) {
-        containerRef.current.innerHTML = '';
-      }
-
-      // 创建HTML结构，完全按照原HTML
-      const container = document.createElement('div');
-      container.className = 'container';
-      container.style.cssText = `
-        max-width: 100vw;
-        margin: 0 auto;
-        position: relative;
-      `;
-
-      const canvasContainer = document.createElement('div');
-      canvasContainer.className = 'canvas-container';
-      canvasContainer.style.cssText = `
-        position: relative;
-        width: 100vw;
-        height: 100vh;
-      `;
-
-      const mainCanvas = document.createElement('div');
-      mainCanvas.className = 'main-canvas';
-      mainCanvas.id = 'canvas2';
-      mainCanvas.style.cssText = `
+      if (!containerRef.current || scriptInjectedRef.current) return;
+      
+      console.log('初始化p5.js应用...');
+      scriptInjectedRef.current = true;
+      
+      // 清除容器
+      containerRef.current.innerHTML = '';
+      
+      // 创建canvas容器
+      const canvasDiv = document.createElement('div');
+      canvasDiv.id = 'p5-canvas';
+      canvasDiv.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
         z-index: 1;
+        background: #f0f0fc;
       `;
-
-      canvasContainer.appendChild(mainCanvas);
-      container.appendChild(canvasContainer);
-      containerRef.current.appendChild(container);
-
-      // 执行完全相同的JavaScript代码（不使用IIFE，因为p5.js需要全局函数）
+      
+      containerRef.current.appendChild(canvasDiv);
+      
+      // 注入完整的原始p5.js脚本
       const p5Script = `
-        // 清除可能存在的变量（避免重复声明错误）
-        if (typeof originalFrames !== 'undefined') {
-          console.log('清理已存在的变量');
-        }
+        console.log('p5.js脚本开始执行...');
         
         // 全局变量
         var originalFrames = [];
@@ -80,9 +96,9 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
         var isPlaying = true; // 默认自动播放
         var canvasWidth, canvasHeight;
         var videoFitMode = 'contain'; // 默认完整显示
-        var frameRate = 30;
+        var targetFrameRate = 30; // 重命名避免与p5.js全局函数冲突
         var lastFrameTime = 0;
-        var frameInterval = 1000 / frameRate;
+        var frameInterval = 1000 / targetFrameRate;
         var mousePixelSize = 8; // 鼠标控制的像素大小（现在改为Loading控制）
         var currentFrameImg = null; // 当前帧图像
         var framePixels = null; // 当前帧像素数据
@@ -98,6 +114,7 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             canvasWidth = window.innerWidth;
             canvasHeight = window.innerHeight;
             resizeCanvas(canvasWidth, canvasHeight);
+            console.log('Canvas尺寸更新:', canvasWidth, 'x', canvasHeight);
         }
 
         // 工具函数 - 必须在setup之前定义
@@ -115,6 +132,7 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
 
         // 自动加载PNG序列
         async function loadPNGSequence() {
+            console.log('开始加载PNG序列...');
             originalFrames = [];
             var loadedCount = 0;
             
@@ -232,14 +250,18 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
         }
 
         function setup() {
+            console.log('p5.js setup函数开始执行...');
+            
             // 初始化全屏canvas尺寸
             canvasWidth = window.innerWidth;
             canvasHeight = window.innerHeight;
             
-            createCanvas(canvasWidth, canvasHeight);
+            var canvas = createCanvas(canvasWidth, canvasHeight);
+            console.log('Canvas创建完成，尺寸:', canvas.width, 'x', canvas.height);
             
-            var mainCanvas = select('canvas');
-            mainCanvas.parent('canvas2');
+            // 确保canvas被放置到正确的容器中
+            canvas.parent('p5-canvas');
+            console.log('Canvas父元素设置完成');
 
             // 监听窗口大小变化
             window.addEventListener('resize', updateCanvasSize);
@@ -249,6 +271,8 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             
             // 自动加载资源
             loadAllResources();
+            
+            console.log('p5.js setup函数执行完成');
         }
 
         // 加载自定义字体
@@ -552,33 +576,81 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
             // 重置字体
             textFont('Arial');
         }
+        
+        console.log('p5.js脚本加载完成');
       `;
-
-      const existingInline = document.getElementById('p5-loading-inline');
-      if (existingInline) existingInline.remove();
-
+      
       const scriptElement = document.createElement('script');
-      scriptElement.id = 'p5-loading-inline';
+      scriptElement.id = 'p5-test-script';
       scriptElement.textContent = p5Script;
       document.head.appendChild(scriptElement);
-
+      
+      console.log('p5.js脚本已注入');
+      
       // 设置完成回调
       window.onLoadingComplete = () => {
+        console.log('Loading完成回调被调用');
         if (onComplete) {
           onComplete();
         }
       };
     };
 
+    const showFallbackContent = () => {
+      if (!containerRef.current) return;
+      
+      console.log('显示备用内容');
+      containerRef.current.innerHTML = `
+        <div style="
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          color: white;
+          font-family: Arial, sans-serif;
+          z-index: 50;
+        ">
+          <h1 style="font-size: 3rem; margin-bottom: 2rem;">ECHUU</h1>
+          <p style="font-size: 1.5rem; margin-bottom: 1rem;">TO RECREATE LIFE</p>
+          <p style="font-size: 1.5rem; margin-bottom: 2rem;">OUT OF LIVE</p>
+          <div style="font-size: 2rem; margin-bottom: 1rem;">Loading...</div>
+          <button 
+            onclick="window.onLoadingComplete && window.onLoadingComplete()"
+            style="
+              padding: 1rem 2rem;
+              font-size: 1.2rem;
+              background: rgba(255,255,255,0.2);
+              border: 2px solid white;
+              color: white;
+              border-radius: 8px;
+              cursor: pointer;
+            "
+          >
+            完成加载
+          </button>
+        </div>
+      `;
+    };
+
     loadP5();
 
     return () => {
-      // 清理
+      // 清理函数
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
       }
-      const inline = document.getElementById('p5-loading-inline');
-      if (inline) inline.remove();
+      const script = document.getElementById('p5-test-script');
+      if (script) script.remove();
+      
+      // 重置状态
+      p5LoadedRef.current = false;
+      scriptInjectedRef.current = false;
     };
   }, [onComplete]);
 
@@ -587,6 +659,14 @@ export default function LoadingPage({ onComplete }: LoadingPageProps) {
       ref={containerRef} 
       className="fixed inset-0 bg-black z-50"
       style={{ fontFamily: 'Arial, sans-serif' }}
-    />
+    >
+      {/* 临时调试显示 */}
+      <div className="absolute top-4 left-4 text-white text-sm z-10">
+        LoadingPage 组件已加载
+      </div>
+    </div>
   );
 }
+
+
+

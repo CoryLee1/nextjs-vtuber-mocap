@@ -14,6 +14,7 @@ A Next.js-based VTuber motion capture application supporting real-time facial ex
 - **VRM Model Support**: Load and display VRM format 3D models
 - **Multilingual Support**: Chinese, English, Japanese
 - **Debug Tools**: Built-in coordinate axis debug panel for real-time mocap data mapping adjustment
+- **Onboarding Guide**: Interactive 3-step tutorial for new users (appears on every page refresh)
 
 ### 🛠️ Tech Stack
 
@@ -40,6 +41,104 @@ src/
 ├── types/                # TypeScript type definitions
 └── i18n/                # i18n configuration
 ```
+
+### 🏗️ Application Architecture & Component Integration
+
+#### Core Integration Scripts
+
+The application's component integration and execution order is managed by several key scripts:
+
+##### 1. **Main Entry Points**
+- **`src/app/layout.tsx`** - Root layout defining global HTML structure and metadata
+- **`src/app/[locale]/layout.tsx`** - Internationalized layout integrating all Providers and global components
+- **`src/app/[locale]/page.tsx`** - Main page controlling initial application loading flow
+
+##### 2. **Application Integration Core**
+**`src/components/dressing-room/VTuberApp.tsx`** is the central script that integrates all components:
+
+```typescript
+// Integrated components and their order:
+1. VTuberLayout - Overall layout container
+2. VTuberSceneContainer - 3D scene container  
+3. CameraWidget - Camera component
+4. ModelManager - Model manager
+5. AnimationLibrary - Animation library
+6. SettingsPanel - Settings panel
+7. DataFlowDebugPanel - Debug panel
+```
+
+##### 2.1. **Onboarding Guide Integration**
+**`src/components/ui/OnboardingGuide.tsx`** provides a 3-step interactive tutorial:
+
+```typescript
+// Onboarding flow:
+1. Upload Avatar - VRM file upload and model selection
+2. Setup Character - Configuration and settings
+3. Go Live - Start motion capture session
+```
+
+**Key Features:**
+- **Always Shows**: Appears on every page refresh/visit
+- **Skipable**: Users can skip the tutorial
+- **Responsive Design**: Adapts to different screen sizes
+- **Modern UI**: Dark blue theme with yellow highlights
+
+##### 3. **State and Flow Control**
+**`src/components/dressing-room/VTuberControls.tsx`** manages application state and operation sequence:
+
+```typescript
+// Controlled operation sequence:
+- Model Selection → Animation Selection → Camera Start → Motion Capture Begin
+- Error Handling → State Validation → Data Flow Monitoring
+```
+
+##### 4. **Data Flow and Sequence Management**
+**`src/lib/data-flow-monitor.ts`** handles:
+- Recording execution order of all operations
+- Validating correctness of state transitions
+- Monitoring performance and data flow
+
+##### 5. **Layout and UI Order**
+**`src/components/dressing-room/VTuberLayout.tsx`** defines UI component display order:
+
+```typescript
+// UI hierarchy (from bottom to top):
+1. 3D Scene Container (occupies entire screen)
+2. Status Indicator (top-right corner)
+3. Control Panel (bottom-left corner)
+4. Modal Windows (Model Manager, Animation Library, etc.)
+```
+
+##### 6. **Routing and Middleware Control**
+- **`middleware.ts`** - Handles internationalized routing and redirects
+- **`next.config.js`** - Configures build process and resource loading order
+
+#### Application Startup and Component Loading Sequence
+
+1. **Initialization Phase**:
+   - Root Layout Load → Internationalization Provider → Theme Provider → PostHog Tracking
+
+2. **Loading Phase**:
+   - LoadingPage Display (3 seconds) → Client-side hydration check
+
+3. **Onboarding Phase**:
+   - OnboardingGuide Display (3-step tutorial) → User completion/skip
+
+4. **Main Application Phase**:
+   - VTuberApp Dynamic Load → 3D Scene Initialization
+
+5. **Feature Module Phase**:
+   - Camera Component → Model Manager → Animation Library → Settings Panel
+
+6. **User Interaction Phase**:
+   - Control Panel → Status Indicator → Debug Tools
+
+**Onboarding Behavior:**
+- **Every Visit**: Onboarding guide appears on every page refresh/visit
+- **No Persistence**: No localStorage storage, ensuring fresh experience each time
+- **User Choice**: Users can complete the tutorial or skip directly to main app
+
+This architecture ensures all components load and initialize in the correct order while providing complete state management and error handling mechanisms.
 
 ### 🎯 Motion Capture Logic
 
@@ -154,6 +253,7 @@ MIT License
 - **VRM 模型支持**: 支持加载和显示 VRM 格式的 3D 模型
 - **多语言支持**: 支持中文、英文、日文
 - **调试工具**: 内置坐标轴调试面板，可实时调整动捕数据映射
+- **新手引导**: 交互式3步教程，每次刷新页面都会显示
 
 ### 🛠️ 技术栈
 
@@ -180,6 +280,104 @@ src/
 ├── types/                # TypeScript 类型定义
 └── i18n/                # 国际化配置
 ```
+
+### 🏗️ 应用架构与组件集成
+
+#### 核心集成脚本
+
+应用的组件集成和执行顺序由以下几个关键脚本管理：
+
+##### 1. **主要入口点**
+- **`src/app/layout.tsx`** - 根布局文件，定义全局HTML结构和元数据
+- **`src/app/[locale]/layout.tsx`** - 国际化布局，集成所有Provider和全局组件
+- **`src/app/[locale]/page.tsx`** - 主页面，决定应用的初始加载流程
+
+##### 2. **应用集成核心**
+**`src/components/dressing-room/VTuberApp.tsx`** 是集成所有部分的核心脚本：
+
+```typescript
+// 集成的主要组件和顺序：
+1. VTuberLayout - 整体布局容器
+2. VTuberSceneContainer - 3D场景容器  
+3. CameraWidget - 摄像头组件
+4. ModelManager - 模型管理器
+5. AnimationLibrary - 动画库
+6. SettingsPanel - 设置面板
+7. DataFlowDebugPanel - 调试面板
+```
+
+##### 2.1. **新手引导集成**
+**`src/components/ui/OnboardingGuide.tsx`** 提供3步交互式教程：
+
+```typescript
+// 引导流程：
+1. 上传头像 - VRM文件上传和模型选择
+2. 设置角色 - 配置和设置
+3. 开始直播 - 启动动作捕捉会话
+```
+
+**主要特性：**
+- **总是显示**: 每次刷新页面/访问都会出现
+- **可跳过**: 用户可以跳过教程
+- **响应式设计**: 适配不同屏幕尺寸
+- **现代UI**: 深蓝色主题配黄色高亮
+
+##### 3. **状态和流程控制**
+**`src/components/dressing-room/VTuberControls.tsx`** 管理应用状态和操作顺序：
+
+```typescript
+// 控制的操作序列：
+- 模型选择 → 动画选择 → 摄像头启动 → 动作捕捉开始
+- 错误处理 → 状态验证 → 数据流监控
+```
+
+##### 4. **数据流和时序管理**
+**`src/lib/data-flow-monitor.ts`** 负责：
+- 记录所有操作的执行顺序
+- 验证状态转换的正确性
+- 监控性能和数据流
+
+##### 5. **布局和UI顺序**
+**`src/components/dressing-room/VTuberLayout.tsx`** 定义UI组件的显示顺序：
+
+```typescript
+// UI层次结构（从底层到顶层）：
+1. 3D场景容器（占据整个屏幕）
+2. 状态指示器（右上角）
+3. 控制面板（左下角）
+4. 模态窗口（模型管理器、动画库等）
+```
+
+##### 6. **路由和中间件控制**
+- **`middleware.ts`** - 处理国际化路由和重定向
+- **`next.config.js`** - 配置构建流程和资源加载顺序
+
+#### 应用启动和组件加载顺序
+
+1. **初始化阶段**：
+   - 根布局加载 → 国际化Provider → 主题Provider → PostHog跟踪
+
+2. **加载阶段**：
+   - LoadingPage显示（3秒）→ 客户端水合检查
+
+3. **新手引导阶段**：
+   - OnboardingGuide显示（3步教程）→ 用户完成/跳过
+
+4. **主应用阶段**：
+   - VTuberApp动态加载 → 3D场景初始化
+
+5. **功能模块阶段**：
+   - 摄像头组件 → 模型管理器 → 动画库 → 设置面板
+
+6. **用户交互阶段**：
+   - 控制面板 → 状态指示器 → 调试工具
+
+**新手引导行为：**
+- **每次访问**: 每次刷新页面/访问都会显示新手引导
+- **无持久化**: 不使用localStorage存储，确保每次都是全新体验
+- **用户选择**: 用户可以完成教程或直接跳过进入主应用
+
+这个架构确保了所有组件按正确的顺序加载和初始化，同时提供了完整的状态管理和错误处理机制。
 
 ### 🎯 动捕逻辑说明
 
@@ -294,6 +492,7 @@ Next.jsベースのVTuber動作キャプチャアプリケーション。リア�
 - **VRMモデル対応**: VRM形式の3Dモデルの読み込みと表示
 - **多言語対応**: 中国語、英語、日本語
 - **デバッグツール**: 座標軸デバッグパネルでリアルタイム調整
+- **オンボーディングガイド**: インタラクティブな3ステップチュートリアル（ページリフレッシュ時に表示）
 
 ### 🛠️ 技術スタック
 
@@ -320,6 +519,104 @@ src/
 ├── types/                # TypeScript型定義
 └── i18n/                # 国際化設定
 ```
+
+### 🏗️ アプリケーションアーキテクチャとコンポーネント統合
+
+#### コア統合スクリプト
+
+アプリケーションのコンポーネント統合と実行順序は、以下の主要スクリプトによって管理されています：
+
+##### 1. **メインエントリーポイント**
+- **`src/app/layout.tsx`** - グローバルHTML構造とメタデータを定義するルートレイアウト
+- **`src/app/[locale]/layout.tsx`** - すべてのProviderとグローバルコンポーネントを統合する国際化レイアウト
+- **`src/app/[locale]/page.tsx`** - アプリケーションの初期読み込みフローを制御するメインページ
+
+##### 2. **アプリケーション統合コア**
+**`src/components/dressing-room/VTuberApp.tsx`** は、すべてのコンポーネントを統合する中心的なスクリプトです：
+
+```typescript
+// 統合される主要コンポーネントとその順序：
+1. VTuberLayout - 全体レイアウトコンテナ
+2. VTuberSceneContainer - 3Dシーンコンテナ  
+3. CameraWidget - カメラコンポーネント
+4. ModelManager - モデルマネージャー
+5. AnimationLibrary - アニメーションライブラリ
+6. SettingsPanel - 設定パネル
+7. DataFlowDebugPanel - デバッグパネル
+```
+
+##### 2.1. **オンボーディングガイド統合**
+**`src/components/ui/OnboardingGuide.tsx`** は3ステップのインタラクティブチュートリアルを提供します：
+
+```typescript
+// オンボーディングフロー：
+1. アバターアップロード - VRMファイルアップロードとモデル選択
+2. キャラクター設定 - 設定とコンフィギュレーション
+3. ライブ開始 - モーションキャプチャセッション開始
+```
+
+**主要機能：**
+- **常に表示**: ページリフレッシュ/訪問時に毎回表示
+- **スキップ可能**: ユーザーはチュートリアルをスキップ可能
+- **レスポンシブデザイン**: 異なる画面サイズに対応
+- **モダンUI**: ダークブルーテーマとイエローハイライト
+
+##### 3. **状態とフロー制御**
+**`src/components/dressing-room/VTuberControls.tsx`** は、アプリケーション状態と操作シーケンスを管理します：
+
+```typescript
+// 制御される操作シーケンス：
+- モデル選択 → アニメーション選択 → カメラ開始 → モーションキャプチャ開始
+- エラーハンドリング → 状態検証 → データフロー監視
+```
+
+##### 4. **データフローとシーケンス管理**
+**`src/lib/data-flow-monitor.ts`** は以下を処理します：
+- すべての操作の実行順序の記録
+- 状態遷移の正確性の検証
+- パフォーマンスとデータフローの監視
+
+##### 5. **レイアウトとUI順序**
+**`src/components/dressing-room/VTuberLayout.tsx`** は、UIコンポーネントの表示順序を定義します：
+
+```typescript
+// UI階層（下から上へ）：
+1. 3Dシーンコンテナ（画面全体を占有）
+2. ステータスインジケーター（右上角）
+3. コントロールパネル（左下角）
+4. モーダルウィンドウ（モデルマネージャー、アニメーションライブラリなど）
+```
+
+##### 6. **ルーティングとミドルウェア制御**
+- **`middleware.ts`** - 国際化ルーティングとリダイレクトを処理
+- **`next.config.js`** - ビルドプロセスとリソース読み込み順序を設定
+
+#### アプリケーション起動とコンポーネント読み込み順序
+
+1. **初期化フェーズ**：
+   - ルートレイアウト読み込み → 国際化Provider → テーマProvider → PostHogトラッキング
+
+2. **読み込みフェーズ**：
+   - LoadingPage表示（3秒）→ クライアントサイドハイドレーション確認
+
+3. **オンボーディングフェーズ**：
+   - OnboardingGuide表示（3ステップチュートリアル）→ ユーザー完了/スキップ
+
+4. **メインアプリケーションフェーズ**：
+   - VTuberApp動的読み込み → 3Dシーン初期化
+
+5. **機能モジュールフェーズ**：
+   - カメラコンポーネント → モデルマネージャー → アニメーションライブラリ → 設定パネル
+
+6. **ユーザーインタラクションフェーズ**：
+   - コントロールパネル → ステータスインジケーター → デバッグツール
+
+**オンボーディング動作：**
+- **毎回表示**: ページリフレッシュ/訪問時に毎回オンボーディングガイドが表示
+- **永続化なし**: localStorageを使用せず、毎回新しい体験を提供
+- **ユーザー選択**: ユーザーはチュートリアルを完了するか、直接メインアプリにスキップ可能
+
+このアーキテクチャにより、すべてのコンポーネントが正しい順序で読み込み・初期化され、完全な状態管理とエラーハンドリングメカニズムが提供されます。
 
 ### 🎯 モーションキャプチャのロジック
 
