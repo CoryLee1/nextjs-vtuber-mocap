@@ -298,6 +298,12 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
         async function loadAllResources() {
             console.log('开始加载资源...');
             
+            // 设置超时机制，最多等待30秒
+            var timeoutId = setTimeout(function() {
+                console.log('资源加载超时，强制继续');
+                window.allResourcesLoaded = true;
+            }, 30000);
+            
             try {
                 // 并行加载PNG序列和背景视频
                 var results = await Promise.all([
@@ -307,13 +313,24 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
                 var pngLoaded = results[0];
                 var videoLoaded = results[1];
                 
+                // 清除超时定时器
+                clearTimeout(timeoutId);
+                
                 if (pngLoaded && videoLoaded) {
                     console.log('所有资源加载完成！开始播放动画');
+                    // 确保所有资源都加载完成后，再允许Loading完成
+                    window.allResourcesLoaded = true;
                 } else {
-                    console.log('部分资源加载失败');
+                    console.log('部分资源加载失败，但继续播放');
+                    // 即使部分资源失败，也允许继续
+                    window.allResourcesLoaded = true;
                 }
             } catch (error) {
                 console.log('资源加载出错:', error);
+                // 清除超时定时器
+                clearTimeout(timeoutId);
+                // 出错时也允许继续，避免卡住
+                window.allResourcesLoaded = true;
             }
         }
 
@@ -533,18 +550,25 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
                 text(Math.round(loadingProgress) + '%', characterX + 55, characterY);
                 
                 textSize(24);
-                text('Loading...', characterX + 60, characterY + 50);
+                // 根据加载状态显示不同的文字
+                if (loadingProgress < 99) {
+                    text('Loading...', characterX + 60, characterY + 50);
+                } else if (loadingProgress >= 99 && !window.allResourcesLoaded) {
+                    text('Loading Resources...', characterX + 60, characterY + 50);
+                } else {
+                    text('Finalizing...', characterX + 60, characterY + 50);
+                }
                 
                 // 更新加载进度
                 if (originalFrames && originalFrames.length > 0) {
-                    // 平滑加载到100%
+                    // 平滑加载到99%
                     if (loadingProgress < 99) {
-                        loadingProgress = Math.min(loadingProgress + 0.5, 99);
+                        loadingProgress = Math.min(loadingProgress + 0.3, 99);
                     } else if (loadingProgress >= 99) {
-                        // 当达到99%时，检查资源是否已加载完成
-                        if (originalFrames.length > 0 && backgroundVideo) {
-                            // 资源已加载完成，平滑过渡到100%
-                            loadingProgress = Math.min(loadingProgress + 0.2, 100);
+                        // 当达到99%时，检查所有资源是否已加载完成
+                        if (window.allResourcesLoaded && originalFrames.length > 0 && backgroundVideo) {
+                            // 所有资源已加载完成，平滑过渡到100%
+                            loadingProgress = Math.min(loadingProgress + 0.1, 100);
                             if (loadingProgress >= 100) {
                                 isLoading = false; // 完成Loading
                                 // 调用完成回调
@@ -552,6 +576,13 @@ export default function LoadingPage({ onComplete, message = "Initializing...", d
                                     window.onLoadingComplete();
                                 }
                             }
+                        } else {
+                            // 资源还未完全加载，显示等待状态
+                            console.log('等待资源加载完成...', {
+                                allResourcesLoaded: window.allResourcesLoaded,
+                                framesCount: originalFrames.length,
+                                hasVideo: !!backgroundVideo
+                            });
                         }
                     }
                 }
