@@ -1,4 +1,5 @@
 const createNextIntlPlugin = require('next-intl/plugin');
+const path = require('path');
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
@@ -13,7 +14,7 @@ const nextConfig = {
   },
   
   // Webpack 配置
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     // 处理客户端环境的 fallback
     if (!isServer) {
       config.resolve.fallback = {
@@ -23,6 +24,31 @@ const nextConfig = {
         crypto: false,
         stream: false,
         buffer: false,
+      };
+    }
+    
+    // ✅ 优化 webpack 缓存以减少内存使用
+    if (dev) {
+      // 限制缓存大小，避免内存分配失败
+      // 使用绝对路径（webpack 要求）
+      const cacheDir = path.resolve(process.cwd(), '.next/cache/webpack');
+      config.cache = {
+        ...config.cache,
+        type: 'filesystem',
+        maxMemoryGenerations: 1, // 限制内存中的缓存代数
+        buildDependencies: {
+          config: [__filename],
+        },
+        // 使用绝对路径
+        cacheDirectory: cacheDir,
+      };
+      
+      // 优化内存使用
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: true,
+        removeEmptyChunks: true,
+        splitChunks: false, // 开发环境禁用代码分割以节省内存
       };
     }
     

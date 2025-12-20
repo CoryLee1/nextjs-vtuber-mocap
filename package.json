@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node --max-old-space-size=4096 node_modules/next/dist/bin/next dev",
+    "dev:low-memory": "node --max-old-space-size=2048 node_modules/next/dist/bin/next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "rm -rf .next node_modules/.cache",
+    "clean:win": "rmdir /s /q .next 2>nul & rmdir /s /q node_modules\\.cache 2>nul & echo Cache cleared"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.859.0",

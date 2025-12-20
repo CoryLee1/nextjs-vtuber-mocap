@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3, Spherical, MathUtils, Quaternion, Euler } from 'three';
+import { useSceneStore } from '@/hooks/use-scene-store';
 
 /**
  * 3A 游戏级相机控制器
@@ -146,6 +147,9 @@ export const GameCameraController: React.FC<GameCameraControllerProps> = ({
   showHint = true,
 }) => {
   const { camera, gl } = useThree();
+  
+  // ✅ 从 store 获取 VRM 模型（备用方式，更可靠）
+  const vrmModel = useSceneStore((state) => state.vrmModel);
   
   // 保存 configOverride 的引用，用于 handleWheel
   const configOverrideRef = useRef(configOverride);
@@ -769,30 +773,71 @@ export const GameCameraController: React.FC<GameCameraControllerProps> = ({
     // 平滑插值目标点
     s.target.lerp(s.targetTarget, cfg.positionDamping);
     
-    // 🧨 第三修复：更安全的跟随目标方式
-    if (followTarget?.current) {
+    // ✅ 相机跟随 VRM 头部骨骼（自动对准正脸）
+    // 优先从 store 获取 VRM 模型（更可靠），否则从 followTarget ref 获取
+    const targetVrm = vrmModel || followTarget?.current?.userData?.vrm;
+    
+    if (targetVrm) {
       try {
         const targetPos = new Vector3();
+        let hasValidTarget = false;
         
-        // ✅ 更安全：直接读取 position，避免 this 绑定问题
-        if ('position' in followTarget.current && followTarget.current.position instanceof Vector3) {
-          targetPos.copy(followTarget.current.position);
-        } else if (typeof followTarget.current.getWorldPosition === 'function') {
-          // 降级到 getWorldPosition
-          followTarget.current.getWorldPosition(targetPos);
+        // ✅ 从 VRM 模型的头部骨骼获取位置（适用于所有 VRM 标准模型）
+        if (targetVrm.humanoid) {
+          let headBone = null;
+          
+          // 尝试获取 head bone（使用多种方式兼容不同的 VRM 版本）
+          if (targetVrm.humanoid.humanBones?.['head']?.node) {
+            headBone = targetVrm.humanoid.humanBones['head'].node;
+          } else if (typeof targetVrm.humanoid.getNormalizedBoneNode === 'function') {
+            headBone = targetVrm.humanoid.getNormalizedBoneNode('head');
+          }
+          
+          if (headBone && typeof headBone.getWorldPosition === 'function') {
+            // 获取头部骨骼的世界坐标
+            headBone.getWorldPosition(targetPos);
+            hasValidTarget = true;
+            
+            // 添加一个小的偏移，让相机对准眼睛位置（头部骨骼通常在头顶，下移一点到脸部）
+            if (Number.isFinite(targetPos.y)) {
+              targetPos.y -= 0.15; // 从头顶下移到脸部（大约15cm）
+            }
+          }
         }
         
-        // ✅ 验证结果是否合法
-        if (Number.isFinite(targetPos.y) && targetPos.lengthSq() > 0) {
-          const safeTargetY = targetPos.y + 0.9;
-          if (Number.isFinite(safeTargetY)) {
-            s.targetTarget.y = safeTargetY;
-          }
+        // ✅ 验证结果并更新目标点
+        if (hasValidTarget && Number.isFinite(targetPos.x) && Number.isFinite(targetPos.y) && Number.isFinite(targetPos.z)) {
+          s.targetTarget.copy(targetPos);
         }
       } catch (error) {
         // 静默处理错误，避免 ref 还没准备好时崩溃
         if (process.env.NODE_ENV === 'development') {
-          console.warn('CameraController: Failed to get target position', error);
+          console.warn('CameraController: Failed to get head bone position', error);
+        }
+      }
+    } else if (followTarget?.current) {
+      // ✅ 降级处理 - 如果无法获取 VRM 模型，使用组件的世界位置
+      try {
+        const targetPos = new Vector3();
+        let hasValidTarget = false;
+        
+        if ('position' in followTarget.current && followTarget.current.position instanceof Vector3) {
+          targetPos.copy(followTarget.current.position);
+          // 添加一个估算的头部高度偏移（VRM 模型通常高度约 1.6-1.7m，头部在 1.5m 左右）
+          targetPos.y += 1.5;
+          hasValidTarget = true;
+        } else if (typeof followTarget.current.getWorldPosition === 'function') {
+          followTarget.current.getWorldPosition(targetPos);
+          targetPos.y += 1.5; // 添加头部高度偏移
+          hasValidTarget = true;
+        }
+        
+        if (hasValidTarget && Number.isFinite(targetPos.x) && Number.isFinite(targetPos.y) && Number.isFinite(targetPos.z)) {
+          s.targetTarget.copy(targetPos);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('CameraController: Failed to get fallback target position', error);
         }
       }
     }
