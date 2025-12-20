@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { VTuberLayout } from './VTuberLayout';
-import { VTuberSceneContainer } from './VTuberScene';
 import { CameraWidget } from './CameraWidget';
 import { ModelManager } from '../vtuber/ModelManager';
 import { AnimationLibrary } from '../vtuber/AnimationLibrary';
@@ -11,25 +10,72 @@ import { DataFlowDebugPanel } from '../debug/DataFlowDebugPanel';
 import { useVTuberControls } from './VTuberControls';
 import { useI18n } from '@/hooks/use-i18n';
 import { useTracking } from '@/hooks/use-tracking';
+import { useSceneStore } from '@/hooks/use-scene-store';
 
 export default function VTuberApp() {
   const { t } = useI18n();
   const { trackPageView, trackFeatureUsed, trackError } = useTracking();
   const { state, uiState, handlers } = useVTuberControls();
   
+  // 场景状态管理
+  const {
+    setScene,
+    setVRMModelUrl,
+    setAnimationUrl,
+    updateCameraSettings,
+    updateDebugSettings,
+    setAnimationManagerRef,
+    setHandDetectionStateRef,
+  } = useSceneStore();
+  
   // 设置面板状态
   const [showSettings, setShowSettings] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
-
-  // 设置引用
-  const [vrmRef, setVrmRef] = useState(null);
-  const [animationManagerRef, setAnimationManagerRef] = useState(null);
-  const [handDetectionStateRef, setHandDetectionStateRef] = useState(null);
 
   // 页面访问跟踪
   useEffect(() => {
     trackPageView('VTuber App', window.location.href);
   }, [trackPageView]);
+
+  // 初始化场景状态：设置为 main 场景
+  useEffect(() => {
+    setScene('main');
+  }, [setScene]);
+
+  // ✅ 初始化默认动画URL（如果没有选择动画）
+  useEffect(() => {
+    const DEFAULT_ANIMATION_URL = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx';
+    const currentAnimationUrl = useSceneStore.getState().animationUrl;
+    
+    // 如果 store 中的 animationUrl 是 null，设置默认值
+    if (!currentAnimationUrl) {
+      console.log('VTuberApp: 初始化默认动画URL', DEFAULT_ANIMATION_URL);
+      setAnimationUrl(DEFAULT_ANIMATION_URL);
+    }
+  }, [setAnimationUrl]);
+
+  // 同步模型和动画到场景 store
+  // 注意：只依赖 url 而不是整个对象，避免对象引用变化导致的无限更新
+  useEffect(() => {
+    if (state.selectedModel?.url) {
+      setVRMModelUrl(state.selectedModel.url);
+    }
+  }, [state.selectedModel?.url, setVRMModelUrl]);
+
+  useEffect(() => {
+    if (state.selectedAnimation?.url) {
+      setAnimationUrl(state.selectedAnimation.url);
+    }
+  }, [state.selectedAnimation?.url, setAnimationUrl]);
+
+  // 同步调试设置到场景 store
+  useEffect(() => {
+    updateDebugSettings({
+      showDebug: state.showDebug,
+      showBones: state.showBones,
+      showArmAxes: false,
+    });
+  }, [state.showDebug, state.showBones, updateDebugSettings]);
 
   // 处理设置面板
   const handleOpenSettings = () => {
@@ -66,15 +112,9 @@ export default function VTuberApp() {
     }
   };
 
-  // 场景属性
-  const sceneProps = {
-    selectedModel: state.selectedModel,
-    selectedAnimation: state.selectedAnimation,
-    showBones: state.showBones,
-    debugSettings: { showDebug: state.showDebug },
-    showArmAxes: false,
-    axisSettings: {},
-    cameraSettings: {
+  // 初始化相机设置
+  useEffect(() => {
+    updateCameraSettings({
       width: 640,
       height: 480,
       fps: 30,
@@ -82,12 +122,8 @@ export default function VTuberApp() {
       enableUserControl: true,
       showHint: true,
       useGameStyle: false,
-    },
-    onVrmRef: setVrmRef,
-    onAnimationManagerRef: setAnimationManagerRef,
-    onHandDetectionStateRef: setHandDetectionStateRef,
-    onMocapStatusUpdate: handleMocapStatusUpdate,
-  };
+    });
+  }, [updateCameraSettings]);
 
   // 状态指示器属性
   const statusProps = {
@@ -155,8 +191,8 @@ export default function VTuberApp() {
 
   return (
     <VTuberLayout statusProps={statusProps} controlProps={controlProps}>
-      {/* 3D 场景 */}
-      <VTuberSceneContainer sceneProps={sceneProps} />
+      {/* 注意：3D 场景现在由 Canvas3DProvider 在 layout 层级管理 */}
+      {/* 不再需要在这里渲染 VTuberSceneContainer */}
 
       {/* 摄像头组件 */}
       <CameraWidget
@@ -208,10 +244,10 @@ export default function VTuberApp() {
 
       {/* 开发环境下的调试按钮 */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-4 left-4 z-40">
+        <div className="fixed top-4 left-4 z-40 pointer-events-auto">
           <button
             onClick={handleOpenDebugPanel}
-            className="px-3 py-2 bg-sky-500 text-white rounded-lg text-sm hover:bg-sky-600 transition-colors"
+            className="px-3 py-2 bg-sky-500 text-white rounded-lg text-sm hover:bg-sky-600 transition-colors pointer-events-auto"
             title={`${t('vtuber.controls.debugTools')} (Ctrl+Shift+D)`}
           >
             {t('vtuber.controls.debug')}

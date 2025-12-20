@@ -8,6 +8,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { PostHogProvider } from '@/components/tracking/PostHogProvider'
 import { InternationalizationTracker } from '@/components/tracking/InternationalizationTracker'
 import { ThemeProvider } from '@/providers/ThemeProvider'
+import { Canvas3DProvider } from '@/providers/Canvas3DProvider'
 import { locales } from '@/i18n/config'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -41,6 +42,7 @@ export default async function RootLayout({
 }: RootLayoutProps) {
   try {
     // 验证语言是否支持
+    // 如果是静态文件请求（如 favicon.ico），不应该进入这里（由 middleware 处理）
     if (!locale || !locales.includes(locale as any)) {
       console.warn(`Unsupported locale: ${locale}, redirecting to default`)
       notFound();
@@ -58,9 +60,11 @@ export default async function RootLayout({
           <NextIntlClientProvider messages={messages}>
             <PostHogProvider>
               <ThemeProvider>
-                <InternationalizationTracker currentLocale={locale} />
-                {children}
-                <Toaster />
+                <Canvas3DProvider>
+                  <InternationalizationTracker currentLocale={locale} />
+                  {children}
+                  <Toaster />
+                </Canvas3DProvider>
               </ThemeProvider>
             </PostHogProvider>
           </NextIntlClientProvider>

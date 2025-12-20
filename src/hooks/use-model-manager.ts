@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { s3Uploader } from '@/lib/s3-uploader';
+import { useSceneStore } from '@/hooks/use-scene-store';
 
 // 默认模型列表
 const DEFAULT_MODELS = [
@@ -117,6 +118,9 @@ export const useModelManager = () => {
       setUploadedModels(prev => [...prev, newModel]);
       setSelectedModelId(newModel.id); // 自动选择新上传的模型
       
+      // 同步到场景 store
+      useSceneStore.getState().setVRMModelUrl(newModel.url);
+      
       return newModel;
       
     } catch (error) {
@@ -157,6 +161,9 @@ export const useModelManager = () => {
       setUploadedModels(prev => [...prev, downloadedModel]);
       setSelectedModelId(downloadedModel.id); // 自动选择新下载的模型
       
+      // 同步到场景 store
+      useSceneStore.getState().setVRMModelUrl(downloadedModel.url);
+      
       return downloadedModel;
       
     } catch (error) {
@@ -189,7 +196,14 @@ export const useModelManager = () => {
   // 选择模型
   const selectModel = useCallback((modelId) => {
     setSelectedModelId(modelId);
-  }, []);
+    
+    // 同步到场景 store
+    const allModels = getAllModels();
+    const selectedModel = allModels.find(model => model.id === modelId);
+    if (selectedModel) {
+      useSceneStore.getState().setVRMModelUrl(selectedModel.url);
+    }
+  }, [getAllModels]);
 
   return {
     // 状态

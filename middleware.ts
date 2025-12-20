@@ -19,8 +19,11 @@ export const config = {
   // 匹配所有路径，除了 API 路由、静态文件等
   matcher: [
     // 匹配所有路径，除了以下路径：
-    '/((?!api|_next|_vercel|.*\\..*).*)',
-    // 确保根路径也被匹配
+    // - API 路由 (api)
+    // - Next.js 内部路径 (_next, _vercel)
+    // - 静态文件 (带扩展名的文件，如 .ico, .png, .jpg, .svg, .css, .js 等)
+    // - 确保根路径也被匹配
+    '/((?!api|_next|_vercel|.*\\.(?:ico|png|jpg|jpeg|svg|gif|webp|css|js|json|xml|txt|woff|woff2|ttf|eot|mp4|webm|ogg|mp3|wav|pdf|zip)).*)',
     '/'
   ]
 }; 

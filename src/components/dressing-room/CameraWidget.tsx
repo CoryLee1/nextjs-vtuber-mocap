@@ -290,22 +290,41 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
             
             // 提供更具体的错误信息
             if (error instanceof Error) {
-                if (error.name === 'NotAllowedError') {
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                     msg = '摄像头权限被拒绝，请在浏览器设置中允许摄像头访问';
-                } else if (error.name === 'NotFoundError') {
+                } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
                     msg = '未找到摄像头设备，请检查摄像头连接';
-                } else if (error.name === 'NotReadableError') {
+                } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
                     msg = '摄像头被其他应用占用，请关闭其他使用摄像头的应用';
-                } else if (error.name === 'OverconstrainedError') {
+                } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
                     msg = '摄像头不支持所需的配置，请尝试刷新页面';
+                } else if (error.name === 'AbortError') {
+                    msg = '摄像头启动被中止，请重试';
+                } else if (error.name === 'NotSupportedError') {
+                    msg = '浏览器不支持摄像头功能，请使用 Chrome、Edge 或 Firefox';
                 } else {
                     msg += ': ' + error.message;
                 }
             } else if (typeof error === 'object' && error && 'message' in error) {
-                msg += ': ' + (error as any).message;
+                const errorMsg = (error as any).message;
+                // 检查 MediaPipe Camera 的错误信息
+                if (errorMsg.includes('Permission denied') || errorMsg.includes('权限')) {
+                    msg = '摄像头权限被拒绝，请在浏览器设置中允许摄像头访问';
+                } else if (errorMsg.includes('not found') || errorMsg.includes('未找到')) {
+                    msg = '未找到摄像头设备，请检查摄像头连接';
+                } else if (errorMsg.includes('in use') || errorMsg.includes('占用')) {
+                    msg = '摄像头被其他应用占用，请关闭其他使用摄像头的应用';
+                } else {
+                    msg += ': ' + errorMsg;
+                }
             }
             
             setError(msg);
+            
+            // 调用外部错误回调
+            if (onError) {
+                onError(msg);
+            }
             
             // 重置状态
             setIsStarted(false);
@@ -350,7 +369,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
                 onClick={toggleCamera}
                 className={`
           fixed bottom-2 right-52 z-20 p-3 rounded-full text-white 
-          transition-all duration-300 shadow-lg hover:shadow-xl
+          transition-all duration-300 shadow-lg hover:shadow-xl pointer-events-auto
           ${isStarted
                         ? 'bg-red-500 hover:bg-red-600 active:bg-red-700'
                         : 'bg-vtuber-primary hover:bg-vtuber-secondary active:bg-blue-700'
@@ -375,7 +394,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
             {/* 错误提示 */}
             {error && (
-                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-md">
+                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-md pointer-events-auto">
                     <div className="flex items-start space-x-3">
                         <span className="text-lg flex-shrink-0">⚠️</span>
                         <div className="flex-1">
@@ -405,7 +424,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
             {/* 摄像头预览窗口 */}
             {isStarted && (
-                <div className="fixed bottom-2 right-2 w-48 h-36 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl z-10 bg-black">
+                <div className="fixed bottom-2 right-2 w-48 h-36 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl z-10 bg-black pointer-events-auto">
                     {/* 画布层 - 显示检测结果 */}
                     <canvas
                         ref={canvasRef}

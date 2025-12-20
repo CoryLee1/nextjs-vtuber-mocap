@@ -37,7 +37,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   const { t } = useI18n();
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-auto">
       {/* 语言切换器和主题切换器 */}
       <div className="flex justify-end space-x-2">
         <ThemeToggle />
@@ -114,8 +114,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const { t } = useI18n();
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
-      <Card className="bg-card/95 backdrop-blur-sm border-border shadow-xl">
+    <div className="fixed bottom-4 left-4 z-50 pointer-events-auto">
+      <Card className="bg-card/95 backdrop-blur-sm border-border shadow-xl pointer-events-auto">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2 mb-4">
             <h3 className="text-sm font-medium text-card-foreground">{t('vtuber.controls.title')}</h3>
@@ -211,9 +211,10 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
   controlProps
 }) => {
   return (
-    <div className="relative w-full h-screen overflow-hidden theme-transition">
-      {/* 3D场景容器 - 占据整个屏幕 */}
-      <div className="absolute inset-0 w-full h-full">
+    <div className="relative w-full h-screen overflow-hidden theme-transition pointer-events-none">
+      {/* 子组件容器 - 让没有内容的地方事件穿透到 Canvas */}
+      <div className="absolute inset-0 w-full h-full pointer-events-none">
+        {/* 子组件自己设置 pointer-events-auto */}
         {children}
       </div>
 

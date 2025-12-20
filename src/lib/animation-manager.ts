@@ -1,5 +1,5 @@
 import { useFBX } from '@react-three/drei';
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { AnimationMixer, LoopRepeat } from 'three';
 import * as THREE from 'three';
 
@@ -196,18 +196,43 @@ function remapMixamoAnimationToVrm(vrm, fbxScene) {
     return remappedClip;
 }
 
+// ✅ 获取 VRM 的唯一标识符（更可靠的检测方式）
+const getVrmId = (vrm: any): string => {
+    if (!vrm) return '';
+    // 优先使用 scene 的 uuid（最可靠）
+    if (vrm.scene?.uuid) {
+        return `vrm-${vrm.scene.uuid}`;
+    }
+    // 备用：使用 humanoid 的某些属性
+    if (vrm.humanoid) {
+        return `vrm-humanoid-${vrm.humanoid.humanBones ? 'has-bones' : 'no-bones'}`;
+    }
+    // 最后备用：使用对象引用（不太可靠，但在某些情况下有用）
+    return `vrm-ref-${String(vrm).slice(0, 20)}`;
+};
+
 // 改进的动画管理器
 export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx') => {
+    // ✅ 确保 animationUrl 始终有效（如果是 null/undefined，使用默认值）
+    const DEFAULT_ANIMATION_URL = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx';
+    const effectiveAnimationUrl = animationUrl || DEFAULT_ANIMATION_URL;
+    
     // 修正 animationUrl 末尾多余的冒号
-    const safeAnimationUrl = typeof animationUrl === 'string' ? animationUrl.replace(/:$/, '') : animationUrl;
+    const safeAnimationUrl = typeof effectiveAnimationUrl === 'string' 
+        ? effectiveAnimationUrl.replace(/:$/, '').trim() 
+        : DEFAULT_ANIMATION_URL;
 
-    const mixerRef = useRef();
-    const currentActionRef = useRef();
-    const idleActionRef = useRef();
+    const mixerRef = useRef<AnimationMixer | null>(null);
+    const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+    const idleActionRef = useRef<THREE.AnimationAction | null>(null);
     const isTransitioningRef = useRef(false);
     const transitionTimeRef = useRef(0);
     const hasMixerRef = useRef(false);
     const animationModeRef = useRef('idle'); // 'idle' | 'mocap'
+    
+    // ✅ 使用 VRM UUID 追踪模型变化（更可靠）
+    const vrmIdRef = useRef<string>('');
+    const previousAnimationUrlRef = useRef(safeAnimationUrl);
     
     // 状态管理
     const [animationState, setAnimationState] = useState({
@@ -219,43 +244,176 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
         error: null
     });
 
-    // 加载FBX动画文件
-    const fbxScene = useFBX(safeAnimationUrl, undefined, undefined, (loader) => {
-        // 可以在这里添加加载进度回调
-        console.log('AnimationManager: 开始加载动画', safeAnimationUrl);
-    });
+    // ✅ 重新初始化动画管理器（当VRM变化时调用）
+    const reinitialize = useCallback((newVrm: any) => {
+        console.log('🔄 AnimationManager: 重新初始化动画管理器', {
+            oldVrmId: vrmIdRef.current,
+            newVrmId: getVrmId(newVrm),
+            hasOldMixer: !!mixerRef.current
+        });
+        
+        // ✅ 完全清理旧的混合器
+        if (mixerRef.current) {
+            console.log('🧹 AnimationManager: 清理旧的动画混合器');
+            try {
+                // 停止所有动作
+                mixerRef.current.stopAllAction();
+                
+                // 注意：AnimationMixer 没有 uncacheRoot 方法
+                // 停止所有动作后，直接置null即可
+            } catch (error) {
+                console.warn('AnimationManager: 清理旧混合器时出错', error);
+            }
+            
+            mixerRef.current = null;
+        }
+        
+        // ✅ 清空所有动作引用
+        idleActionRef.current = null;
+        currentActionRef.current = null;
+        hasMixerRef.current = false;
+        
+        // ✅ 为新 VRM 创建新的混合器
+        if (newVrm && newVrm.scene) {
+            const newMixer = new AnimationMixer(newVrm.scene);
+            mixerRef.current = newMixer;
+            hasMixerRef.current = true;
+            
+            console.log('✅ AnimationManager: 为新VRM创建新的混合器', {
+                vrmId: getVrmId(newVrm),
+                mixerRoot: newMixer.getRoot() === newVrm.scene
+            });
+        }
+        
+        // 重置状态
+        setAnimationState(prev => ({
+            ...prev,
+            hasMixer: !!mixerRef.current,
+            isPlayingIdle: false,
+            isLoading: false
+        }));
+    }, []);
+    
+    // ✅ 检测 VRM UUID 变化（使用 UUID 比对象引用更可靠）
+    useEffect(() => {
+        const currentVrmId = getVrmId(vrm);
+        
+        if (currentVrmId && currentVrmId !== vrmIdRef.current) {
+            console.log('🆕 AnimationManager: 检测到VRM变化', {
+                oldVrmId: vrmIdRef.current || '(首次加载)',
+                newVrmId: currentVrmId,
+                hasOldVrm: !!vrmIdRef.current,
+                hasNewVrm: !!vrm
+            });
+            
+            // ✅ 如果是首次加载（没有旧模型），需要初始化混合器
+            // ✅ 如果是切换模型，需要重新初始化
+            if (!vrmIdRef.current) {
+                // 首次加载：如果还没有混合器，会在后续的useEffect中创建
+                console.log('🎯 AnimationManager: 首次加载VRM，等待混合器初始化');
+            } else {
+                // 切换模型：需要重新初始化
+                console.log('🔄 AnimationManager: 切换模型，重新初始化动画管理器');
+                reinitialize(vrm);
+            }
+            
+            vrmIdRef.current = currentVrmId;
+        } else if (!currentVrmId && vrmIdRef.current) {
+            // VRM 被移除，清理
+            console.log('🧹 AnimationManager: VRM已移除，清理资源');
+            if (mixerRef.current) {
+                mixerRef.current.stopAllAction();
+                mixerRef.current = null;
+            }
+            idleActionRef.current = null;
+            currentActionRef.current = null;
+            hasMixerRef.current = false;
+            vrmIdRef.current = '';
+        }
+    }, [vrm, reinitialize]);
+    
+    // ✅ 检测动画 URL 变化
+    useEffect(() => {
+        if (previousAnimationUrlRef.current !== safeAnimationUrl) {
+            console.log('🔄 AnimationManager: 检测到动画URL变化', {
+                old: previousAnimationUrlRef.current,
+                new: safeAnimationUrl
+            });
+            
+            previousAnimationUrlRef.current = safeAnimationUrl;
+            
+            // 如果已有混合器，清理并等待重新初始化
+            if (mixerRef.current) {
+                mixerRef.current.stopAllAction();
+                idleActionRef.current = null;
+                currentActionRef.current = null;
+            }
+        }
+    }, [safeAnimationUrl]);
 
-    // 创建动画剪辑
+    // 加载FBX动画文件
+    // ✅ useFBX 会在 URL 变化时自动重新加载
+    const fbxScene = useFBX(safeAnimationUrl);
+
+    // ✅ 创建动画剪辑（当VRM、fbxScene或URL变化时重新创建）
     const idleClip = useMemo(() => {
         if (!vrm || !fbxScene) {
-            console.warn('AnimationManager: 缺少必要参数');
+            console.warn('AnimationManager: 缺少必要参数，无法创建动画剪辑', {
+                hasVRM: !!vrm,
+                hasFbxScene: !!fbxScene,
+                vrmScene: !!vrm?.scene,
+                vrmHumanoid: !!vrm?.humanoid
+            });
+            return null;
+        }
+        
+        // ✅ 确保 VRM 完全加载
+        if (!vrm.scene || !vrm.humanoid) {
+            console.warn('AnimationManager: VRM未完全加载', {
+                hasScene: !!vrm.scene,
+                hasHumanoid: !!vrm.humanoid
+            });
             return null;
         }
         
         try {
+            console.log('AnimationManager: 开始重新映射动画', {
+                animationUrl: safeAnimationUrl,
+                animationsCount: fbxScene.animations?.length || 0
+            });
+            
             const remappedClip = remapMixamoAnimationToVrm(vrm, fbxScene);
             
             if (remappedClip) {
-                console.log('AnimationManager: 动画重新映射成功');
+                console.log('AnimationManager: 动画重新映射成功', {
+                    clipName: remappedClip.name,
+                    duration: remappedClip.duration,
+                    tracksCount: remappedClip.tracks.length
+                });
                 return remappedClip;
+            } else {
+                console.warn('AnimationManager: 重新映射返回null');
             }
         } catch (error) {
-            console.warn('AnimationManager: 重新映射失败', error);
+            console.error('AnimationManager: 重新映射失败', error);
         }
         
         // 备用方案：使用原始动画
         if (fbxScene.animations && fbxScene.animations.length > 0) {
             const clip = fbxScene.animations[0].clone();
             clip.name = 'Idle';
-            console.log('AnimationManager: 使用原始动画作为备用');
+            console.log('AnimationManager: 使用原始动画作为备用', {
+                clipName: clip.name,
+                duration: clip.duration
+            });
             return clip;
         }
         
-        console.warn('AnimationManager: 无法创建idle剪辑');
+        console.warn('AnimationManager: 无法创建idle剪辑 - 没有可用的动画');
         return null;
     }, [vrm, fbxScene, safeAnimationUrl]);
 
-    // 初始化动画混合器
+    // 初始化动画混合器（当vrm、idleClip或animationUrl变化时重新初始化）
     useEffect(() => {
         if (!vrm || !idleClip) {
             // 清理之前的混合器
@@ -286,26 +444,78 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
         }
 
         try {
-            console.log('AnimationManager: 初始化动画混合器');
+            console.log('AnimationManager: 初始化/重新初始化动画混合器', {
+                animationUrl: safeAnimationUrl,
+                hasMixer: hasMixerRef.current,
+                vrmScene: !!vrm.scene,
+                vrmHumanoid: !!vrm.humanoid,
+                idleClipName: idleClip?.name,
+                idleClipDuration: idleClip?.duration
+            });
             
-            // 创建动画混合器
-            const mixer = new AnimationMixer(vrm.scene);
-            mixerRef.current = mixer;
-            hasMixerRef.current = true;
+            // ✅ 确保没有旧的混合器（应该已经在之前的useEffect中清理，这里做二次检查）
+            if (mixerRef.current) {
+                const oldRoot = mixerRef.current.getRoot();
+                if (oldRoot !== vrm.scene) {
+                    console.log('AnimationManager: 检测到VRM场景变化，清理旧混合器');
+                    mixerRef.current.stopAllAction();
+                    mixerRef.current = null;
+                    hasMixerRef.current = false;
+                }
+            }
+            
+            // ✅ 创建新的混合器（如果没有或场景已变化）
+            if (!mixerRef.current) {
+                console.log('🎯 AnimationManager: 创建新的动画混合器', {
+                    vrmId: getVrmId(vrm),
+                    vrmScene: !!vrm.scene,
+                    vrmHumanoid: !!vrm.humanoid
+                });
+                const mixer = new AnimationMixer(vrm.scene);
+                mixerRef.current = mixer;
+                hasMixerRef.current = true;
+                console.log('✅ AnimationManager: 混合器创建成功', {
+                    vrmId: getVrmId(vrm),
+                    rootObject: mixer.getRoot() === vrm.scene,
+                    mixerRootUuid: mixer.getRoot()?.uuid
+                });
+            } else {
+                // ✅ 验证混合器绑定到正确的场景
+                const mixerRoot = mixerRef.current.getRoot();
+                if (mixerRoot !== vrm.scene) {
+                    console.warn('⚠️ AnimationManager: 混合器绑定的场景不匹配，重新创建', {
+                        expectedSceneUuid: vrm.scene?.uuid,
+                        actualRootUuid: mixerRoot?.uuid
+                    });
+                    mixerRef.current.stopAllAction();
+                    const mixer = new AnimationMixer(vrm.scene);
+                    mixerRef.current = mixer;
+                    hasMixerRef.current = true;
+                }
+            }
 
-            // 创建idle动作
-            const idleAction = mixer.clipAction(idleClip);
+            // ✅ 创建idle动作（必须使用新的clip，因为VRM可能已经变化）
+            const idleAction = mixerRef.current.clipAction(idleClip);
+            if (!idleAction) {
+                throw new Error('无法创建idle动作：clipAction返回null');
+            }
+            
+            // 停止之前的动作（如果有）
+            if (idleActionRef.current && idleActionRef.current !== idleAction) {
+                idleActionRef.current.stop();
+            }
+            
             idleActionRef.current = idleAction;
             currentActionRef.current = idleAction;
 
             // 设置动画参数
             idleAction.setEffectiveWeight(1.0);
             idleAction.timeScale = 1.0;
-            idleAction.setLoop(LoopRepeat);
+            idleAction.setLoop(THREE.LoopRepeat, Infinity);
             idleAction.clampWhenFinished = false;
             idleAction.enabled = true;
 
-            // 开始播放idle动画
+            // ✅ 重置并播放动画
             idleAction.reset();
             idleAction.play();
             
@@ -320,7 +530,13 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
                 error: null
             });
             
-            console.log('AnimationManager: 动画混合器初始化完成');
+            console.log('✅ AnimationManager: 动画混合器初始化完成，开始播放动画', {
+                vrmId: getVrmId(vrm),
+                actionName: idleAction.getClip().name,
+                isRunning: idleAction.isRunning(),
+                weight: idleAction.getEffectiveWeight(),
+                duration: idleAction.getClip().duration
+            });
 
         } catch (error) {
             console.error('AnimationManager: 初始化失败', error);
@@ -329,10 +545,10 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
                 hasMixer: false,
                 isPlayingIdle: false,
                 isLoading: false,
-                error: error.message
+                error: error instanceof Error ? error.message : String(error)
             }));
         }
-    }, [vrm, idleClip]);
+    }, [vrm, idleClip, safeAnimationUrl]); // ✅ 添加safeAnimationUrl到依赖，确保URL变化时重新初始化
 
     // 切换到动捕模式
     const switchToMocapMode = () => {

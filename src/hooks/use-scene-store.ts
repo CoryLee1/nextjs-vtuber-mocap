@@ -1,0 +1,295 @@
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
+import type { VRM } from '@pixiv/three-vrm';
+import type { CameraSettings } from '@/types/vtuber';
+import type { Object3D, Mesh, Material } from 'three';
+
+/**
+ * 场景类型
+ */
+export type SceneType = 'main' | 'settings' | 'hidden';
+
+/**
+ * 调试设置
+ */
+export interface DebugSettings {
+  showDebug: boolean;
+  showBones: boolean;
+  showArmAxes: boolean;
+  axisSettings?: Record<string, { x: number; y: number; z: number }>;
+  debugAxisConfig?: Record<string, { x: number; y: number; z: number }>;
+  handDebugAxisConfig?: Record<string, { x: number; y: number; z: number }>;
+}
+
+/**
+ * 场景状态接口
+ */
+interface SceneState {
+  // ========== Canvas 状态 ==========
+  /** Canvas 是否已挂载并准备就绪 */
+  canvasReady: boolean;
+  setCanvasReady: (ready: boolean) => void;
+
+  // ========== 场景控制 ==========
+  /** 当前激活的场景 */
+  activeScene: SceneType;
+  setScene: (scene: SceneType) => void;
+
+  // ========== VRM 模型缓存 ==========
+  /** 缓存的 VRM 模型实例 */
+  vrmModel: VRM | null;
+  /** 当前模型 URL */
+  vrmModelUrl: string | null;
+  /** 当前动画 URL */
+  animationUrl: string | null;
+  /** 设置 VRM 模型（缓存模型实例和 URL） */
+  setVRMModel: (model: VRM, url: string) => void;
+  /** 设置模型 URL（不改变模型实例，用于预加载） */
+  setVRMModelUrl: (url: string) => void;
+  /** 设置动画 URL */
+  setAnimationUrl: (url: string) => void;
+  /** 清除当前 VRM 模型（正确释放资源） */
+  disposeCurrentVRM: () => void;
+
+  // ========== MediaPipe 回调 ==========
+  /**
+   * MediaPipe 结果回调（使用 subscribe + ref 模式避免高频重渲染）
+   * 注意：不要直接访问这个值，使用 subscribe 模式
+   */
+  _resultsCallback: ((results: any) => void) | null;
+  /** 设置 MediaPipe 结果回调 */
+  setResultsCallback: (callback: ((results: any) => void) | null) => void;
+
+  // ========== 场景配置 ==========
+  /** 相机设置 */
+  cameraSettings: CameraSettings;
+  /** 更新相机设置 */
+  updateCameraSettings: (settings: Partial<CameraSettings>) => void;
+
+  /** 调试设置 */
+  debugSettings: DebugSettings;
+  /** 更新调试设置 */
+  updateDebugSettings: (settings: Partial<DebugSettings>) => void;
+
+  // ========== 场景引用 ==========
+  /** VRM 模型引用（用于调试面板等） */
+  vrmRef: React.RefObject<any> | null;
+  /** 设置 VRM 引用 */
+  setVrmRef: (ref: React.RefObject<any> | null) => void;
+  /** 动画管理器引用 */
+  animationManagerRef: any;
+  /** 设置动画管理器引用 */
+  setAnimationManagerRef: (ref: any) => void;
+  /** 手部检测状态引用 */
+  handDetectionStateRef: any;
+  /** 设置手部检测状态引用 */
+  setHandDetectionStateRef: (ref: any) => void;
+}
+
+/**
+ * 默认相机设置
+ */
+const defaultCameraSettings: CameraSettings = {
+  width: 640,
+  height: 480,
+  fps: 30,
+  enableAutoTrack: true,
+  enableUserControl: true,
+  showHint: true,
+  useGameStyle: false,
+};
+
+/**
+ * 默认调试设置
+ */
+const defaultDebugSettings: DebugSettings = {
+  showDebug: false,
+  showBones: false,
+  showArmAxes: false,
+};
+
+/**
+ * 场景状态 Store
+ * 
+ * 管理 3D 场景的全局状态，包括：
+ * - Canvas 就绪状态
+ * - 场景切换
+ * - VRM 模型缓存
+ * - MediaPipe 回调（使用 subscribe 模式）
+ * - 场景配置（相机、调试等）
+ */
+export const useSceneStore = create<SceneState>()(
+  subscribeWithSelector((set, get) => ({
+  // ========== Canvas 状态 ==========
+  canvasReady: false,
+  setCanvasReady: (ready: boolean) => {
+    set({ canvasReady: ready });
+  },
+
+  // ========== 场景控制 ==========
+  activeScene: 'main',
+  setScene: (scene: SceneType) => {
+    set({ activeScene: scene });
+  },
+
+  // ========== VRM 模型缓存 ==========
+  vrmModel: null,
+  vrmModelUrl: null,
+  animationUrl: null,
+  
+  setVRMModel: (model: VRM, url: string) => {
+    // 如果已有模型，先释放旧模型
+    const currentModel = get().vrmModel;
+    if (currentModel && currentModel !== model) {
+      get().disposeCurrentVRM();
+    }
+    
+    set({
+      vrmModel: model,
+      vrmModelUrl: url,
+    });
+  },
+
+  setVRMModelUrl: (url: string) => {
+    set({ vrmModelUrl: url });
+  },
+
+  setAnimationUrl: (url: string) => {
+    set({ animationUrl: url });
+  },
+
+  disposeCurrentVRM: () => {
+    const { vrmModel } = get();
+    
+    if (vrmModel) {
+      try {
+        // 1. 从父节点移除场景
+        if (vrmModel.scene && vrmModel.scene.parent) {
+          vrmModel.scene.parent.remove(vrmModel.scene);
+        }
+
+        // 2. 停止所有动画
+        // 注意：VRM 的动画管理器需要单独处理
+        // 尝试停止动画管理器的动作
+        const { animationManagerRef } = get();
+        if (animationManagerRef) {
+          // 尝试切换到mocap模式来停止动画（如果方法存在）
+          if (typeof animationManagerRef.switchToMocapMode === 'function') {
+            animationManagerRef.switchToMocapMode();
+          }
+          // 或者直接停止mixer（如果mixer存在）
+          if (animationManagerRef.mixer && typeof animationManagerRef.mixer.stopAllAction === 'function') {
+            animationManagerRef.mixer.stopAllAction();
+          }
+        }
+
+        // 3. 释放 VRM 资源
+        // 注意：VRM 类型可能没有 dispose 方法，需要检查实际实现
+        if ('dispose' in vrmModel && typeof (vrmModel as any).dispose === 'function') {
+          (vrmModel as any).dispose();
+        }
+
+        // 4. 清理几何体和材质
+        vrmModel.scene.traverse((object: Object3D) => {
+          const mesh = object as Mesh;
+          if (mesh.geometry) {
+            mesh.geometry.dispose();
+          }
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach((mat) => {
+                const material = mat as Material & { map?: any };
+                if (material.map) {
+                  material.map.dispose();
+                }
+                material.dispose();
+              });
+            } else {
+              const material = mesh.material as Material & { map?: any };
+              if (material.map) {
+                material.map.dispose();
+              }
+              material.dispose();
+            }
+          }
+        });
+
+        console.log('VRM 模型资源已释放');
+      } catch (error) {
+        console.error('释放 VRM 模型资源时出错:', error);
+      }
+    }
+
+    set({
+      vrmModel: null,
+      vrmModelUrl: null,
+    });
+  },
+
+  // ========== MediaPipe 回调 ==========
+  _resultsCallback: null,
+  setResultsCallback: (callback: ((results: any) => void) | null) => {
+    set({ _resultsCallback: callback });
+  },
+
+  // ========== 场景配置 ==========
+  cameraSettings: defaultCameraSettings,
+  updateCameraSettings: (settings: Partial<CameraSettings>) => {
+    set((state) => ({
+      cameraSettings: { ...state.cameraSettings, ...settings },
+    }));
+  },
+
+  debugSettings: defaultDebugSettings,
+  updateDebugSettings: (settings: Partial<DebugSettings>) => {
+    set((state) => ({
+      debugSettings: { ...state.debugSettings, ...settings },
+    }));
+  },
+
+  // ========== 场景引用 ==========
+  vrmRef: null,
+  setVrmRef: (ref: React.RefObject<any> | null) => {
+    set({ vrmRef: ref });
+  },
+
+  animationManagerRef: null,
+  setAnimationManagerRef: (ref: any) => {
+    set({ animationManagerRef: ref });
+  },
+
+  handDetectionStateRef: null,
+  setHandDetectionStateRef: (ref: any) => {
+    set({ handDetectionStateRef: ref });
+  },
+  }))
+);
+
+/**
+ * 便捷 Hook：订阅 MediaPipe 回调（避免高频重渲染）
+ * 
+ * 使用方式：
+ * ```tsx
+ * const callbackRef = useRef<Function>()
+ * useMediaPipeCallback((cb) => { callbackRef.current = cb })
+ * 
+ * // 在 useFrame 中使用
+ * useFrame(() => {
+ *   if (callbackRef.current) {
+ *     callbackRef.current(results)
+ *   }
+ * })
+ * ```
+ */
+export function useMediaPipeCallback(
+  onCallbackChange: (callback: ((results: any) => void) | null) => void
+) {
+  // 使用 subscribeWithSelector 中间件后，可以使用 selector subscribe
+  return useSceneStore.subscribe(
+    (state) => state._resultsCallback,
+    (callback) => {
+      onCallbackChange(callback);
+    }
+  );
+}
+

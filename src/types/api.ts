@@ -31,6 +31,16 @@ export interface ResourceUploadResponse {
   error?: string;
 }
 
+// S3 上传结果类型
+export interface S3UploadResult {
+  url: string;
+  fileName: string;
+  originalName: string;
+  size: number;
+  type: string;
+  isSimulated?: boolean;
+}
+
 export interface ApiError {
   message: string;
   code?: string;

@@ -1,4 +1,174 @@
 📐 整体架构 Mental Model
+
+## 📁 实际文件结构
+
+```
+nextjs-vtuber-mocap/
+├── src/
+│   ├── app/                          # Next.js App Router
+│   │   ├── [locale]/                 # 国际化路由
+│   │   │   ├── api/
+│   │   │   │   └── s3/
+│   │   │   │       └── presigned-url/
+│   │   │   │           └── route.ts
+│   │   │   ├── kpi-dashboard/        # KPI 仪表板
+│   │   │   ├── layout.tsx            # 国际化布局
+│   │   │   └── page.tsx              # 主页面
+│   │   ├── api/                      # API 路由
+│   │   │   ├── debug-env/
+│   │   │   │   └── route.ts
+│   │   │   ├── s3/
+│   │   │   │   ├── presigned-url/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── resources/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── upload/
+│   │   │   │       └── route.ts
+│   │   │   └── stripe/
+│   │   │       ├── create-payment-intent/
+│   │   │       │   └── route.ts
+│   │   │       └── create-subscription/
+│   │   │           └── route.ts
+│   │   ├── subscription/             # 订阅页面
+│   │   │   └── page.tsx
+│   │   ├── globals.css               # 全局样式
+│   │   ├── layout.tsx                # 根布局
+│   │   └── page.tsx                  # 根页面
+│   │
+│   ├── blocks/                       # 动画块组件
+│   │   └── Animations/
+│   │       └── PixelTrail/
+│   │           └── PixelTrail.tsx
+│   │
+│   ├── components/                    # React 组件
+│   │   ├── debug/                    # 调试组件
+│   │   │   └── DataFlowDebugPanel.tsx
+│   │   ├── dressing-room/           # 核心动捕组件
+│   │   │   ├── ArmDebugPanel.jsx
+│   │   │   ├── CameraController.tsx
+│   │   │   ├── CameraWidget.tsx
+│   │   │   ├── ControlPanel.tsx
+│   │   │   ├── DebugHelpers.tsx
+│   │   │   ├── DraggablePanel.tsx
+│   │   │   ├── HandDebugPanel.tsx
+│   │   │   ├── MediaPipeProcessor.tsx
+│   │   │   ├── VRMAnimator.tsx
+│   │   │   ├── VRMAvatar.tsx
+│   │   │   ├── VRMLoader.tsx
+│   │   │   ├── VTuberApp.tsx
+│   │   │   ├── VTuberControls.tsx
+│   │   │   ├── VTuberLayout.tsx
+│   │   │   └── VTuberScene.tsx
+│   │   ├── payment/                  # 支付组件
+│   │   │   └── SubscriptionButton.tsx
+│   │   ├── settings/                 # 设置组件
+│   │   │   └── SettingsPanel.tsx
+│   │   ├── tracking/                 # 追踪组件
+│   │   │   ├── AnalyticsDashboard.tsx
+│   │   │   ├── ConsentManager.tsx
+│   │   │   ├── InternationalizationTracker.tsx
+│   │   │   ├── KPIDashboard.tsx
+│   │   │   ├── PageTracker.tsx
+│   │   │   ├── PostHogProvider.tsx
+│   │   │   └── TrackingExample.tsx
+│   │   ├── ui/                       # UI 组件库
+│   │   │   ├── badge.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── language-switcher.tsx
+│   │   │   ├── LoadingPage.tsx
+│   │   │   ├── OnboardingGuide.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── switch.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── theme-toggle.tsx
+│   │   │   ├── toast.tsx
+│   │   │   └── toaster.tsx
+│   │   └── vtuber/                   # VTuber 相关组件
+│   │       ├── AnimationLibrary.tsx
+│   │       ├── ModelManager.tsx
+│   │       └── ResourceSelector.tsx
+│   │
+│   ├── hooks/                        # 自定义 Hooks
+│   │   ├── use-animation-library.ts
+│   │   ├── use-button-tracking.ts
+│   │   ├── use-i18n.ts
+│   │   ├── use-kpi-tracking.ts
+│   │   ├── use-model-manager.ts
+│   │   ├── use-performance.ts
+│   │   ├── use-sensitivity-settings.ts
+│   │   ├── use-shortcuts.ts
+│   │   ├── use-theme.ts
+│   │   ├── use-toast.ts
+│   │   ├── use-tracking.ts
+│   │   └── use-video-recognition.ts
+│   │
+│   ├── i18n/                         # 国际化配置
+│   │   ├── config.ts
+│   │   └── request.ts
+│   │
+│   ├── lib/                          # 工具库
+│   │   ├── animation-manager.ts
+│   │   ├── animation-storage.ts
+│   │   ├── arm-calculator.ts
+│   │   ├── config-manager.ts
+│   │   ├── constants.ts
+│   │   ├── data-flow-monitor.ts
+│   │   ├── kpi-tracking.ts
+│   │   ├── posthog-init.ts
+│   │   ├── posthog.ts
+│   │   ├── resource-manager.ts
+│   │   ├── s3-resource-manager.ts
+│   │   ├── s3-uploader.ts
+│   │   ├── stripe-client.ts
+│   │   ├── stripe-config.ts
+│   │   └── utils.ts
+│   │
+│   ├── messages/                     # 国际化语言包
+│   │   ├── en.json                   # 英文
+│   │   ├── ja.json                   # 日文
+│   │   ├── template.json             # 模板
+│   │   └── zh.json                   # 中文
+│   │
+│   ├── providers/                    # Context Providers
+│   │   └── ThemeProvider.tsx
+│   │
+│   ├── styles/                       # 样式文件
+│   │   └── globals.css
+│   │
+│   └── types/                        # TypeScript 类型定义
+│       ├── api.ts
+│       ├── config.ts
+│       ├── index.ts
+│       └── vtuber.ts
+│
+├── public/                           # 静态资源
+│   ├── images/                       # 图片资源
+│   ├── models/                      # 3D 模型资源
+│   └── project-resources/            # 项目资源
+│
+├── scripts/                         # 维护脚本
+│   ├── align-i18n.js                # 对齐国际化文件
+│   └── check-i18n.js                # 检查国际化文件
+│
+├── docs/                            # 文档目录
+│   ├── data-flow-architecture.md
+│   ├── migration-cleanup-summary.md
+│   └── phase-6-summary.md
+│
+├── middleware.ts                     # Next.js 中间件
+├── next.config.js                   # Next.js 配置
+├── package.json                     # 项目依赖
+├── tailwind.config.js              # Tailwind 配置
+├── tsconfig.json                    # TypeScript 配置
+└── PERFORMANCE_AND_MAINTENANCE.md   # 性能与维护文档
+```
+
+---
+
 🏗️ 第一层：核心目录与职责概览
 1. 应用入口层 (src/app/)
 职责：Next.js App Router 路由与页面组织
@@ -102,3 +272,55 @@ constants.ts (全局配置)    ├─> MEDIAPIPE_CONFIG (MediaPipe 配置)    �
 📊 模块依赖关系图
 app/ (入口层)    ↓components/dressing-room/ (核心功能)    ├─> hooks/ (状态管理)    ├─> lib/ (工具库)    └─> types/ (类型定义)        ↓components/ui/ (UI 组件)    └─> 被所有业务组件使用        ↓components/tracking/ (追踪)    └─> lib/posthog.ts        ↓components/payment/ (支付)    └─> lib/stripe-client.ts        ↓i18n/ (国际化)    └─> messages/ (语言包)
 该架构支持实时动捕、3D 渲染、多语言、支付与分析等功能的集成。
+
+---
+
+## 📊 文件统计
+
+### 核心文件数量
+
+- **组件文件**: 约 50+ 个 React 组件
+- **Hooks**: 12 个自定义 Hooks
+- **工具库**: 14 个工具函数文件
+- **类型定义**: 4 个类型文件
+- **API 路由**: 8 个 API 端点
+- **国际化文件**: 4 个语言包（en, zh, ja, template）
+
+### 主要目录说明
+
+1. **src/app/** - Next.js App Router 路由系统
+   - 支持国际化路由 `[locale]`
+   - API 路由统一管理
+   - 页面级组件组织
+
+2. **src/components/** - React 组件库
+   - `dressing-room/` - 核心动捕功能（14 个组件）
+   - `ui/` - 基础 UI 组件库（17 个组件）
+   - `tracking/` - 分析追踪组件（7 个组件）
+   - `vtuber/` - VTuber 业务组件（3 个组件）
+
+3. **src/hooks/** - 状态管理与业务逻辑
+   - 全局状态管理（Zustand）
+   - 性能监控
+   - 主题管理
+   - 追踪逻辑
+
+4. **src/lib/** - 核心工具库
+   - 动画管理
+   - S3 资源管理
+   - Stripe 支付集成
+   - PostHog 分析
+   - 数据流监控
+
+### 已清理的测试文件
+
+以下测试页面已从项目中移除（2024年清理）：
+- ❌ `test-aws`, `test-aws-creds`, `test-env`, `test-env-vars`
+- ❌ `test-model-manager`, `test-theme`, `test-upload`
+- ❌ `scene-test`, `theme-test`
+- ❌ `config-check`, `deploy-check`, `stripe-check`
+- ❌ `[locale]/test`, `[locale]/test-language`, `[locale]/posthog-test`
+- ❌ `[locale]/demo`, `[locale]/env-status`
+- ❌ `api/s3/test-permissions`
+
+这些测试页面已不再需要，项目结构更加清晰。

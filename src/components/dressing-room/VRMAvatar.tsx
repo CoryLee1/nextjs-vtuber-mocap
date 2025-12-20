@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, forwardRef } from 'react';
+import { useEffect, useRef, useCallback, useState, forwardRef, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
@@ -7,6 +7,7 @@ import { Euler, Object3D, Quaternion, Vector3, Mesh, CylinderGeometry, MeshBasic
 import { lerp } from 'three/src/math/MathUtils.js';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { useSensitivitySettings } from '@/hooks/use-sensitivity-settings';
+import { useSceneStore, useMediaPipeCallback } from '@/hooks/use-scene-store';
 import { calculateArms, calculateHandIK, smoothArmRotation, isArmVisible, validateHumanRotation } from '@/lib/arm-calculator';
 import { useAnimationManager } from '@/lib/animation-manager';
 import { ANIMATION_CONFIG } from '@/lib/constants';
@@ -270,7 +271,16 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     // 获取灵敏度设置
     const { settings } = useSensitivitySettings();
 
-    // 加载 VRM 模型 - 参考提供的文件
+    // 从 store 读取缓存的模型
+    const {
+        vrmModel: cachedVRMModel,
+        vrmModelUrl: cachedVRMModelUrl,
+        setVRMModel,
+        disposeCurrentVRM,
+    } = useSceneStore();
+
+    // 加载 VRM 模型 - useGLTF 会自动处理 URL 级别的缓存
+    // 但我们还需要在 store 中缓存模型实例，以便在组件卸载/重新挂载时复用
     const gltfResult: any = useGLTF(
         modelUrl,
         undefined,
@@ -286,8 +296,54 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         console.error('VRMAvatar: 模型加载错误', errors);
     }
 
-    // 使用 userData.vrm 而不是 userData?.vrm，参考提供的文件
-    const vrm = userData?.vrm; // 改回使用可选链操作符
+    // 优先使用缓存的模型（如果 URL 匹配），否则使用新加载的模型
+    // 注意：cachedVRMModel 是模型实例，userData?.vrm 是当前加载的模型
+    const vrm = (cachedVRMModel && cachedVRMModelUrl === modelUrl) 
+        ? cachedVRMModel 
+        : userData?.vrm;
+
+    // 当新模型加载完成时，缓存到 store
+    useEffect(() => {
+        if (userData?.vrm && modelUrl) {
+            const vrmUuid = userData.vrm.scene?.uuid || 'unknown';
+            const isLocalModel = !modelUrl.startsWith('http');
+            
+            // 如果 URL 改变，先释放旧模型
+            if (cachedVRMModel && cachedVRMModelUrl && cachedVRMModelUrl !== modelUrl) {
+                console.log('🔄 VRMAvatar: 检测到模型 URL 变化，释放旧模型', {
+                    oldUrl: cachedVRMModelUrl,
+                    newUrl: modelUrl,
+                    oldVrmUuid: cachedVRMModel.scene?.uuid,
+                    newVrmUuid: vrmUuid
+                });
+                disposeCurrentVRM();
+            }
+            
+            // 如果模型未缓存或 URL 改变，缓存新模型
+            if (!cachedVRMModel || cachedVRMModelUrl !== modelUrl) {
+                console.log('💾 VRMAvatar: 缓存新模型到 store', {
+                    modelUrl,
+                    vrmUuid,
+                    isLocalModel,
+                    hasScene: !!userData.vrm.scene,
+                    hasHumanoid: !!userData.vrm.humanoid
+                });
+                setVRMModel(userData.vrm, modelUrl);
+            } else {
+                // 即使 URL 相同，也检查 VRM 实例是否真的相同
+                const cachedUuid = cachedVRMModel.scene?.uuid;
+                if (cachedUuid !== vrmUuid) {
+                    console.log('⚠️ VRMAvatar: URL相同但VRM实例不同，更新缓存', {
+                        modelUrl,
+                        cachedUuid,
+                        newUuid: vrmUuid
+                    });
+                    disposeCurrentVRM();
+                    setVRMModel(userData.vrm, modelUrl);
+                }
+            }
+        }
+    }, [userData?.vrm, modelUrl, cachedVRMModel, cachedVRMModelUrl, setVRMModel, disposeCurrentVRM]);
 
     // 动画管理器 - 移到vrm加载之后
     const {
@@ -300,29 +356,111 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         forceIdleRestart // 新增：强制重启idle
     } = useAnimationManager(vrm, animationUrl);
 
-    // 传递动画管理器引用给父组件
+    // 用 useRef 存储 animationManager，避免无限循环
+    const animationManagerObjRef = useRef<any>(null);
+    const hasRegisteredAnimationManager = useRef(false);
+
+    // 更新 animationManager 对象的内容（不触发注册）
     useEffect(() => {
-        if (onAnimationManagerRef) {
-            const animationManager = {
-                getAnimationState,
-                getCurrentMode: () => {
-                    const state = getAnimationState();
-                    return state.currentMode;
-                },
-                switchToIdleMode,
-                switchToMocapMode,
-                forceIdleRestart
+        animationManagerObjRef.current = {
+            getAnimationState,
+            getCurrentMode: () => {
+                const state = getAnimationState();
+                return state.currentMode;
+            },
+            switchToIdleMode,
+            switchToMocapMode,
+            forceIdleRestart
+        };
+    }, [getAnimationState, switchToIdleMode, switchToMocapMode, forceIdleRestart]);
+
+    // 只在首次挂载时注册一次（使用 flag 防止重复注册）
+    useEffect(() => {
+        // 延迟执行确保 animationManagerObjRef 已赋值
+        const timer = setTimeout(() => {
+            if (onAnimationManagerRef && animationManagerObjRef.current && !hasRegisteredAnimationManager.current) {
+                onAnimationManagerRef(animationManagerObjRef.current);
+                hasRegisteredAnimationManager.current = true;
+            }
+        }, 0);
+        
+        return () => clearTimeout(timer);
+    }, []); // ← 空依赖数组，只在挂载时执行一次
+
+    // ✅ 获取摄像头状态（需要在使用前定义）
+    const isCameraActive = useVideoRecognition((state) => state.isCameraActive);
+
+    // ✅ 新模型加载完成后，自动切换到idle模式并应用动画
+    useEffect(() => {
+        if (vrm && vrm.scene && vrm.humanoid && !isCameraActive) {
+            // ✅ 使用多次检查，确保动画加载完成
+            const checkAndPlayAnimation = (attempt = 1, maxAttempts = 5) => {
+                const animationState = getAnimationState();
+                const vrmId = vrm.scene?.uuid || 'unknown';
+                
+                console.log(`VRMAvatar: 检查动画状态 (尝试 ${attempt}/${maxAttempts})`, {
+                    vrmId,
+                    currentMode: animationState.currentMode,
+                    isPlayingIdle: animationState.isPlayingIdle,
+                    hasMixer: animationState.hasMixer,
+                    error: animationState.error,
+                    animationUrl
+                });
+                
+                // 如果混合器已创建，尝试播放动画
+                if (animationState.hasMixer) {
+                    if (animationState.currentMode !== 'idle' || !animationState.isPlayingIdle) {
+                        console.log('🎬 VRMAvatar: 模型加载完成，切换到idle模式', {
+                            vrmId,
+                            animationUrl,
+                            hasMixer: animationState.hasMixer
+                        });
+                        switchToIdleMode();
+                    } else {
+                        console.log('✅ VRMAvatar: 动画已在播放', {
+                            vrmId,
+                            isPlayingIdle: animationState.isPlayingIdle
+                        });
+                    }
+                } else if (animationState.error) {
+                    console.error('❌ VRMAvatar: 动画管理器初始化失败', {
+                        vrmId,
+                        error: animationState.error
+                    });
+                } else if (attempt < maxAttempts) {
+                    // 如果还没有混合器，继续等待（可能是动画还在加载）
+                    console.log(`⏳ VRMAvatar: 等待动画混合器初始化... (${attempt}/${maxAttempts})`);
+                    setTimeout(() => checkAndPlayAnimation(attempt + 1, maxAttempts), 300);
+                } else {
+                    console.warn('⚠️ VRMAvatar: 超时，动画混合器仍未初始化', {
+                        vrmId,
+                        animationUrl
+                    });
+                }
             };
-            onAnimationManagerRef(animationManager);
+            
+            // 首次检查延迟稍长，确保模型和动画都加载完成
+            const timer = setTimeout(() => {
+                checkAndPlayAnimation();
+            }, 300);
+            
+            return () => clearTimeout(timer);
         }
-    }, [onAnimationManagerRef, getAnimationState, switchToIdleMode, switchToMocapMode, forceIdleRestart]);
+    }, [vrm, isCameraActive, getAnimationState, switchToIdleMode, animationUrl]);
 
     // 传递手部检测状态引用给父组件
+    // 使用 ref 存储回调，避免无限循环
+    const onHandDetectionStateRefRef = useRef(onHandDetectionStateRef);
     useEffect(() => {
-        if (onHandDetectionStateRef) {
-            onHandDetectionStateRef(handDetectionState);
-        }
+        onHandDetectionStateRefRef.current = onHandDetectionStateRef;
     }, [onHandDetectionStateRef]);
+    
+    // 只在组件挂载时传递 ref，父组件可以直接访问这个 ref
+    useEffect(() => {
+        if (onHandDetectionStateRefRef.current) {
+            onHandDetectionStateRefRef.current(handDetectionState);
+        }
+    }, []); // 空依赖数组，只在挂载时执行一次
 
     // 添加VRM加载调试信息
     useEffect(() => {
@@ -337,7 +475,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
     const { setResultsCallback } = useVideoRecognition();
     const videoElement = useVideoRecognition((state) => state.videoElement);
-    const isCameraActive = useVideoRecognition((state) => state.isCameraActive);
+    // isCameraActive 已在上面定义
     const setHandDebugInfo = useVideoRecognition((state) => state.setHandDebugInfo);
 
     // 添加调试信息 - 跟踪 videoElement 状态变化
@@ -985,6 +1123,46 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         }
     });
 
+    // 使用 ref 存储最新的 callback，避免频繁更新 store
+    const resultsCallbackRef = useRef(resultsCallback);
+    
+    // 保持 ref 同步
+    useEffect(() => {
+        resultsCallbackRef.current = resultsCallback;
+    }, [resultsCallback]);
+
+    // 注册结果回调到 useVideoRecognition
+    useEffect(() => {
+        setResultsCallback(resultsCallback);
+    }, [resultsCallback, setResultsCallback]);
+
+    // 将 resultsCallback 注册到场景 store（用于其他组件访问）
+    // 使用 ref 包装，避免 callback 变化时频繁更新 store
+    useEffect(() => {
+        const { setResultsCallback: setStoreCallback } = useSceneStore.getState();
+        // 创建一个稳定的包装函数，内部调用最新的 callback
+        const wrappedCallback = (results: any) => {
+            resultsCallbackRef.current?.(results);
+        };
+        setStoreCallback(wrappedCallback);
+        
+        return () => {
+            setStoreCallback(null);
+        };
+    }, []); // 空依赖数组，只在挂载/卸载时执行
+
+    // 同步 ref 到 scene（从 JSX 中移出，符合 Hooks 规则）
+    useEffect(() => {
+        if (ref && scene) {
+            // 如果ref是函数，调用它
+            if (typeof ref === 'function') {
+                ref(scene);
+            } else if (ref.current !== undefined) {
+                ref.current = scene;
+            }
+        }
+    }, [ref, scene]);
+
     return (
         <>
             {/* 模型加载状态指示器 */}
@@ -1029,17 +1207,6 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     </>
                 )}
                 
-                {/* 重要：确保ref指向scene对象 */}
-                {useEffect(() => {
-                    if (ref && scene) {
-                        // 如果ref是函数，调用它
-                        if (typeof ref === 'function') {
-                            ref(scene);
-                        } else if (ref.current !== undefined) {
-                            ref.current = scene;
-                        }
-                    }
-                }, [ref, scene])}
             </group>
         </>
     );

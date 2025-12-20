@@ -1,3 +1,5 @@
+import { S3UploadResult } from '@/types/api';
+
 // S3 上传工具
 export class S3Uploader {
   private s3Config: {
@@ -16,7 +18,7 @@ export class S3Uploader {
   }
 
   // 生成预签名 URL（需要后端支持）
-  async getPresignedUrl(fileName, fileType) {
+  async getPresignedUrl(fileName: string, fileType: string): Promise<string | null> {
     try {
       // 直接调用服务器端API，让服务器端检查AWS凭证
       const response = await fetch('/api/s3/presigned-url', {
@@ -58,7 +60,7 @@ export class S3Uploader {
   }
 
   // 上传文件到 S3
-  async uploadFile(file, onProgress = null) {
+  async uploadFile(file: File, onProgress?: ((progress: number) => void) | null): Promise<S3UploadResult> {
     try {
       // 简化：只处理VRM和FBX
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
@@ -78,7 +80,7 @@ export class S3Uploader {
       formData.append('bucketName', this.s3Config.bucketName);
 
       // 使用 XMLHttpRequest 来支持进度回调
-      return new Promise((resolve, reject) => {
+      return new Promise<S3UploadResult>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
         xhr.upload.addEventListener('progress', (event) => {
@@ -135,8 +137,8 @@ export class S3Uploader {
   }
 
   // 模拟上传功能
-  async simulateUpload(file, fileName, onProgress = null) {
-    return new Promise((resolve) => {
+  async simulateUpload(file: File, fileName: string, onProgress?: ((progress: number) => void) | null): Promise<S3UploadResult> {
+    return new Promise<S3UploadResult>((resolve) => {
       let progress = 0;
       const interval = setInterval(() => {
         progress += Math.random() * 15 + 5; // 5-20% 随机进度
@@ -168,7 +170,7 @@ export class S3Uploader {
   }
 
   // 验证文件类型
-  validateFile(file) {
+  validateFile(file: File): string[] {
     const errors = [];
     
     // 检查文件类型
@@ -202,7 +204,7 @@ export class S3Uploader {
   }
 
   // 验证VRM文件（专门用于模型管理器）
-  validateVRMFile(file) {
+  validateVRMFile(file: File): string[] {
     const errors = [];
     
     // 检查文件类型 - 只允许VRM
@@ -228,7 +230,7 @@ export class S3Uploader {
   }
 
   // 格式化文件大小
-  formatFileSize(bytes) {
+  formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
