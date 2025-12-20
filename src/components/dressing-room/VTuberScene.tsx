@@ -61,8 +61,8 @@ const Lighting = () => (
       intensity={1.2}
       position={[5, 5, 5]}
       castShadow
-      shadow-mapSize-width={2048}
-      shadow-mapSize-height={2048}
+      shadow-mapSize-width={1024}
+      shadow-mapSize-height={1024}
       shadow-camera-far={50}
       shadow-camera-left={-10}
       shadow-camera-right={10}
@@ -218,27 +218,20 @@ export const VTuberSceneContainer: React.FC<VTuberSceneContainerProps> = ({ scen
   // 使用性能设置
   const { settings } = usePerformance();
   
-  // 根据性能设置计算DPR
+  // 根据性能设置计算DPR（优化版本，限制最大DPR以避免性能问题）
   const getDPR = () => {
+    const deviceDPR = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+    const maxDPR = 1.5; // 限制最大DPR以避免性能问题和锯齿
+    
     switch (settings.quality) {
       case 'low':
-        return [0.5, 1];
+        return Math.min(deviceDPR * 0.75, 1);
       case 'high':
-        return [1, 2];
+        return Math.min(deviceDPR, maxDPR);
       case 'medium':
       default:
-        return [0.75, 1.5];
+        return Math.min(deviceDPR * 0.9, maxDPR);
     }
-  };
-  
-  // 根据分辨率设置计算DPR
-  const getResolutionDPR = () => {
-    const baseDPR = getDPR();
-    const resolutionMultiplier = settings.resolution;
-    return [
-      Math.max(0.5, baseDPR[0] * resolutionMultiplier),
-      Math.max(1, baseDPR[1] * resolutionMultiplier)
-    ];
   };
   
   // 调试面板坐标轴配置状态
@@ -293,12 +286,15 @@ export const VTuberSceneContainer: React.FC<VTuberSceneContainerProps> = ({ scen
         camera={{ position: [0, 1.5, 3], fov: 50 }}
         shadows={settings.shadows}
         gl={{ 
-          antialias: settings.antialiasing, 
+          antialias: true, // 强制启用抗锯齿以消除锯齿边缘
           alpha: false, // 改为false以确保背景色显示
-          preserveDrawingBuffer: true,
-          powerPreference: "high-performance"
+          preserveDrawingBuffer: false, // 改为false以提升性能（除非需要截图功能）
+          powerPreference: "high-performance",
+          stencil: false, // 禁用模板缓冲以提升性能
+          depth: true,
+          logarithmicDepthBuffer: false
         }}
-        dpr={getResolutionDPR()}
+        dpr={getDPR()}
         style={{ background: '#0036FF' }}
       >
         <VTuberScene 

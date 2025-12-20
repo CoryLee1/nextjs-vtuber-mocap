@@ -78,6 +78,12 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
     const drawResults = (results: any) => {
         if (!canvasRef.current || !videoRef.current) return;
 
+        // 检查视频元素是否已加载并具有有效的尺寸
+        if (!videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+            console.warn('视频元素尚未加载完成，跳过绘制');
+            return;
+        }
+
         const canvas = canvasRef.current;
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
@@ -228,8 +234,11 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
             cameraRef.current = new Camera(videoRef.current, {
                 onFrame: async () => {
                     // 确保 holisticRef.current 存在且已初始化
-                    if (holisticRef.current && holisticRef.current.send) {
-                        await holisticRef.current.send({ image: videoRef.current });
+                    if (holisticRef.current && holisticRef.current.send && videoRef.current) {
+                        // 检查视频元素是否已加载完成
+                        if (videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
+                            await holisticRef.current.send({ image: videoRef.current });
+                        }
                     }
                 },
                 width: CAMERA_CONFIG.width,
@@ -238,6 +247,24 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
             await cameraRef.current.start();
             console.log('CameraWidget: 摄像头启动完成');
+
+            // 等待视频元素完全加载
+            console.log('CameraWidget: 等待视频元素加载完成...');
+            await new Promise<void>((resolve) => {
+                const checkVideoReady = () => {
+                    if (videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
+                        console.log('CameraWidget: 视频元素已加载完成', {
+                            videoWidth: videoRef.current.videoWidth,
+                            videoHeight: videoRef.current.videoHeight,
+                            readyState: videoRef.current.readyState
+                        });
+                        resolve();
+                    } else {
+                        setTimeout(checkVideoReady, 100);
+                    }
+                };
+                checkVideoReady();
+            });
 
             // 关键修复：在所有初始化完成后再设置 videoElement
             console.log('CameraWidget: 设置 videoElement 和状态', {
@@ -260,10 +287,30 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
         } catch (error) {
             console.error('Camera start error:', error);
             let msg = '摄像头启动失败';
-            if (typeof error === 'object' && error && 'message' in error) {
+            
+            // 提供更具体的错误信息
+            if (error instanceof Error) {
+                if (error.name === 'NotAllowedError') {
+                    msg = '摄像头权限被拒绝，请在浏览器设置中允许摄像头访问';
+                } else if (error.name === 'NotFoundError') {
+                    msg = '未找到摄像头设备，请检查摄像头连接';
+                } else if (error.name === 'NotReadableError') {
+                    msg = '摄像头被其他应用占用，请关闭其他使用摄像头的应用';
+                } else if (error.name === 'OverconstrainedError') {
+                    msg = '摄像头不支持所需的配置，请尝试刷新页面';
+                } else {
+                    msg += ': ' + error.message;
+                }
+            } else if (typeof error === 'object' && error && 'message' in error) {
                 msg += ': ' + (error as any).message;
             }
+            
             setError(msg);
+            
+            // 重置状态
+            setIsStarted(false);
+            setVideoElement(null);
+            setIsCameraActive(false);
         }
     };
 
@@ -328,26 +375,28 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
             {/* 错误提示 */}
             {error && (
-                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg max-w-md">
-                    <div className="flex items-center space-x-2">
-                        <span className="text-lg">⚠️</span>
-                        <div>
-                            <div className="font-semibold">摄像头启动失败</div>
-                            <div className="text-sm opacity-90">{error}</div>
-                            <div className="text-xs opacity-75 mt-1">
-                                常见解决方案：
-                                <ul className="list-disc list-inside mt-1">
+                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-md">
+                    <div className="flex items-start space-x-3">
+                        <span className="text-lg flex-shrink-0">⚠️</span>
+                        <div className="flex-1">
+                            <div className="font-semibold mb-2">摄像头启动失败</div>
+                            <div className="text-sm opacity-90 mb-3">{error}</div>
+                            <div className="text-xs opacity-75">
+                                <div className="font-medium mb-1">解决方案：</div>
+                                <ul className="list-disc list-inside space-y-1">
                                     <li>检查摄像头是否被其他应用占用</li>
                                     <li>刷新页面后重试</li>
                                     <li>检查浏览器摄像头权限</li>
                                     <li>尝试使用不同的浏览器</li>
+                                    <li>确保摄像头硬件正常工作</li>
                                 </ul>
                             </div>
                         </div>
                     </div>
                     <button 
                         onClick={() => useVideoRecognition.getState().clearError()}
-                        className="absolute top-1 right-1 text-white hover:text-gray-200"
+                        className="absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
+                        title="关闭错误提示"
                     >
                         ✕
                     </button>
