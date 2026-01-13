@@ -143,6 +143,8 @@ export default function VTuberApp() {
     isCameraActive: state.isCameraActive,
     showBones: state.showBones,
     showDebug: state.showDebug,
+    modelName: state.selectedModel?.name,
+    animationName: state.selectedAnimation?.name,
     onCameraToggle: () => {
       handlers.handleCameraToggle();
       trackFeatureUsed('camera_toggled', 'camera_control');

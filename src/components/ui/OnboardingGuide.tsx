@@ -72,17 +72,22 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 z-50 overflow-hidden">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 bg-[url('/project-resources/opening1_2000.png')] bg-cover bg-center opacity-10"></div>
+    <div className="fixed inset-0 bg-black z-50 overflow-hidden">
+      {/* 背景装饰 - 使用加载页的天空图作为暗纹 */}
+      <div className="absolute inset-0 opacity-10 blur-xl">
+        <img src="/images/loading/sky.png" alt="" className="w-full h-full object-cover animate-[spin_240s_linear_infinite]" />
+      </div>
       
       {/* 顶部导航栏 */}
-      <div className="relative z-10 flex items-center justify-between p-6">
+      <div className="relative z-10 flex items-center justify-between p-8">
         <div className="flex items-center space-x-4">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-            <span className="text-blue-900 font-bold text-lg">E</span>
+          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <span className="text-white font-black text-xl">E</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">VTuber Mocap</h1>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-black text-white leading-none">VTuber Mocap</h1>
+            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-1">Platform</span>
+          </div>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -120,31 +125,31 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                 
                 return (
                   <div key={step.id} className="relative">
-                    <div className={`flex items-center space-x-4 p-4 rounded-lg transition-all duration-300 ${
+                    <div className={`flex items-center space-x-4 p-4 rounded-2xl transition-all duration-300 ${
                       isActive 
-                        ? 'bg-yellow-400 text-blue-900' 
+                        ? 'bg-[#ef0] text-black shadow-[0_0_20px_rgba(238,255,0,0.3)]' 
                         : isCompleted 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-white/10 text-white'
+                        ? 'bg-blue-500/20 text-blue-400' 
+                        : 'bg-white/5 text-white/40'
                     }`}>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                         isActive 
-                          ? 'bg-blue-900 text-yellow-400' 
+                          ? 'bg-black text-[#ef0]' 
                           : isCompleted 
-                          ? 'bg-white text-green-500' 
-                          : 'bg-white/20 text-white'
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-white/10 text-white/20'
                       }`}>
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold">{step.title}</div>
-                        <div className="text-sm opacity-80">{step.description}</div>
+                        <div className="font-bold text-[13px] tracking-wide">{step.title}</div>
+                        <div className="text-[11px] opacity-60 font-medium">{step.description}</div>
                       </div>
                     </div>
                     
                     {/* 连接线 */}
                     {index < steps.length - 1 && (
-                      <div className="absolute left-8 top-16 w-0.5 h-4 bg-white/20"></div>
+                      <div className="absolute left-8 top-16 w-0.5 h-4 bg-white/5"></div>
                     )}
                   </div>
                 );
@@ -157,7 +162,7 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                 onClick={handleBack}
                 disabled={activeStep === 0}
                 variant="outline"
-                className="text-white border-white/30 hover:bg-white/10"
+                className="rounded-xl text-white border-white/10 hover:bg-white/5 disabled:opacity-20"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 上一步
@@ -165,7 +170,7 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
               
               <Button
                 onClick={handleNext}
-                className="bg-yellow-400 text-blue-900 hover:bg-yellow-300"
+                className="rounded-xl bg-[#ef0] text-black hover:bg-[#d4e600] font-bold px-8 shadow-lg shadow-[#ef0]/10"
               >
                 {activeStep === steps.length - 1 ? '完成' : '下一步'}
                 <ChevronRight className="h-4 w-4 ml-2" />

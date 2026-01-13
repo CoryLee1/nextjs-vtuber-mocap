@@ -105,11 +105,24 @@
       "sensitivity": "Sensitivity Settings"
     },
     "status": {
+      "title": "Current Status",
       "processing": "Processing...",
       "error": "An error occurred",
       "success": "Operation successful",
       "warning": "Warning",
-      "info": "Information"
+      "info": "Information",
+      "model": "Model",
+      "animation": "Animation",
+      "bones": "Bones",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "instructions": {
+      "title": "Instructions",
+      "step1": "Click bottom right button to start camera",
+      "step2": "Ensure good lighting and face visibility",
+      "step3": "Stay 50-100cm away from camera",
+      "step4": "Use buttons to manage models and animations"
     }
   },
   "settings": {

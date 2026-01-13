@@ -105,7 +105,8 @@ interface VRMAnimatorProps {
   onAnimationManagerRef?: (manager: VRMAnimationManager) => void;
 }
 
-export const VRMAnimator: React.FC<VRMAnimatorProps> = ({
+// PERF: VRM 动画器组件（在 useFrame 中运行）
+const VRMAnimatorComponent: React.FC<VRMAnimatorProps> = ({
   vrm,
   animationUrl,
   onAnimationManagerRef

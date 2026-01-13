@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense } from 'react';
-import { Grid, Environment } from '@react-three/drei';
+import React, { useEffect, useRef, Suspense, memo, useState } from 'react';
+import { Grid, Environment, Sparkles } from '@react-three/drei';
+import { PostEffectsWithAutofocus } from '@/components/post-processing/PostEffectsWithAutofocus';
+import { usePostProcessingSettings } from '@/hooks/use-post-processing-settings';
+import { useFrame } from '@react-three/fiber';
+import { Vector3 } from 'three';
 import { CameraController } from '@/components/dressing-room/CameraController';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
 
-// 优化的加载指示器组件
-const LoadingIndicator = () => (
+// PERF: 优化的加载指示器组件
+const LoadingIndicator = memo(() => (
   <group position={[0, 1, 0]}>
     <mesh>
       <sphereGeometry args={[0.3, 16, 16]} />
@@ -20,10 +24,10 @@ const LoadingIndicator = () => (
       />
     </mesh>
   </group>
-);
+));
 
-// 网格地板组件
-const GridFloor = () => (
+// PERF: 网格地板组件
+const GridFloor = memo(() => (
   <>
     {/* 透明地面 - 用于接收影子 */}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -48,10 +52,10 @@ const GridFloor = () => (
       transparent={true}
     />
   </>
-);
+));
 
-// 优化的光照组件
-const Lighting = () => (
+// PERF: 优化的光照组件
+const Lighting = memo(() => (
   <>
     {/* 主要光源 - 前方 */}
     <directionalLight
@@ -85,10 +89,10 @@ const Lighting = () => (
     {/* 环境光 */}
     <ambientLight intensity={0.4} />
   </>
-);
+));
 
 /**
- * 主场景组件
+ * PERF: 主场景组件
  * 
  * 包含：
  * - 相机控制器
@@ -100,6 +104,9 @@ const Lighting = () => (
  */
 export const MainScene: React.FC = () => {
   const vrmRef = useRef<any>(null);
+  const [headPosition, setHeadPosition] = useState<[number, number, number]>([0, 1.2, 0]);
+  const headPositionVec3Ref = useRef(new Vector3(0, 1.2, 0));
+  const { settings: postProcessingSettings } = usePostProcessingSettings();
   
   // 从 store 读取状态和更新方法
   const {
@@ -107,11 +114,45 @@ export const MainScene: React.FC = () => {
     animationUrl,
     cameraSettings,
     debugSettings,
+    vrmModel,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
     updateDebugSettings,
   } = useSceneStore();
+  
+  // 更新头部位置（用于 Autofocus）
+  useFrame(() => {
+    // 从 store 获取 VRM 模型或从 ref 获取
+    const vrm = vrmModel || vrmRef.current?.userData?.vrm;
+    if (vrm?.humanoid) {
+      // ✅ 修复：getBoneNode() 已被弃用，优先使用 humanBones[].node，降级使用 getNormalizedBoneNode()
+      let headBone: any = null;
+      if (vrm.humanoid.humanBones?.['head']?.node) {
+        headBone = vrm.humanoid.humanBones['head'].node;
+      } else if (typeof vrm.humanoid.getNormalizedBoneNode === 'function') {
+        headBone = vrm.humanoid.getNormalizedBoneNode('head');
+      }
+      
+      if (headBone) {
+        headBone.getWorldPosition(headPositionVec3Ref.current);
+        setHeadPosition([
+          headPositionVec3Ref.current.x,
+          headPositionVec3Ref.current.y,
+          headPositionVec3Ref.current.z,
+        ]);
+      } else if (vrm.scene) {
+        // 降级方案：使用场景位置
+        vrm.scene.getWorldPosition(headPositionVec3Ref.current);
+        headPositionVec3Ref.current.y = 1.2;
+        setHeadPosition([
+          headPositionVec3Ref.current.x,
+          headPositionVec3Ref.current.y,
+          headPositionVec3Ref.current.z,
+        ]);
+      }
+    }
+  });
 
   // 传递引用给 store
   useEffect(() => {
@@ -190,6 +231,22 @@ export const MainScene: React.FC = () => {
           />
         </Suspense>
       </group>
+      
+      {/* Sparkles 特效（包裹角色上半身） */}
+      <Sparkles
+        count={50}
+        scale={2}
+        size={3}
+        speed={0.3}
+        color="#ffffff"
+        position={[0, 1.2, 0]} // 角色上半身位置
+      />
+      
+      {/* 后期处理：包含所有效果（颜色、噪点、晕影、色调映射）和自动对焦 */}
+      <PostEffectsWithAutofocus
+        autofocusTarget={headPosition}
+        settings={postProcessingSettings}
+      />
     </>
   );
 };

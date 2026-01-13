@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -6,7 +6,8 @@ interface HandDebugPanelProps {
   handDebugInfo: any;
 }
 
-export const HandDebugPanel: React.FC<HandDebugPanelProps> = ({ handDebugInfo }) => {
+// PERF: 手部调试面板组件
+const HandDebugPanelComponent: React.FC<HandDebugPanelProps> = ({ handDebugInfo }) => {
   if (!handDebugInfo) return null;
 
   return (
@@ -43,4 +44,17 @@ export const HandDebugPanel: React.FC<HandDebugPanelProps> = ({ handDebugInfo })
       </CardContent>
     </Card>
   );
-}; 
+};
+
+// PERF: 使用 memo 优化性能
+export const HandDebugPanel = memo(HandDebugPanelComponent, (prevProps, nextProps) => {
+  // 比较 handDebugInfo 对象的关键属性
+  return (
+    prevProps.handDebugInfo === nextProps.handDebugInfo ||
+    (
+      prevProps.handDebugInfo?.leftHandDetected === nextProps.handDebugInfo?.leftHandDetected &&
+      prevProps.handDebugInfo?.rightHandDetected === nextProps.handDebugInfo?.rightHandDetected &&
+      prevProps.handDebugInfo?.mappingInfo === nextProps.handDebugInfo?.mappingInfo
+    )
+  );
+}); 

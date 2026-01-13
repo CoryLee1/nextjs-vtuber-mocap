@@ -105,11 +105,24 @@
       "sensitivity": "灵敏度设置"
     },
     "status": {
+      "title": "当前状态",
       "processing": "正在处理...",
       "error": "发生错误",
       "success": "操作成功",
       "warning": "警告",
-      "info": "信息"
+      "info": "信息",
+      "model": "模型",
+      "animation": "动画",
+      "bones": "骨骼",
+      "show": "显示",
+      "hide": "隐藏"
+    },
+    "instructions": {
+      "title": "使用说明",
+      "step1": "点击右下角按钮开启摄像头",
+      "step2": "确保光线充足，面部清晰可见",
+      "step3": "保持距离摄像头 50-100cm",
+      "step4": "使用按钮管理模型和动画"
     }
   },
   "settings": {

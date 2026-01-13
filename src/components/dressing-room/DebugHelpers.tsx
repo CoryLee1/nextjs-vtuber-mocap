@@ -1,10 +1,10 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, memo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Vector3, Object3D, ArrowHelper, Color, CanvasTexture, SpriteMaterial, Sprite, Group } from 'three';
 import { Text } from '@react-three/drei';
 
-// 坐标轴显示组件
-export const CoordinateAxes = ({
+// PERF: 坐标轴显示组件 - 使用 memo 优化性能
+const CoordinateAxesComponent = ({
   position = [0, 0, 0] as [number, number, number],
   size = 1
 }: {
@@ -79,16 +79,26 @@ export const CoordinateAxes = ({
   );
 };
 
+// PERF: 使用 memo 优化性能
+export const CoordinateAxes = memo(CoordinateAxesComponent);
+
 interface ArmDirectionDebuggerProps {
   vrm: any;
   riggedPose?: any;
   showDebug?: boolean;
 }
-export const ArmDirectionDebugger: React.FC<ArmDirectionDebuggerProps> = ({ vrm, riggedPose, showDebug = true }) => {
+// PERF: 手臂方向调试器组件
+const ArmDirectionDebuggerComponent: React.FC<ArmDirectionDebuggerProps> = ({ vrm, riggedPose, showDebug = true }) => {
   const leftArrowRef = useRef<Group>(null);
   const rightArrowRef = useRef<Group>(null);
   const leftTextRef = useRef<Group>(null);
   const rightTextRef = useRef();
+
+  // PERF: 使用 ref 复用 Vector3 对象，避免每帧创建新对象
+  const tmpVec3_1 = useRef(new Vector3()); // 用于左手臂 worldPos
+  const tmpVec3_2 = useRef(new Vector3()); // 用于左手臂 rawDirection
+  const tmpVec3_3 = useRef(new Vector3()); // 用于右手臂 worldPos
+  const tmpVec3_4 = useRef(new Vector3()); // 用于右手臂 rawDirection
 
   useFrame(() => {
     if (!vrm?.humanoid || !riggedPose?.current || !showDebug) return;
@@ -98,36 +108,44 @@ export const ArmDirectionDebugger: React.FC<ArmDirectionDebuggerProps> = ({ vrm,
     const rightUpperArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
 
     if (leftUpperArm && leftArrowRef.current && riggedPose.current.LeftUpperArm) {
-      const worldPos = leftUpperArm.getWorldPosition(new Vector3());
-      leftArrowRef.current.position.copy(worldPos);
+      // PERF: 复用 Vector3 对象
+      leftUpperArm.getWorldPosition(tmpVec3_1.current);
+      leftArrowRef.current.position.copy(tmpVec3_1.current);
       
-      // 原始方向
-      const rawDirection = new Vector3(
+      // PERF: 复用 Vector3 对象设置原始方向
+      tmpVec3_2.current.set(
         riggedPose.current.LeftUpperArm.x,
         riggedPose.current.LeftUpperArm.y,
         riggedPose.current.LeftUpperArm.z
       );
       
-      if (rawDirection.length() > 0.1) {
-        const endPos = worldPos.clone().add(rawDirection.normalize().multiplyScalar(0.5));
-        leftArrowRef.current.lookAt(endPos);
+      if (tmpVec3_2.current.length() > 0.1) {
+        // PERF: 计算 endPos = worldPos + normalizedDirection * 0.5
+        // 注意：position 已经在上面 copy 了，所以可以安全地修改 tmpVec3_1.current
+        tmpVec3_2.current.normalize().multiplyScalar(0.5);
+        tmpVec3_1.current.add(tmpVec3_2.current);
+        leftArrowRef.current.lookAt(tmpVec3_1.current);
       }
     }
 
     if (rightUpperArm && rightArrowRef.current && riggedPose.current.RightUpperArm) {
-      const worldPos = rightUpperArm.getWorldPosition(new Vector3());
-      rightArrowRef.current.position.copy(worldPos);
+      // PERF: 复用 Vector3 对象
+      rightUpperArm.getWorldPosition(tmpVec3_3.current);
+      rightArrowRef.current.position.copy(tmpVec3_3.current);
       
-      // 原始方向
-      const rawDirection = new Vector3(
+      // PERF: 复用 Vector3 对象设置原始方向
+      tmpVec3_4.current.set(
         riggedPose.current.RightUpperArm.x,
         riggedPose.current.RightUpperArm.y,
         riggedPose.current.RightUpperArm.z
       );
       
-      if (rawDirection.length() > 0.1) {
-        const endPos = worldPos.clone().add(rawDirection.normalize().multiplyScalar(0.5));
-        rightArrowRef.current.lookAt(endPos);
+      if (tmpVec3_4.current.length() > 0.1) {
+        // PERF: 计算 endPos = worldPos + normalizedDirection * 0.5
+        // 注意：position 已经在上面 copy 了，所以可以安全地修改 tmpVec3_3.current
+        tmpVec3_4.current.normalize().multiplyScalar(0.5);
+        tmpVec3_3.current.add(tmpVec3_4.current);
+        rightArrowRef.current.lookAt(tmpVec3_3.current);
       }
     }
   });
@@ -181,12 +199,23 @@ export const ArmDirectionDebugger: React.FC<ArmDirectionDebuggerProps> = ({ vrm,
   );
 };
 
+// PERF: 使用 memo 优化性能，自定义比较函数
+export const ArmDirectionDebugger = memo(ArmDirectionDebuggerComponent, (prevProps, nextProps) => {
+    // 比较关键 props
+    return (
+        prevProps.vrm === nextProps.vrm &&
+        prevProps.riggedPose === nextProps.riggedPose &&
+        prevProps.showDebug === nextProps.showDebug
+    );
+});
+
 // 数据显示面板
 interface DataDisplayPanelProps {
   riggedPose?: any;
   position?: [number, number, number];
 }
-export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({ riggedPose, position = [-2, 2, 0] }) => {
+// PERF: 数据显示面板组件
+const DataDisplayPanelComponent: React.FC<DataDisplayPanelProps> = ({ riggedPose, position = [-2, 2, 0] }) => {
   if (!riggedPose?.current) return null;
 
   const leftArm = riggedPose.current.LeftUpperArm;
@@ -234,7 +263,8 @@ interface SimpleArmAxesProps {
   vrm: any;
   showDebug?: boolean;
 }
-export const SimpleArmAxes: React.FC<SimpleArmAxesProps> = ({ vrm, showDebug }) => {
+// PERF: 简单手臂坐标轴组件
+const SimpleArmAxesComponent: React.FC<SimpleArmAxesProps> = ({ vrm, showDebug }) => {
     const armBones = [
         'leftShoulder',    // 左肩
         'leftUpperArm',    // 左上臂
@@ -312,6 +342,11 @@ export const SimpleArmAxes: React.FC<SimpleArmAxesProps> = ({ vrm, showDebug }) 
         </group>
     );
 };
+
+// PERF: 使用 memo 优化性能
+export const SimpleArmAxes = memo(SimpleArmAxesComponent, (prevProps, nextProps) => {
+    return prevProps.vrm === nextProps.vrm && prevProps.showDebug === nextProps.showDebug;
+});
 
 // 创建文本标签的辅助函数
 const createTextLabel = (text: string, position: [number, number, number], color: string) => {

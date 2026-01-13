@@ -1,0 +1,14 @@
+相关脚本文件清单
+
+1. src/hooks/use-vrm-lookat.ts (完整文件)
+2. src/components/dressing-room/VRMAvatar.tsx (关键部分：808-858行，1060-1070行)
+3. src/lib/animation-manager.ts (关键部分：624-647行)
+
+问题：
+- 头部 LookAt 跟随相机功能不工作
+- 已尝试在 AnimationMixer.update() 之后调用 LookAt
+- 仍然被动画覆盖
+
+详细代码请查看 docs/LOOKAT_DEBUG_SCRIPTS.md
+
+

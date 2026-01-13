@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, forwardRef, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState, forwardRef, useMemo, memo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
@@ -8,88 +8,25 @@ import { lerp } from 'three/src/math/MathUtils.js';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { useSensitivitySettings } from '@/hooks/use-sensitivity-settings';
 import { useSceneStore, useMediaPipeCallback } from '@/hooks/use-scene-store';
+import { createVRMLookAtUpdater } from '@/hooks/use-vrm-lookat';
 import { calculateArms, calculateHandIK, smoothArmRotation, isArmVisible, validateHumanRotation } from '@/lib/arm-calculator';
 import { useAnimationManager } from '@/lib/animation-manager';
 import { ANIMATION_CONFIG } from '@/lib/constants';
 import { CoordinateAxes, ArmDirectionDebugger, DataDisplayPanel, SimpleArmAxes } from './DebugHelpers';
 import { HandDebugPanel } from './HandDebugPanel';
 import { ArmDebugPanel } from './ArmDebugPanel';
+import { DEFAULT_AXIS_SETTINGS, DEFAULT_FINGER_AXIS_SETTINGS } from '@/config/vrm-defaults';
+import { ModelLoadingIndicator } from '@/components/ui/ModelLoadingIndicator';
+import { createPerformanceMonitor } from '@/lib/utils/performance-monitor';
+import { mapBoneName } from '@/lib/vrm/bone-mapping';
+import { detectVRMCapabilities } from '@/lib/vrm/capabilities';
+import { VRMMocapAdapter } from '@/lib/mocap/vrm-adapter';
+import { useVRMInfoLogger } from '@/lib/vrm/debug/use-vrm-info-logger';
+import { VRMController } from './VRMController';
 
 const tmpVec3 = new Vector3();
 const tmpQuat = new Quaternion();
 const tmpEuler = new Euler();
-
-interface ModelLoadingIndicatorProps {
-  isLoading?: boolean;
-  error?: string | null;
-  modelName?: string;
-}
-
-// 模型加载状态组件
-const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({ isLoading, error, modelName }) => {
-  if (error) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-          <div className="text-red-500 text-xl mb-4">⚠️ 模型加载失败</div>
-          <div className="text-gray-700 mb-4">
-            无法加载模型 &quot;{modelName}&quot;，请检查网络连接或稍后重试。
-          </div>
-          <div className="text-sm text-gray-500">
-            错误信息: {typeof error === 'object' && error && 'message' in error 
-            ? (error as any).message 
-            : error}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md mx-4 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <div className="text-lg font-medium text-gray-900 mb-2">正在加载模型</div>
-          <div className="text-gray-600 mb-2">{modelName}</div>
-          <div className="text-sm text-gray-500">
-            从 GitHub Releases 下载中，请稍候...
-          </div>
-          <div className="mt-4 text-xs text-gray-400">
-            首次加载可能需要较长时间，请耐心等待
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            下载进度: <span className="animate-pulse">处理中...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-};
-
-// 性能监控辅助函数
-const createPerformanceMonitor = (name: string) => {
-    const startTime = performance.now();
-    return {
-        checkpoint: (checkpointName: string) => {
-            const currentTime = performance.now();
-            const duration = currentTime - startTime;
-            if (duration > 5) { // 只记录超过5ms的检查点
-                // console.warn(`性能监控 [${name}]: ${checkpointName} 耗时 ${duration.toFixed(2)}ms`);
-            }
-            return duration;
-        },
-        end: () => {
-            const totalTime = performance.now() - startTime;
-            if (totalTime > 12) { // 只记录超过12ms的总时间
-                // console.warn(`性能监控 [${name}]: 总耗时 ${totalTime.toFixed(2)}ms`);
-            }
-            return totalTime;
-        }
-    };
-};
 
 // 性能优化的批量更新函数
 const batchUpdateDebugInfo = (debugInfo: any, updates: any) => {
@@ -98,7 +35,9 @@ const batchUpdateDebugInfo = (debugInfo: any, updates: any) => {
 
 // 优化的错误处理函数
 const handleProcessingError = (error: any, processName: string, debugInfo: any) => {
-    console.error(`VRMAvatar: ${processName} 错误`, error.message);
+    if (process.env.NODE_ENV === 'development') {
+        console.error(`VRMAvatar: ${processName} 错误`, error.message);
+    }
     debugInfo.errorCount++;
 };
 
@@ -106,9 +45,17 @@ interface BoneVisualizerProps {
   vrm: any;
 }
 
-// 骨骼可视化组件 - 使用圆柱体
-const BoneVisualizer: React.FC<BoneVisualizerProps> = ({ vrm }) => {
+// PERF: 骨骼可视化组件 - 使用圆柱体
+const BoneVisualizerComponent: React.FC<BoneVisualizerProps> = ({ vrm }) => {
     const [boneMeshes, setBoneMeshes] = useState<any[]>([]);
+
+    // PERF: 使用 ref 复用 Vector3 对象，避免每帧创建新对象
+    const tmpVec3_1 = useRef(new Vector3());
+    const tmpVec3_2 = useRef(new Vector3());
+    const tmpVec3_3 = useRef(new Vector3());
+    const tmpVec3_4 = useRef(new Vector3());
+    const tmpVec3_5 = useRef(new Vector3());
+    const tmpVec3_6 = useRef(new Vector3());
 
     useEffect(() => {
         if (!vrm?.humanoid) {
@@ -169,6 +116,7 @@ const BoneVisualizer: React.FC<BoneVisualizerProps> = ({ vrm }) => {
     }, [vrm]);
 
     // 更新骨骼位置
+    // PERF: 使用 ref 复用的 Vector3 对象，避免每帧创建新对象
     useFrame(() => {
         if (!vrm?.humanoid) return;
 
@@ -185,22 +133,26 @@ const BoneVisualizer: React.FC<BoneVisualizerProps> = ({ vrm }) => {
                 const parent = bone.node.parent;
                 const child = bone.node;
 
-                // 获取当前世界坐标
-                const parentWorldPos = parent.getWorldPosition(new Vector3());
-                const childWorldPos = child.getWorldPosition(new Vector3());
+                // PERF: 使用 ref 复用的 Vector3 对象
+                const parentWorldPos = parent.getWorldPosition(tmpVec3_1.current);
+                const childWorldPos = child.getWorldPosition(tmpVec3_2.current);
 
-                // 更新圆柱体位置和旋转
-                const direction = new Vector3().subVectors(childWorldPos, parentWorldPos);
-                const length = direction.length();
+                // PERF: 复用 Vector3 对象计算方向
+                tmpVec3_3.current.subVectors(childWorldPos, parentWorldPos);
+                const length = tmpVec3_3.current.length();
 
                 if (length > 0.01) {
-                    const center = new Vector3().addVectors(parentWorldPos, childWorldPos).multiplyScalar(0.5);
-                    mesh.position.copy(center);
+                    // PERF: 复用 Vector3 对象计算中心点
+                    tmpVec3_4.current.addVectors(parentWorldPos, childWorldPos).multiplyScalar(0.5);
+                    mesh.position.copy(tmpVec3_4.current);
 
-                    // 更新旋转
-                    const up = new Vector3(0, 1, 0);
-                    const axis = new Vector3().crossVectors(up, direction.normalize());
-                    const angle = Math.acos(up.dot(direction.normalize()));
+                    // PERF: 复用 Vector3 对象计算旋转
+                    tmpVec3_5.current.set(0, 1, 0); // up vector
+                    // normalize 会修改原对象，但我们已经保存了 length，所以可以安全地 normalize
+                    tmpVec3_3.current.normalize();
+                    tmpVec3_6.current.crossVectors(tmpVec3_5.current, tmpVec3_3.current);
+                    const angle = Math.acos(tmpVec3_5.current.dot(tmpVec3_3.current));
+                    const axis = tmpVec3_6.current;
 
                     if (axis.length() > 0.001) {
                         mesh.quaternion.setFromAxisAngle(axis, angle);
@@ -218,6 +170,12 @@ const BoneVisualizer: React.FC<BoneVisualizerProps> = ({ vrm }) => {
         </group>
     );
 };
+
+// PERF: 使用 memo 优化性能，避免不必要的重渲染
+const BoneVisualizer = memo(BoneVisualizerComponent, (prevProps, nextProps) => {
+    // 只有当 vrm 引用改变时才重新渲染
+    return prevProps.vrm === nextProps.vrm;
+});
 
 // VRMAvatar props interface for forwardRef
 interface VRMAvatarProps {
@@ -250,13 +208,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     showDebug = false,
     testSettings = null,
     showArmAxes = false,
-    axisSettings = {
-        leftArm: { x: 1, y: 1, z: 1 },
-        rightArm: { x: -1, y: 1, z: 1 },
-        leftHand: { x: 1, y: 1, z: -1 },
-        rightHand: { x: -1, y: 1, z: -1 },
-        neck: { x: -1, y: 1, z: -1 }
-    },
+    axisSettings = DEFAULT_AXIS_SETTINGS,
     onAnimationManagerRef = null,
     onHandDetectionStateRef = null,
     onMocapStatusUpdate = null,
@@ -268,6 +220,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     onRiggedHandUpdate = null,
     ...props
 }, ref) => {
+    const { camera } = useThree();
+    const lookAtUpdaterRef = useRef<ReturnType<typeof createVRMLookAtUpdater> | null>(null);
     // 获取灵敏度设置
     const { settings } = useSensitivitySettings();
 
@@ -292,7 +246,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     const { scene, userData, errors, isLoading } = gltfResult;
 
     // 检查加载错误
-    if (errors) {
+    if (errors && process.env.NODE_ENV === 'development') {
         console.error('VRMAvatar: 模型加载错误', errors);
     }
 
@@ -310,34 +264,40 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
             
             // 如果 URL 改变，先释放旧模型
             if (cachedVRMModel && cachedVRMModelUrl && cachedVRMModelUrl !== modelUrl) {
-                console.log('🔄 VRMAvatar: 检测到模型 URL 变化，释放旧模型', {
-                    oldUrl: cachedVRMModelUrl,
-                    newUrl: modelUrl,
-                    oldVrmUuid: cachedVRMModel.scene?.uuid,
-                    newVrmUuid: vrmUuid
-                });
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('🔄 VRMAvatar: 检测到模型 URL 变化，释放旧模型', {
+                        oldUrl: cachedVRMModelUrl,
+                        newUrl: modelUrl,
+                        oldVrmUuid: cachedVRMModel.scene?.uuid,
+                        newVrmUuid: vrmUuid
+                    });
+                }
                 disposeCurrentVRM();
             }
             
             // 如果模型未缓存或 URL 改变，缓存新模型
             if (!cachedVRMModel || cachedVRMModelUrl !== modelUrl) {
-                console.log('💾 VRMAvatar: 缓存新模型到 store', {
-                    modelUrl,
-                    vrmUuid,
-                    isLocalModel,
-                    hasScene: !!userData.vrm.scene,
-                    hasHumanoid: !!userData.vrm.humanoid
-                });
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('💾 VRMAvatar: 缓存新模型到 store', {
+                        modelUrl,
+                        vrmUuid,
+                        isLocalModel,
+                        hasScene: !!userData.vrm.scene,
+                        hasHumanoid: !!userData.vrm.humanoid
+                    });
+                }
                 setVRMModel(userData.vrm, modelUrl);
             } else {
                 // 即使 URL 相同，也检查 VRM 实例是否真的相同
                 const cachedUuid = cachedVRMModel.scene?.uuid;
                 if (cachedUuid !== vrmUuid) {
-                    console.log('⚠️ VRMAvatar: URL相同但VRM实例不同，更新缓存', {
-                        modelUrl,
-                        cachedUuid,
-                        newUuid: vrmUuid
-                    });
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log('⚠️ VRMAvatar: URL相同但VRM实例不同，更新缓存', {
+                            modelUrl,
+                            cachedUuid,
+                            newUuid: vrmUuid
+                        });
+                    }
                     disposeCurrentVRM();
                     setVRMModel(userData.vrm, modelUrl);
                 }
@@ -398,44 +358,56 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                 const animationState = getAnimationState();
                 const vrmId = vrm.scene?.uuid || 'unknown';
                 
-                console.log(`VRMAvatar: 检查动画状态 (尝试 ${attempt}/${maxAttempts})`, {
-                    vrmId,
-                    currentMode: animationState.currentMode,
-                    isPlayingIdle: animationState.isPlayingIdle,
-                    hasMixer: animationState.hasMixer,
-                    error: animationState.error,
-                    animationUrl
-                });
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`VRMAvatar: 检查动画状态 (尝试 ${attempt}/${maxAttempts})`, {
+                        vrmId,
+                        currentMode: animationState.currentMode,
+                        isPlayingIdle: animationState.isPlayingIdle,
+                        hasMixer: animationState.hasMixer,
+                        error: animationState.error,
+                        animationUrl
+                    });
+                }
                 
                 // 如果混合器已创建，尝试播放动画
                 if (animationState.hasMixer) {
                     if (animationState.currentMode !== 'idle' || !animationState.isPlayingIdle) {
-                        console.log('🎬 VRMAvatar: 模型加载完成，切换到idle模式', {
-                            vrmId,
-                            animationUrl,
-                            hasMixer: animationState.hasMixer
-                        });
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('🎬 VRMAvatar: 模型加载完成，切换到idle模式', {
+                                vrmId,
+                                animationUrl,
+                                hasMixer: animationState.hasMixer
+                            });
+                        }
                         switchToIdleMode();
                     } else {
-                        console.log('✅ VRMAvatar: 动画已在播放', {
-                            vrmId,
-                            isPlayingIdle: animationState.isPlayingIdle
-                        });
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('✅ VRMAvatar: 动画已在播放', {
+                                vrmId,
+                                isPlayingIdle: animationState.isPlayingIdle
+                            });
+                        }
                     }
                 } else if (animationState.error) {
-                    console.error('❌ VRMAvatar: 动画管理器初始化失败', {
-                        vrmId,
-                        error: animationState.error
-                    });
+                    if (process.env.NODE_ENV === 'development') {
+                        console.error('❌ VRMAvatar: 动画管理器初始化失败', {
+                            vrmId,
+                            error: animationState.error
+                        });
+                    }
                 } else if (attempt < maxAttempts) {
                     // 如果还没有混合器，继续等待（可能是动画还在加载）
-                    console.log(`⏳ VRMAvatar: 等待动画混合器初始化... (${attempt}/${maxAttempts})`);
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log(`⏳ VRMAvatar: 等待动画混合器初始化... (${attempt}/${maxAttempts})`);
+                    }
                     setTimeout(() => checkAndPlayAnimation(attempt + 1, maxAttempts), 300);
                 } else {
-                    console.warn('⚠️ VRMAvatar: 超时，动画混合器仍未初始化', {
-                        vrmId,
-                        animationUrl
-                    });
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('⚠️ VRMAvatar: 超时，动画混合器仍未初始化', {
+                            vrmId,
+                            animationUrl
+                        });
+                    }
                 }
             };
             
@@ -464,12 +436,14 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
     // 添加VRM加载调试信息
     useEffect(() => {
-        if (userData && !vrm) {
-            console.warn('VRMAvatar: userData存在但vrm为null', userData);
-        }
+        if (process.env.NODE_ENV === 'development') {
+            if (userData && !vrm) {
+                console.warn('VRMAvatar: userData存在但vrm为null', userData);
+            }
 
-        if (errors) {
-            console.error('VRMAvatar: 加载错误详情', errors);
+            if (errors) {
+                console.error('VRMAvatar: 加载错误详情', errors);
+            }
         }
     }, [modelUrl, userData, vrm, errors, scene]);
 
@@ -480,11 +454,13 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
     // 添加调试信息 - 跟踪 videoElement 状态变化
     useEffect(() => {
-        console.log('VRMAvatar: videoElement 状态变化', {
-            videoElement: !!videoElement,
-            isCameraActive,
-            hasVrm: !!vrm
-        });
+        if (process.env.NODE_ENV === 'development') {
+            console.log('VRMAvatar: videoElement 状态变化', {
+                videoElement: !!videoElement,
+                isCameraActive,
+                hasVrm: !!vrm
+            });
+        }
     }, [videoElement, isCameraActive, vrm]);
 
     // 监听模型URL变化，强制重新加载
@@ -544,15 +520,15 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         hasHandDetection: false
     });
 
-    // 视线追踪
-    const lookAtTarget = useRef<Object3D>();
-    const lookAtDestination = useRef(new Vector3(0, 0, 0));
-
-    const { camera } = useThree();
-
     // 初始化 VRM 模型
     useEffect(() => {
         if (!vrm) return;
+
+        // ✅ 修复 VRM 0.x 和 VRM 1.0 的朝向差异
+        // VRM 0.x 规范要求面朝 -Z（向屏幕外），VRM 1.0 规范改为面朝 +Z（向屏幕内）
+        // 如果代码假设是 VRM 1.0，加载 VRM 0.x 就会看到后背
+        // VRMUtils.rotateVRM0() 会自动检测并修复这个差异
+        VRMUtils.rotateVRM0(vrm);
 
         // VRM 优化
         VRMUtils.removeUnnecessaryVertices(scene);
@@ -564,36 +540,46 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
             obj.frustumCulled = false;
         });
 
-        // 打印 VRM 模型骨骼结构
-        console.log('=== VRM 模型骨骼结构 ===');
-        if (vrm.humanoid && vrm.humanoid.humanBones) {
-            const humanBones = vrm.humanoid.humanBones;
-            const boneNames = Object.keys(humanBones);
-            console.log('VRM 可用骨骼列表:', boneNames);
-            
-            // 打印详细的骨骼信息
-            boneNames.forEach(boneName => {
-                const bone = humanBones[boneName];
-                if (bone && bone.node) {
-                    console.log(`骨骼: ${boneName}`, {
-                        hasNode: !!bone.node,
-                        nodeName: bone.node.name,
-                        parentName: bone.node.parent?.name || '无父节点'
-                    });
-                }
-            });
+        // 打印 VRM 模型骨骼结构（仅开发环境）
+        if (process.env.NODE_ENV === 'development') {
+            console.log('=== VRM 模型骨骼结构 ===');
+            if (vrm.humanoid && vrm.humanoid.humanBones) {
+                const humanBones = vrm.humanoid.humanBones;
+                const boneNames = Object.keys(humanBones);
+                console.log('VRM 可用骨骼列表:', boneNames);
+                
+                // 打印详细的骨骼信息
+                boneNames.forEach(boneName => {
+                    const bone = humanBones[boneName];
+                    if (bone && bone.node) {
+                        console.log(`骨骼: ${boneName}`, {
+                            hasNode: !!bone.node,
+                            nodeName: bone.node.name,
+                            parentName: bone.node.parent?.name || '无父节点'
+                        });
+                    }
+                });
+            }
         }
 
-        // 设置视线追踪目标
-        lookAtTarget.current = new Object3D();
-        camera.add(lookAtTarget.current);
-
-        return () => {
-            if (lookAtTarget.current) {
-                camera.remove(lookAtTarget.current);
-            }
-        };
-    }, [vrm, scene, camera]);
+        // 注意：视线追踪现在由 useVRMLookAt hook 处理（见下方 804 行）
+    }, [vrm, scene]);
+    
+    // ✅ VRM 信息记录器（自动提取并保存模型信息）
+    // 在开发环境中自动保存为 JSON 文件
+    // PERF: filename 使用 useMemo 确保只在 VRM 变化时生成一次
+    const vrmInfoFilename = useMemo(() => {
+        if (!vrm) return 'vrm-info.json';
+        // 使用 VRM 实例的唯一标识（或时间戳）作为文件名
+        return `vrm-info-${Date.now()}.json`;
+    }, [vrm]);
+    
+    useVRMInfoLogger({
+        vrm,
+        autoSave: process.env.NODE_ENV === 'development', // 开发环境自动保存
+        filename: vrmInfoFilename,
+        logToConsole: true, // 在控制台输出
+    });
 
     // MediaPipe 结果处理回调 - 性能优化版本
     const resultsCallback = useCallback((results: any) => {
@@ -665,9 +651,11 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                 handleProcessingError(error, 'Pose.solve', mocapDebugInfo.current);
             }
         } else {
-            console.warn('VRMAvatar: 缺少姿态数据', {
-                hasPoseLandmarks: !!results.poseLandmarks
-            });
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('VRMAvatar: 缺少姿态数据', {
+                    hasPoseLandmarks: !!results.poseLandmarks
+                });
+            }
         }
 
         monitor.checkpoint('面部和姿态处理');
@@ -769,8 +757,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         // 最终性能检查
         const finalDuration = monitor.end();
         
-        // 严重性能警告：超过16ms帧时间
-        if (finalDuration > 16) {
+        // 严重性能警告：超过16ms帧时间（仅开发环境）
+        if (process.env.NODE_ENV === 'development' && finalDuration > 16) {
             console.error('VRMAvatar: 回调执行时间超过16ms', finalDuration.toFixed(2) + 'ms');
         }
         
@@ -790,76 +778,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         vrm.expressionManager.setValue(name, newValue);
     }, [vrm]);
 
-    // 骨骼名称映射函数
-    const mapBoneName = useCallback((kalidokitBoneName: string) => {
-        const boneNameMap = {
-            // 躯干
-            'Spine': 'spine',
-            'Chest': 'chest',
-            'Neck': 'neck',
-            'Head': 'head',
-            
-            // 左臂 - 使用参考文件中的小写格式
-            'LeftShoulder': 'leftShoulder',
-            'LeftUpperArm': 'leftUpperArm',
-            'LeftLowerArm': 'leftLowerArm',
-            'LeftHand': 'leftHand',
-            
-            // 右臂 - 使用参考文件中的小写格式
-            'RightShoulder': 'rightShoulder',
-            'RightUpperArm': 'rightUpperArm',
-            'RightLowerArm': 'rightLowerArm',
-            'RightHand': 'rightHand',
-            
-            // 左腿
-            'LeftUpperLeg': 'leftUpperLeg',
-            'LeftLowerLeg': 'leftLowerLeg',
-            'LeftFoot': 'leftFoot',
-            
-            // 右腿
-            'RightUpperLeg': 'rightUpperLeg',
-            'RightLowerLeg': 'rightLowerLeg',
-            'RightFoot': 'rightFoot',
-            
-            // 左手手指
-            'leftRingProximal': 'leftRingProximal',
-            'leftRingIntermediate': 'leftRingIntermediate',
-            'leftRingDistal': 'leftRingDistal',
-            'leftIndexProximal': 'leftIndexProximal',
-            'leftIndexIntermediate': 'leftIndexIntermediate',
-            'leftIndexDistal': 'leftIndexDistal',
-            'leftMiddleProximal': 'leftMiddleProximal',
-            'leftMiddleIntermediate': 'leftMiddleIntermediate',
-            'leftMiddleDistal': 'leftMiddleDistal',
-            'leftThumbProximal': 'leftThumbProximal',
-            'leftThumbMetacarpal': 'leftThumbMetacarpal',
-            'leftThumbDistal': 'leftThumbDistal',
-            'leftLittleProximal': 'leftLittleProximal',
-            'leftLittleIntermediate': 'leftLittleIntermediate',
-            'leftLittleDistal': 'leftLittleDistal',
-            
-            // 右手手指
-            'rightRingProximal': 'rightRingProximal',
-            'rightRingIntermediate': 'rightRingIntermediate',
-            'rightRingDistal': 'rightRingDistal',
-            'rightIndexProximal': 'rightIndexProximal',
-            'rightIndexIntermediate': 'rightIndexIntermediate',
-            'rightIndexDistal': 'rightIndexDistal',
-            'rightMiddleProximal': 'rightMiddleProximal',
-            'rightMiddleIntermediate': 'rightMiddleIntermediate',
-            'rightMiddleDistal': 'rightMiddleDistal',
-            'rightThumbProximal': 'rightThumbProximal',
-            'rightThumbMetacarpal': 'rightThumbMetacarpal',
-            'rightThumbDistal': 'rightThumbDistal',
-            'rightLittleProximal': 'rightLittleProximal',
-            'rightLittleIntermediate': 'rightLittleIntermediate',
-            'rightLittleDistal': 'rightLittleDistal',
-        };
-        
-        const mappedName = (boneNameMap as any)[kalidokitBoneName] || kalidokitBoneName;
-        
-        return mappedName;
-    }, []);
+    // PERF: 骨骼名称映射函数 - 使用提取的工具函数
+    // 注意：mapBoneName 已从 @/lib/vrm/bone-mapping 导入
 
     // 骨骼旋转函数
     const rotateBone = useCallback((boneName: string, value: any, slerpFactor: number, flip = { x: 1, y: 1, z: 1 }) => {
@@ -884,10 +804,43 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         tmpEuler.set(value.x * flip.x, value.y * flip.y, value.z * flip.z);
         tmpQuat.setFromEuler(tmpEuler);
         bone.quaternion.slerp(tmpQuat, slerpFactor);
-    }, [vrm, mapBoneName]);
+    }, [vrm]);
+
+    // **视线追踪：使用手动调用的 LookAt 更新器**
+    // 关键：在动画更新之后调用，确保 LookAt 覆盖动画的头部旋转
+    // ✅ 初始化 LookAt 更新器
+    useEffect(() => {
+        if (!vrm || !camera) {
+            lookAtUpdaterRef.current = null;
+            return;
+        }
+        
+        console.log('🎯 初始化 LookAt 更新器');
+        
+        // 禁用 VRM 自动 LookAt
+        if (vrm.lookAt && typeof (vrm.lookAt as any).autoUpdate !== 'undefined') {
+            (vrm.lookAt as any).autoUpdate = false;
+        }
+        
+        // 创建更新器
+        lookAtUpdaterRef.current = createVRMLookAtUpdater(vrm, camera, camera, {
+            enabled: true,
+            smoothness: 0.15,
+            maxYaw: Math.PI / 2,
+            maxPitch: Math.PI / 6,
+            maxRoll: 0,
+            additive: false,
+        });
+        
+        console.log('✅ LookAt 更新器已创建');
+        
+        return () => {
+            lookAtUpdaterRef.current = null;
+        };
+    }, [vrm, camera]);
 
     // 动画循环 - 简化模式切换逻辑
-    useFrame((_, delta) => {
+    useFrame((state, delta) => {
         if (!vrm) return;
 
         // **简化的模式切换逻辑：基于camera button状态**
@@ -955,7 +908,9 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     }
 
                 } catch (error) {
-                    console.error('VRMAvatar: 面部表情处理错误', error);
+                    if (process.env.NODE_ENV === 'development') {
+                        console.error('VRMAvatar: 面部表情处理错误', error);
+                    }
                 }
             }
 
@@ -1024,11 +979,13 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     }
 
                 } catch (error) {
-                    console.warn('VRMAvatar: 身体姿态处理错误', error);
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('VRMAvatar: 身体姿态处理错误', error);
+                    }
                 }
             } else {
-                // 添加调试信息 - 确认没有姿态数据（每5秒输出一次）
-                if (Math.floor(Date.now() / 1000) % 5 === 0) {
+                // 添加调试信息 - 确认没有姿态数据（每5秒输出一次，仅开发环境）
+                if (process.env.NODE_ENV === 'development' && Math.floor(Date.now() / 1000) % 5 === 0) {
                     console.log('VRMAvatar: 没有姿态数据可处理');
                 }
             }
@@ -1057,7 +1014,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
                     leftFingerBones.forEach(({ bone, data }) => {
                         if (data) {
-                            const fingerConfig = handDebugAxisConfig?.[bone] || { x: -1, y: -1, z: 1 };
+                            const fingerConfig = handDebugAxisConfig?.[bone] || DEFAULT_FINGER_AXIS_SETTINGS;
                             const rawFingerData = {
                                 x: -data.x * fingerConfig.x,
                                 y: -data.z * fingerConfig.y,
@@ -1094,7 +1051,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
                     rightFingerBones.forEach(({ bone, data }) => {
                         if (data) {
-                            const fingerConfig = handDebugAxisConfig?.[bone] || { x: -1, y: -1, z: 1 };
+                            const fingerConfig = handDebugAxisConfig?.[bone] || DEFAULT_FINGER_AXIS_SETTINGS;
                             const rawFingerData = {
                                 x: -data.x * fingerConfig.x,
                                 y: -data.z * fingerConfig.y,
@@ -1109,8 +1066,16 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
             }
         }
 
-        // **最后统一更新VRM**
+        // **最后统一更新VRM（必须在 LookAt 之前更新）**
         vrm.update(delta);
+
+        // **✅ 关键：在 vrm.update() 之后应用 LookAt**
+        // 这样可以确保 LookAt 的头部旋转覆盖动画的头部旋转
+        if (lookAtUpdaterRef.current) {
+            // ✅ 确保相机矩阵已更新
+            camera.updateMatrixWorld(true);
+            lookAtUpdaterRef.current.update();
+        }
         
         // 更新调试面板数据
         if (onRiggedPoseUpdate && riggedPose.current) {
@@ -1207,6 +1172,19 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     </>
                 )}
                 
+                {/* VRM 控制器：自动眨眼、头部追踪、视线追踪 */}
+                {/* 注意：headTracking 已禁用，因为 VRMAvatar 中已有 useVRMLookAt hook */}
+                {vrm && (
+                    <VRMController
+                        vrm={vrm}
+                        enabled={true}
+                        autoBlink={true}
+                        headTracking={false} // 禁用，使用 useVRMLookAt 替代
+                        lookAt={false} // 禁用，使用 useVRMLookAt 替代
+                        cameraFollow={false} // 相机控制由 CameraController 处理
+                    />
+                )}
+                
             </group>
         </>
     );
@@ -1214,3 +1192,15 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
 // 添加 displayName
 VRMAvatar.displayName = 'VRMAvatar';
+
+// PERF: 注意：VRMAvatar 已经使用了 forwardRef，React.memo 不能直接包装 forwardRef
+// 如果需要 memo 优化，需要在组件内部使用 useMemo 优化渲染逻辑
+// 由于 VRMAvatar 的 props 比较复杂（包含很多 callback），memo 可能不会带来太大收益
+// 这里保持原样，避免破坏 forwardRef 的使用
+
+// PERF: 使用 memo 包装 forwardRef 组件以优化性能
+export const VRMAvatarMemo = memo(VRMAvatar);
+
+// 保持向后兼容，同时导出优化版本
+// 注意：由于 forwardRef 的特殊性，memo 需要特殊处理
+// 这里我们保持原导出，memo 会在内部优化

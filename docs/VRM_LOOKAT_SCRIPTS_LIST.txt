@@ -1,0 +1,83 @@
+VRM 脸部朝向相机控制脚本清单
+=====================================
+
+核心脚本文件（按重要性排序）：
+-------------------------------------
+
+1. src/hooks/use-vrm-lookat.ts
+   - 主要实现文件
+   - 函数：createVRMLookAtUpdater() (第 40-163 行)
+   - 函数：useVRMLookAt() (第 174-343 行，备用)
+   - 作用：计算头部旋转，应用限制，平滑插值
+
+2. src/components/dressing-room/VRMAvatar.tsx
+   - 主组件，集成 LookAt
+   - 导入：第 11 行 import { createVRMLookAtUpdater }
+   - 初始化：第 810-831 行（创建 lookAtUpdaterRef）
+   - 调用：第 1060-1062 行（在 vrm.update() 之后调用）
+   - 关键：设置 vrm.lookAt.autoUpdate = false (第 815-817 行)
+
+3. src/components/dressing-room/VRMController.tsx
+   - 备用实现（当前未使用）
+   - 头部追踪：第 130-195 行
+   - LookAt：第 197-240 行
+   - 注意：在 VRMAvatar.tsx 中 headTracking 和 lookAt 都设为 false
+
+4. src/components/dressing-room/CameraController.tsx
+   - 相机控制器（可选）
+   - 作用：相机跟随角色，不影响 LookAt
+
+相关辅助文件：
+-------------------------------------
+
+5. src/lib/animation-manager.ts
+   - 动画管理器
+   - 作用：管理 idle 动画，可能覆盖头部旋转
+   - 关键：updateAnimation() 函数
+
+6. src/components/dressing-room/VRMAvatar.tsx (useFrame 循环)
+   - 执行顺序（第 829-1073 行）：
+     1. updateAnimation(delta) - 更新动画
+     2. 动捕数据处理
+     3. vrm.update(delta) - VRM 统一更新
+     4. lookAtUpdaterRef.current.update() - LookAt 更新（最后执行）
+
+关键代码位置：
+-------------------------------------
+
+use-vrm-lookat.ts:
+  - 第 72-79 行：获取头部骨骼节点
+  - 第 81-93 行：获取相机最新世界坐标
+  - 第 95-104 行：计算方向向量
+  - 第 106-127 行：计算目标四元数（局部空间）
+  - 第 129-138 行：应用旋转限制
+  - 第 140-164 行：应用旋转到头部骨骼
+  - 第 152-154 行：✅ 关键 - 更新矩阵
+
+VRMAvatar.tsx:
+  - 第 815-817 行：✅ 禁用自动更新
+  - 第 820-827 行：创建 LookAt 更新器配置
+  - 第 1061 行：vrm.update(delta)
+  - 第 1063-1065 行：✅ 关键 - LookAt 更新（在 vrm.update 之后）
+
+配置参数：
+-------------------------------------
+
+createVRMLookAtUpdater 选项：
+  - enabled: true
+  - smoothness: 0.15
+  - maxYaw: Math.PI / 2 (±90度)
+  - maxPitch: Math.PI / 6 (±30度)
+  - maxRoll: 0
+  - additive: false (覆盖模式)
+
+调试检查点：
+-------------------------------------
+
+1. ✅ 执行顺序：lookAtUpdater.update() 在 vrm.update() 之后
+2. ✅ autoUpdate：vrm.lookAt.autoUpdate = false
+3. ✅ 矩阵更新：head.updateMatrix() + updateMatrixWorld(true)
+4. ✅ 相机坐标：camera.updateMatrixWorld(true) 获取最新坐标
+5. ✅ 头部骨骼：确认 headBone 不为 null
+
+

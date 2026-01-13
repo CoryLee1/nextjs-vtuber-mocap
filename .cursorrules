@@ -1,0 +1,982 @@
+# VTuber Motion Capture Project - Code Rules
+
+## 🎯 项目核心原则
+
+### 数据流架构
+```
+Camera → MediaPipe → Kalidokit → VRM Model
+                                    ↓
+                            Coordinate Normalization
+```
+
+**单向数据流**：状态只能向下传递，避免循环依赖
+**性能优先**：动捕需要 60fps，所有代码必须考虑性能影响
+**关注点分离**：UI、3D 渲染、数据处理严格分离
+
+---
+
+## 📁 目录结构规范
+
+```
+src/
+├── app/                      # Next.js App Router
+│   ├── [locale]/            # 国际化路由
+│   └── layout.tsx           # 根布局
+│
+├── components/
+│   ├── dressing-room/       # 主功能组件（UI 层）
+│   │   ├── VTuberApp.tsx        # 主应用容器
+│   │   ├── VTuberLayout.tsx     # 布局组件
+│   │   ├── VTuberControls.tsx   # 控制面板
+│   │   └── ModelManager.tsx     # 模型管理器
+│   │
+│   ├── three/               # Three.js 专用组件（3D 层）
+│   │   ├── VRMAvatar3D.tsx      # VRM 渲染组件
+│   │   ├── Scene3D.tsx          # 3D 场景容器
+│   │   └── Camera3D.tsx         # 3D 相机
+│   │
+│   ├── debug/               # 调试工具组件
+│   │   ├── CoordinateDebugPanel.tsx
+│   │   ├── PerformanceMonitor.tsx
+│   │   └── VRMInspector.tsx     # VRM 模型检查器（新）
+│   │
+│   └── ui/                  # 通用 UI 组件
+│       ├── OnboardingGuide.tsx
+│       └── shadcn components...
+│
+├── hooks/
+│   ├── use-camera-stream.ts     # 摄像头流管理
+│   ├── use-mocap-pipeline.ts    # 动捕数据处理管道
+│   ├── use-vrm-model.ts         # VRM 模型加载和管理
+│   ├── use-vrm-normalizer.ts    # VRM 坐标归一化（新）
+│   └── use-coordinate-system.ts # 坐标系检测和转换（新）
+│
+├── lib/
+│   ├── mocap/               # 动捕核心逻辑
+│   │   ├── processors/
+│   │   │   ├── PoseProcessor.ts
+│   │   │   ├── HandProcessor.ts
+│   │   │   └── FaceProcessor.ts
+│   │   └── pipeline.ts
+│   │
+│   ├── vrm/                 # VRM 处理逻辑
+│   │   ├── loader.ts            # VRM 加载器
+│   │   ├── normalizer.ts        # 坐标归一化器（新）
+│   │   ├── inspector.ts         # 模型检查器（新）
+│   │   └── coordinate-fixer.ts  # 坐标修复工具（新）
+│   │
+│   └── utils/               # 通用工具
+│       ├── coordinate-transform.ts
+│       └── performance.ts
+│
+├── types/
+│   ├── mocap.ts             # 动捕相关类型
+│   ├── vrm.ts               # VRM 相关类型
+│   ├── coordinate.ts        # 坐标系类型（新）
+│   └── ui.ts                # UI 相关类型
+│
+└── config/
+    ├── axis-mapping.ts      # 坐标映射配置（可能废弃）
+    ├── vrm-defaults.ts      # VRM 默认配置（新）
+    └── coordinate-systems.ts # 支持的坐标系定义（新）
+```
+
+---
+
+## 🎨 代码组织规则
+
+### 1. 性能关键代码（动捕循环）
+
+**位置**：`lib/mocap/processors/`  
+**命名**：`*Processor.ts`（如 `PoseProcessor.ts`）
+
+**要求**：
+```typescript
+// ✅ 好的做法
+class PoseProcessor {
+  private poseCache = { x: 0, y: 0, z: 0 }; // 复用对象
+  
+  // PERF: 使用对象池避免 GC 压力
+  process(data: MediaPipeData): TransformedPose {
+    this.poseCache.x = data.x;
+    this.poseCache.y = data.y;
+    this.poseCache.z = data.z;
+    return this.poseCache;
+  }
+}
+
+// ❌ 避免的做法
+function processPose(data: MediaPipeData): TransformedPose {
+  return { ...data }; // 每帧创建新对象！
+}
+```
+
+**必须包含**：
+- 对象池模式
+- 性能注释 `// PERF: ...`
+- 避免在循环中创建对象
+- 最小化条件分支
+
+---
+
+### 2. VRM 朝向修复（重要）
+
+**位置**：`components/dressing-room/VRMAvatar.tsx`  
+**目的**：处理 VRM 0.x 和 VRM 1.0 的朝向差异
+
+**核心概念**：
+```typescript
+import { VRMUtils } from '@pixiv/three-vrm';
+
+// ✅ 推荐做法：使用库自带的解决方案
+// VRM 0.x: 规范要求面朝 -Z（向屏幕外）
+// VRM 1.0: 规范改为面朝 +Z（向屏幕内）
+// 如果代码假设是 VRM 1.0，加载 VRM 0.x 就会看到后背
+VRMUtils.rotateVRM0(vrm); // ← 这一行就够了！
+```
+
+**为什么会有这个问题**：
+- **VRM 0.x**: 规范要求面朝 -Z（向屏幕外）
+- **VRM 1.0**: 规范改为面朝 +Z（向屏幕内）
+
+**实现位置**：
+在 `VRMAvatar.tsx` 的 VRM 初始化 `useEffect` 中，在调用其他 `VRMUtils` 函数之前：
+
+```typescript
+// 初始化 VRM 模型
+useEffect(() => {
+  if (!vrm) return;
+
+  // ✅ 修复 VRM 0.x 和 VRM 1.0 的朝向差异
+  VRMUtils.rotateVRM0(vrm);
+
+  // VRM 优化
+  VRMUtils.removeUnnecessaryVertices(scene);
+  VRMUtils.combineSkeletons(scene);
+  VRMUtils.combineMorphs(vrm);
+  
+  // ... 其他初始化代码
+}, [vrm, scene]);
+```
+
+**重要说明**：
+- `axis-mapping.ts` 配置**不是**用来修复模型朝向的
+- `axisSettings` 是用来转换动捕数据到 VRM 骨骼旋转的
+- 如果通过映射来"修复"朝向，那是在掩盖问题
+- **推荐做法**：使用 `VRMUtils.rotateVRM0(vrm)` 这个库自带的解决方案
+
+---
+
+### 3. Three.js 组件规范
+
+**位置**：`components/three/`  
+**命名**：`*3D.tsx`（如 `VRMAvatar3D.tsx`）
+
+**要求**：
+```typescript
+// ✅ 必须使用 memo 和 优化
+const VRMAvatar3D = React.memo(({ vrm, pose }: Props) => {
+  // 使用 ref 避免重渲染
+  const vrmRef = useRef<VRM>(vrm);
+  
+  // 缓存计算结果
+  const normalizedVRM = useMemo(() => {
+    return normalizeVRM(vrm);
+  }, [vrm]);
+  
+  // 优化的 frame 循环
+  useFrame((state, delta) => {
+    if (!shouldUpdate(delta)) return; // 跳帧优化
+    applyPoseToVRM(vrmRef.current, pose);
+  });
+  
+  return <primitive object={normalizedVRM} />;
+});
+
+// ❌ 避免的做法
+function VRMAvatar3D({ vrm, pose }: Props) {
+  // 没有 memo，每次父组件更新都重渲染！
+  // 没有缓存，每帧重新计算！
+}
+```
+
+**必须包含**：
+- `React.memo` 包裹
+- `useMemo` 缓存计算
+- `useRef` 存储 Three.js 对象
+- 性能优化注释
+
+---
+
+### 4. UI 组件规范
+
+**位置**：`components/dressing-room/` 或 `components/ui/`
+
+**要求**：
+- 与 3D 逻辑完全分离
+- 通过 Context 或 props 接收状态
+- 不直接操作 Three.js 对象
+- 不包含动捕处理逻辑
+
+```typescript
+// ✅ 好的 UI 组件
+function ModelSelector({ onModelSelect }: Props) {
+  // 只负责 UI 交互
+  const handleSelect = (modelUrl: string) => {
+    onModelSelect(modelUrl); // 通过 callback 向上传递
+  };
+  
+  return <Select onValueChange={handleSelect}>...</Select>;
+}
+
+// ❌ 避免的做法
+function ModelSelector() {
+  // 直接操作 Three.js！
+  const scene = useThree();
+  const loadModel = () => {
+    scene.add(newModel); // 违反关注点分离！
+  };
+}
+```
+
+---
+
+### 5. Hooks 规范
+
+**命名规则**：
+```
+use + 功能领域 + 具体功能
+
+✅ useCameraStream.ts
+✅ useMocapPipeline.ts
+✅ useVRMNormalizer.ts
+✅ useCoordinateSystemDetection.ts
+
+❌ useData.ts (太泛化)
+❌ useVRM.ts (不够具体)
+```
+
+**结构要求**：
+```typescript
+export function useMocapPipeline(config: MocapConfig) {
+  // 1. 错误状态
+  const [error, setError] = useState<Error | null>(null);
+  
+  // 2. 使用 ref 存储不需要触发重渲染的数据
+  const poseDataRef = useRef<PoseData | null>(null);
+  
+  // 3. 清理逻辑
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, []);
+  
+  // 4. 返回明确的接口
+  return {
+    isActive: boolean,
+    start: () => void,
+    stop: () => void,
+    currentPose: PoseData | null,
+    error: Error | null,
+  };
+}
+```
+
+**必须包含**：
+- 明确的返回类型定义
+- 错误处理
+- 清理逻辑（cleanup）
+- JSDoc 注释
+
+---
+
+## 🎮 VRM 朝向修复策略（重要）
+
+### 问题分析
+
+**现象**：用户上传的 VRM 模型出现：
+1. 看到的是模型后背
+2. 手臂动作方向错误
+3. 头部旋转相反
+
+**根本原因**：
+```
+VRM 规范版本差异：
+
+VRM 0.x: 规范要求面朝 -Z（向屏幕外）
+VRM 1.0: 规范改为面朝 +Z（向屏幕内）
+
+如果代码假设是 VRM 1.0，加载 VRM 0.x 就会看到后背
+```
+
+### ✅ 推荐解决方案（库自带）
+
+**@pixiv/three-vrm 提供了 `VRMUtils.rotateVRM0()` 函数，专门处理 VRM 0.x 和 VRM 1.0 的朝向差异：**
+
+```typescript
+import { VRMUtils } from '@pixiv/three-vrm';
+
+const vrm = await loadVRM(file);
+
+// ✅ 只加这一行就够了！
+VRMUtils.rotateVRM0(vrm);
+```
+
+**实现位置**：
+在 `VRMAvatar.tsx` 的 VRM 初始化 `useEffect` 中：
+
+```typescript
+// 初始化 VRM 模型
+useEffect(() => {
+  if (!vrm) return;
+
+  // ✅ 修复 VRM 0.x 和 VRM 1.0 的朝向差异
+  VRMUtils.rotateVRM0(vrm);
+
+  // VRM 优化
+  VRMUtils.removeUnnecessaryVertices(scene);
+  VRMUtils.combineSkeletons(scene);
+  VRMUtils.combineMorphs(vrm);
+  
+  // ... 其他初始化代码
+}, [vrm, scene]);
+```
+
+### ⚠️ 重要说明
+
+**`axis-mapping.ts` 和 `axisSettings` 的作用**：
+- **不是**用来修复模型朝向的
+- **是**用来转换动捕数据到 VRM 骨骼旋转的
+- 如果通过映射来"修复"朝向，那是在掩盖问题
+
+**正确做法**：
+1. ✅ 使用 `VRMUtils.rotateVRM0(vrm)` 修复模型朝向（VRM 0.x/1.0 差异）
+2. ✅ 使用 `axisSettings` 调整动捕数据到骨骼的映射（不同模型的骨骼旋转差异）
+
+### 其他坐标系问题（不常见）
+
+如果遇到来自其他 3D 软件（Blender、Unity）的模型仍有朝向问题，可能需要额外处理，但首先确保已经使用了 `VRMUtils.rotateVRM0()`。
+
+### 实现细节（已弃用，仅供参考）
+
+#### 1. 坐标系检测算法
+
+**文件**：`lib/vrm/inspector.ts`
+
+```typescript
+export function detectCoordinateSystem(vrm: VRM): CoordinateSystemInfo {
+  const info: CoordinateSystemInfo = {
+    system: VRMCoordinateSystem.Unknown,
+    confidence: 0,
+    needsRotation: false,
+    suggestedFix: null
+  };
+  
+  // 检测 1: 检查 VRM meta 数据
+  const meta = vrm.meta;
+  if (meta?.generator?.includes('VRoidStudio')) {
+    info.system = VRMCoordinateSystem.VRoid;
+    info.confidence = 0.9;
+  }
+  
+  // 检测 2: 分析头部骨骼位置
+  const head = vrm.humanoid.getNormalizedBoneNode('head');
+  if (head) {
+    const headPos = new Vector3();
+    head.getWorldPosition(headPos);
+    
+    // 头应该在 Y 轴正方向
+    if (headPos.y < 0) {
+      info.needsRotation = true;
+      info.suggestedFix = new Euler(Math.PI, 0, 0);
+    }
+  }
+  
+  // 检测 3: T-pose 检测（左右手应该在 X 轴正负方向）
+  const leftHand = vrm.humanoid.getNormalizedBoneNode('leftHand');
+  const rightHand = vrm.humanoid.getNormalizedBoneNode('rightHand');
+  
+  if (leftHand && rightHand) {
+    const leftPos = new Vector3();
+    const rightPos = new Vector3();
+    leftHand.getWorldPosition(leftPos);
+    rightHand.getWorldPosition(rightPos);
+    
+    // 左手应该在 -X，右手在 +X
+    if (leftPos.x > rightPos.x) {
+      info.needsRotation = true;
+      info.suggestedFix = new Euler(0, Math.PI, 0);
+    }
+  }
+  
+  // 检测 4: 面朝方向（相机应该看到正面）
+  const hips = vrm.humanoid.getNormalizedBoneNode('hips');
+  if (hips) {
+    const forward = new Vector3(0, 0, 1);
+    hips.getWorldDirection(forward);
+    
+    // 如果 Z 方向是正的，可能面朝后方
+    if (forward.z > 0.5) {
+      info.needsRotation = true;
+      info.suggestedFix = new Euler(0, Math.PI, 0);
+    }
+  }
+  
+  return info;
+}
+```
+
+#### 2. 归一化转换器
+
+**文件**：`lib/vrm/normalizer.ts`
+
+```typescript
+export function normalizeToStandard(
+  vrm: VRM, 
+  sourceSystem: VRMCoordinateSystem
+): VRM {
+  const scene = vrm.scene;
+  
+  // 转换矩阵映射
+  const transforms: Record<VRMCoordinateSystem, Matrix4> = {
+    [VRMCoordinateSystem.VRoid]: new Matrix4().identity(),
+    
+    [VRMCoordinateSystem.Blender_ZUp]: new Matrix4()
+      .makeRotationX(-Math.PI / 2), // Z-up 转 Y-up
+    
+    [VRMCoordinateSystem.Unity]: new Matrix4()
+      .makeRotationY(Math.PI), // 左手系转右手系
+    
+    [VRMCoordinateSystem.Standard]: new Matrix4().identity(),
+  };
+  
+  const transform = transforms[sourceSystem];
+  
+  // 应用变换到根节点
+  scene.applyMatrix4(transform);
+  
+  // 重要：更新所有子节点的世界矩阵
+  scene.updateMatrixWorld(true);
+  
+  return vrm;
+}
+```
+
+#### 3. 用户界面组件
+
+**文件**：`components/debug/VRMInspector.tsx`
+
+```typescript
+export function VRMInspector({ vrm }: Props) {
+  const [info, setInfo] = useState<CoordinateSystemInfo | null>(null);
+  const [manualSystem, setManualSystem] = useState<VRMCoordinateSystem | null>(null);
+  
+  useEffect(() => {
+    if (vrm) {
+      const detected = detectCoordinateSystem(vrm);
+      setInfo(detected);
+    }
+  }, [vrm]);
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>模型坐标系检查</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* 检测结果 */}
+        <div>
+          <p>检测到的坐标系: {info?.system}</p>
+          <p>置信度: {(info?.confidence ?? 0) * 100}%</p>
+          
+          {info?.needsRotation && (
+            <Alert>
+              <AlertTitle>需要修复</AlertTitle>
+              <AlertDescription>
+                模型朝向可能不正确，建议应用旋转修复
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+        
+        {/* 手动覆盖选项 */}
+        <div className="mt-4">
+          <Label>手动选择坐标系:</Label>
+          <Select onValueChange={setManualSystem}>
+            <SelectItem value="vroid">VRoid Studio</SelectItem>
+            <SelectItem value="blender-z">Blender (Z-up)</SelectItem>
+            <SelectItem value="unity">Unity</SelectItem>
+            <SelectItem value="standard">标准 VRM</SelectItem>
+          </Select>
+        </div>
+        
+        {/* 实时预览 */}
+        <div className="mt-4">
+          <Canvas>
+            <VRMPreview vrm={vrm} rotation={info?.suggestedFix} />
+          </Canvas>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### 配置文件
+
+**文件**：`config/coordinate-systems.ts`
+
+```typescript
+export const COORDINATE_SYSTEM_CONFIGS = {
+  vroid: {
+    name: 'VRoid Studio',
+    handedness: 'right',
+    upAxis: 'Y',
+    forwardAxis: '-Z',
+    rotationOffset: new Euler(0, 0, 0),
+    needsNormalization: false,
+  },
+  
+  'blender-z': {
+    name: 'Blender (Z-up)',
+    handedness: 'right',
+    upAxis: 'Z',
+    forwardAxis: '+Y',
+    rotationOffset: new Euler(-Math.PI / 2, 0, 0),
+    needsNormalization: true,
+  },
+  
+  unity: {
+    name: 'Unity',
+    handedness: 'left',
+    upAxis: 'Y',
+    forwardAxis: '+Z',
+    rotationOffset: new Euler(0, Math.PI, 0),
+    needsNormalization: true,
+  },
+  
+  standard: {
+    name: 'VRM Standard',
+    handedness: 'right',
+    upAxis: 'Y',
+    forwardAxis: '-Z',
+    rotationOffset: new Euler(0, 0, 0),
+    needsNormalization: false,
+  },
+} as const;
+```
+
+---
+
+## 🚫 禁止事项
+
+### 绝对禁止
+- ❌ 在 React 组件中直接调用 MediaPipe
+- ❌ 在 `useFrame` 回调中使用 `setState`
+- ❌ 硬编码坐标映射数值（应使用配置或自动检测）
+- ❌ 在动捕循环中使用 `console.log`
+- ❌ 混合 UI 逻辑和 3D 逻辑在同一文件
+- ❌ 不处理 VRM 0.x/1.0 朝向差异直接应用动捕数据（应使用 `VRMUtils.rotateVRM0()`）
+
+### 应当避免
+- ⚠️ 过度依赖固定的坐标轴映射配置
+- ⚠️ 假设所有 VRM 模型使用相同坐标系（VRM 0.x 和 1.0 朝向不同）
+- ⚠️ 没有错误处理的异步操作
+- ⚠️ 超过 300 行的组件文件
+
+---
+
+## 📝 命名约定
+
+### 组件
+- 3D 相关组件：`*3D.tsx` (VRMAvatar3D.tsx)
+- 调试面板：`*DebugPanel.tsx` (CoordinateDebugPanel.tsx)
+- 检查器：`*Inspector.tsx` (VRMInspector.tsx)
+
+### 文件
+- 处理器：`*Processor.ts` (PoseProcessor.ts)
+- 归一化器：`*Normalizer.ts` (VRMNormalizer.ts)
+- 配置文件：`*.config.ts` (vrm.config.ts)
+
+### 函数
+- 工具函数：动词开头 (transformCoord, detectSystem, normalizeVRM)
+- 检测函数：`detect*` (detectCoordinateSystem)
+- 转换函数：`normalize*` 或 `transform*`
+
+### 类型
+- 枚举：PascalCase (VRMCoordinateSystem)
+- 接口：PascalCase (CoordinateSystemInfo)
+- 类型别名：PascalCase (TransformedPose)
+
+---
+
+## 💬 注释要求
+
+### 必须添加注释的场景
+
+1. **坐标转换代码**：
+```typescript
+// 转换 Blender Z-up 坐标系到 VRM 标准 Y-up
+// Blender: Z-up, 右手系, 面朝 +Y
+// VRM:    Y-up, 右手系, 面朝 -Z
+// 变换: 绕 X 轴旋转 -90°
+const transform = new Matrix4().makeRotationX(-Math.PI / 2);
+```
+
+2. **性能敏感代码**：
+```typescript
+// PERF: 使用对象池避免每帧创建 1000+ 对象
+private poseCache: PoseData[] = Array(1000).fill(null).map(() => ({}));
+```
+
+3. **MediaPipe 数据处理**：
+```typescript
+// MediaPipe 输出格式:
+// landmarks: Array<{x: 0-1, y: 0-1, z: -1 to 1, visibility: 0-1}>
+// x, y 是归一化的屏幕坐标
+// z 是相对深度（不是真实世界坐标）
+```
+
+4. **复杂的 Three.js 操作**：
+```typescript
+// 步骤:
+// 1. 获取骨骼的世界坐标
+// 2. 转换到本地空间
+// 3. 应用四元数旋转
+// 4. 更新矩阵
+```
+
+5. **坐标系检测逻辑**：
+```typescript
+// 检测依据:
+// - 头部应该在 Y 轴正方向（Y > 0）
+// - 左手在 X 轴负方向（X < 0）
+// - 面朝方向应该是 -Z（forward.z < 0）
+```
+
+---
+
+## 🎯 状态管理策略
+
+### 状态分类
+
+```typescript
+// 1. 全局应用状态 - 使用 Context
+interface VTuberGlobalState {
+  currentVRM: VRM | null;
+  coordinateSystem: VRMCoordinateSystem;
+  isCameraActive: boolean;
+  isMocapActive: boolean;
+}
+
+// 2. 3D 场景状态 - 使用 Zustand 或 useRef
+interface SceneState {
+  vrm: VRM;
+  normalizedVRM: VRM;
+  camera: PerspectiveCamera;
+}
+
+// 3. UI 状态 - 使用 useState
+interface UIState {
+  isModelManagerOpen: boolean;
+  isDebugPanelVisible: boolean;
+}
+
+// 4. 动捕数据 - 使用 useRef（避免重渲染）
+interface MocapData {
+  pose: PoseData;
+  hands: HandData;
+  face: FaceData;
+}
+```
+
+### 使用原则
+
+```typescript
+// ✅ 正确使用
+const SceneComponent = () => {
+  // 动捕数据不需要触发重渲染
+  const mocapRef = useRef<MocapData>(null);
+  
+  useFrame(() => {
+    // 每帧读取，但不触发组件更新
+    applyMocapData(vrm, mocapRef.current);
+  });
+};
+
+// ❌ 错误使用
+const SceneComponent = () => {
+  // 每帧更新会触发整个组件树重渲染！
+  const [mocapData, setMocapData] = useState<MocapData>(null);
+  
+  useFrame(() => {
+    setMocapData(newData); // 灾难！
+  });
+};
+```
+
+---
+
+## 🔧 国际化规则
+
+### 翻译 key 结构
+```
+功能.组件.文本
+
+示例:
+mocap.camera.enable
+vrm.inspector.coordinateSystem
+vrm.inspector.detectedSystem
+vrm.inspector.manualOverride
+debug.panel.performance
+```
+
+### 使用示例
+```typescript
+import { useTranslations } from 'next-intl';
+
+function VRMInspector() {
+  const t = useTranslations('vrm.inspector');
+  
+  return (
+    <div>
+      <h3>{t('title')}</h3>
+      <p>{t('detectedSystem', { system: 'VRoid' })}</p>
+    </div>
+  );
+}
+```
+
+### 禁止硬编码
+```typescript
+// ❌ 错误
+<Button>Enable Camera</Button>
+
+// ✅ 正确
+<Button>{t('mocap.camera.enable')}</Button>
+```
+
+---
+
+## 📊 性能检查清单
+
+### 每次 Commit 前检查
+
+```bash
+# 1. 类型检查
+pnpm typecheck
+
+# 2. 检查是否有硬编码坐标值（应该移除或用配置替代）
+grep -r "{ x: -1, y: 1" src/components/ || echo "✅ 无硬编码"
+
+# 3. 检查性能注释
+grep -r "// PERF:" src/lib/mocap/ || echo "⚠️ 缺少性能注释"
+
+# 4. 检查是否有坐标系处理
+grep -r "normalizeVRM\|detectCoordinateSystem" src/ || echo "⚠️ 可能缺少坐标归一化"
+
+# 5. 格式化
+pnpm format
+```
+
+### 运行时性能监控
+
+```typescript
+// 在开发环境启用
+if (process.env.NODE_ENV === 'development') {
+  // 监控帧率
+  const stats = new Stats();
+  document.body.appendChild(stats.dom);
+  
+  // 监控内存
+  console.log('Memory:', performance.memory);
+}
+```
+
+---
+
+## 🎓 关于坐标映射的建议
+
+### 当前策略
+**坐标映射配置 (`config/axis-mapping.ts`) 可能是不必要的！**
+
+### 原因分析
+```
+问题根源不是"映射"，而是"归一化"
+
+错误思路：
+  为每种模型配置不同的映射规则 ❌
+
+正确思路：
+  1. 检测模型当前坐标系
+  2. 归一化到统一标准
+  3. 使用统一的动捕应用逻辑 ✅
+```
+
+### 重构建议
+
+#### 阶段 1: 保留映射配置（兜底）
+```typescript
+// 仍然保留作为兜底方案
+export const LEGACY_AXIS_MAPPING = {
+  // 某些特殊情况可能需要
+};
+```
+
+#### 阶段 2: 实现归一化系统
+```typescript
+// 新的主要逻辑
+export function prepareVRMForMocap(vrm: VRM): VRM {
+  // 1. 检测坐标系
+  const system = detectCoordinateSystem(vrm);
+  
+  // 2. 归一化
+  const normalized = normalizeToStandard(vrm, system);
+  
+  // 3. 验证
+  const validation = validateVRMOrientation(normalized);
+  if (!validation.isCorrect) {
+    // 回退到手动修复或用户选择
+  }
+  
+  return normalized;
+}
+```
+
+#### 阶段 3: 移除旧配置
+```typescript
+// 如果归一化系统稳定运行，可以移除
+// config/axis-mapping.ts (deprecated)
+```
+
+---
+
+## 🐛 已知问题和临时方案
+
+### 问题 1: 手指映射不准确
+**状态**: 调试中  
+**临时方案**: 提供手动调整界面  
+**长期方案**: 实现基于机器学习的自动校准
+
+### 问题 2: 语言切换不工作
+**状态**: 待修复  
+**原因**: next-intl 配置问题  
+**优先级**: 中
+
+### 问题 3: 模型朝向不一致（已解决）
+**状态**: ✅ 已修复  
+**解决方案**: 使用 `VRMUtils.rotateVRM0(vrm)`  
+**说明**: 这是库自带的解决方案，专门处理 VRM 0.x 和 1.0 的朝向差异
+
+---
+
+## 📚 参考资源
+
+### VRM 规范
+- VRM 官方文档: https://vrm.dev/
+- VRM 坐标系标准: 右手系，Y-up，面朝 -Z
+
+### Three.js
+- 坐标系: 右手系，Y-up
+- 性能优化: https://threejs.org/manual/#en/optimize
+
+### MediaPipe
+- Pose: https://google.github.io/mediapipe/solutions/pose
+- Hands: https://google.github.io/mediapipe/solutions/hands
+
+---
+
+## 🔄 版本历史
+
+### v2.0 (当前)
+- ✅ 使用 `VRMUtils.rotateVRM0()` 修复 VRM 0.x/1.0 朝向差异
+- ✅ 明确 `axisSettings` 的作用（动捕数据映射，不是朝向修复）
+- 🔄 简化坐标系处理策略，优先使用库自带解决方案
+
+### v1.0
+- ✅ 基础动捕功能
+- ✅ 坐标轴调试面板
+- ⚠️ 硬编码的坐标映射（待废弃）
+
+---
+
+## 💡 开发提示
+
+### 与 Cursor AI 协作时
+
+**明确数据流**：
+```
+我要修改 [功能]
+数据流: Camera → MediaPipe → Kalidokit → VRM
+修改位置: [具体环节]
+不改变: [上游/下游]
+```
+
+**明确坐标系处理**：
+```
+处理 VRM 模型加载
+
+步骤:
+1. 加载原始 VRM
+2. 检测坐标系 (detectCoordinateSystem)
+3. 归一化 (normalizeToStandard)
+4. 验证朝向
+5. 应用动捕数据
+
+只修改 lib/vrm/loader.ts
+```
+
+**性能优化提醒**：
+```
+优化 [功能] 性能
+
+要求:
+- 使用对象池
+- 避免每帧创建对象
+- 添加 PERF 注释
+- 测量优化前后 FPS
+```
+
+---
+
+## ✅ 代码审查标准
+
+### Pull Request 必须满足
+
+- [ ] 通过 TypeScript 类型检查
+- [ ] 通过代码格式检查
+- [ ] 性能敏感代码有 PERF 注释
+- [ ] VRM 处理包含坐标系检测
+- [ ] 国际化文本使用翻译 key
+- [ ] 没有 console.log（除了错误日志）
+- [ ] Three.js 组件使用 React.memo
+- [ ] 动捕循环不触发状态更新
+
+### 性能要求
+
+- [ ] 动捕运行在 60fps
+- [ ] 模型加载时间 < 3 秒
+- [ ] 内存使用稳定（无泄漏）
+- [ ] 帧率波动 < 10%
+
+---
+
+## 🎯 下一步行动
+
+### 已完成
+1. ✅ 使用 `VRMUtils.rotateVRM0()` 修复 VRM 0.x/1.0 朝向差异
+2. ✅ 明确坐标映射配置的真实用途
+
+### 短期计划（本月）
+1. 完善自动检测算法
+2. 收集不同来源 VRM 样本测试
+3. 优化用户体验流程
+4. 编写单元测试
+
+### 长期计划（季度）
+1. 机器学习辅助坐标检测
+2. 移除硬编码的映射配置
+3. 性能优化到 120fps
+4. 多用户测试和反馈收集
+

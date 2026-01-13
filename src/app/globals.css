@@ -2,366 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 全局主题变量 - 默认值 */
-:root {
-  --primary-color: #0ea5e9;
-  --primary-hover: #0284c7;
-  --primary-light: #e0f2fe;
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #ef4444;
-  --destructive-foreground: #fef2f2;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0ea5e9;
-  --radius: 0.5rem;
-  
-  /* VTuber 主题变量 */
-  --vtuber-primary: #3b82f6;
-  --vtuber-secondary: #60a5fa;
-  --vtuber-accent: #06b6d4;
-  --vtuber-light: #f8fafc;
-  --vtuber-white: #ffffff;
-  --vtuber-dark: #0f172a;
-  --vtuber-darker: #020617;
-  --vtuber-text: #1e40af;
-  --vtuber-text-light: #64748b;
-}
-
-/* 深色主题变量 */
-.dark {
-  --primary-color: #0ea5e9;
-  --primary-hover: #0284c7;
-  --primary-light: #0c4a6e;
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --popover: #1e293b;
-  --popover-foreground: #f8fafc;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #334155;
-  --accent-foreground: #f8fafc;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fef2f2;
-  --border: #334155;
-  --input: #334155;
-  --ring: #0ea5e9;
-  
-  /* VTuber 深色主题变量 */
-  --vtuber-primary: #60a5fa;
-  --vtuber-secondary: #93c5fd;
-  --vtuber-accent: #22d3ee;
-  --vtuber-light: #1e293b;
-  --vtuber-white: #f8fafc;
-  --vtuber-dark: #0f172a;
-  --vtuber-darker: #020617;
-  --vtuber-text: #f1f5f9;
-  --vtuber-text-light: #94a3b8;
-}
-
-/* 浅色主题变量 */
-.light {
-  --primary-color: #0ea5e9;
-  --primary-hover: #0284c7;
-  --primary-light: #e0f2fe;
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #ef4444;
-  --destructive-foreground: #fef2f2;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0ea5e9;
-  
-  /* VTuber 浅色主题变量 */
-  --vtuber-primary: #3b82f6;
-  --vtuber-secondary: #60a5fa;
-  --vtuber-accent: #06b6d4;
-  --vtuber-light: #f8fafc;
-  --vtuber-white: #ffffff;
-  --vtuber-dark: #0f172a;
-  --vtuber-darker: #020617;
-  --vtuber-text: #1e40af;
-  --vtuber-text-light: #64748b;
-}
-
-/* 基础样式 */
-* {
-  border-color: hsl(var(--border));
-}
-
-body {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  transition: color 0.3s ease, background-color 0.3s ease;
-}
-
-/* 按钮样式 */
-.btn-primary {
-  background-color: hsl(var(--primary-color));
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: hsl(var(--primary-hover));
-}
-
-.btn-outline {
-  background-color: transparent;
-  color: hsl(var(--primary-color));
-  border: 1px solid hsl(var(--primary-color));
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-outline:hover {
-  background-color: hsl(var(--primary-color));
-  color: white;
-}
-
-/* 卡片样式 */
-.card {
-  background-color: hsl(var(--card));
-  color: hsl(var(--card-foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-/* 输入框样式 */
-.input {
-  background-color: hsl(var(--input));
-  color: hsl(var(--foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  padding: 0.5rem;
-  transition: border-color 0.2s ease;
-}
-
-.input:focus {
-  outline: none;
-  border-color: hsl(var(--ring));
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-}
-
-/* 标签样式 */
-.label {
-  color: hsl(var(--foreground));
-  font-weight: 500;
-}
-
-/* 徽章样式 */
-.badge {
-  background-color: hsl(var(--muted));
-  color: hsl(var(--muted-foreground));
-  border-radius: var(--radius);
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  transition: background-color 0.3s ease;
-}
-
-/* 开关样式 */
-.switch {
-  background-color: hsl(var(--muted));
-  border-radius: 9999px;
-  padding: 2px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.switch[data-state="checked"] {
-  background-color: hsl(var(--primary-color));
-}
-
-/* 选择器样式 */
-.select {
-  background-color: hsl(var(--input));
-  color: hsl(var(--foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  padding: 0.5rem;
-  transition: border-color 0.2s ease;
-}
-
-.select:focus {
-  outline: none;
-  border-color: hsl(var(--ring));
-  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-}
-
-/* 标签页样式 */
-.tabs {
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.tab {
-  color: hsl(var(--muted-foreground));
-  border-bottom: 2px solid transparent;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab[data-state="active"] {
-  color: hsl(var(--foreground));
-  border-bottom-color: hsl(var(--primary-color));
-}
-
-/* 工具提示样式 */
-.tooltip {
-  background-color: hsl(var(--popover));
-  color: hsl(var(--popover-foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  padding: 0.5rem;
-  font-size: 0.875rem;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-}
-
-/* VTuber 自定义组件样式 */
-.vtuber-button {
-  @apply bg-vtuber-primary hover:bg-vtuber-secondary 
-         transition-all duration-200 
-         text-white font-medium 
-         rounded-lg shadow-lg 
-         hover:shadow-xl 
-         active:scale-95;
-}
-
-.vtuber-panel {
-  @apply bg-white/90 backdrop-blur-md 
-         border border-vtuber-blue-200 
-         rounded-xl shadow-xl;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.vtuber-input {
-  @apply bg-white border border-vtuber-blue-300 
-         rounded-md px-3 py-2 
-         text-vtuber-text placeholder-vtuber-text-light
-         focus:border-vtuber-primary focus:outline-none
-         transition-colors duration-200;
-}
-
-/* 动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+@layer base {
+  @font-face {
+    font-family: 'MHTIROGLA';
+    src: url('/project-resources/helvetica-neue-ultra-light.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
   }
-  to {
-    opacity: 1;
+
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
+@layer base {
+  * {
+    @apply border-border;
   }
-  to {
-    transform: translateY(0);
-    opacity: 1;
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .card {
-    margin: 0.5rem;
+/* Slider styles */
+@layer base {
+  .slider-thumb::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    cursor: pointer;
+    border: 2px solid hsl(var(--background));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
-  
-  .btn-primary,
-  .btn-outline {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-  }
-  
-  .vtuber-panel {
-    @apply mx-2;
+  .slider-thumb::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    cursor: pointer;
+    border: 2px solid hsl(var(--background));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 }
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground));
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--foreground));
-}
-
-/* 主题切换动画 */
-.theme-transition {
-  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
-}
-
-/* 确保所有元素都支持主题切换 */
-* {
-  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
-} 
-
-/* Canvas 样式优化 */
-canvas {
-  display: block;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  touch-action: none;
-}
-
-/* 3D场景容器样式 */
-.canvas-container {
-  width: 100%;
-  height: 100vh;
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-}
-
-.canvas-container canvas {
-  width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-} 

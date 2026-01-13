@@ -43,7 +43,12 @@ declare global {
     }
     
     export class VRMHumanoid {
-      getBoneNode(boneName: string): any;
+      /** @deprecated 已弃用，请使用 humanBones[boneName].node 或 getNormalizedBoneNode() */
+      getBoneNode?(boneName: string): any;
+      /** 推荐使用：直接访问 humanBones[boneName].node */
+      humanBones?: { [boneName: string]: { node?: any } };
+      /** 推荐使用：如果直接访问不可用，使用 getNormalizedBoneNode() */
+      getNormalizedBoneNode?(boneName: string): any;
       [key: string]: any;
     }
     

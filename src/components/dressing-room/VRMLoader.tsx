@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, memo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
 
@@ -9,7 +9,8 @@ interface ModelLoadingIndicatorProps {
   modelName: string;
 }
 
-export const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({ 
+// PERF: 模型加载指示器组件
+const ModelLoadingIndicatorComponent: React.FC<ModelLoadingIndicatorProps> = ({ 
   isLoading, 
   error, 
   modelName 
@@ -50,6 +51,9 @@ export const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({
 
   return null;
 };
+
+// PERF: 使用 memo 优化性能
+export const ModelLoadingIndicator = memo(ModelLoadingIndicatorComponent);
 
 // VRM 加载器组件
 interface VRMLoaderProps {
