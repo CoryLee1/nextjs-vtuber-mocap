@@ -96,7 +96,7 @@ export default function LoadingPage({
           >
             {/* HDR/sky-3js */}
             <img 
-              src="/images/loading/sky.png" 
+              src="/images/HDRSky.png" 
               alt="Sky" 
               className="absolute max-w-none animate-[spin_180s_linear_infinite]"
               style={{

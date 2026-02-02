@@ -1,0 +1,55 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { AuthButton, AuthInput, SocialButton } from '../../components/auth-ui';
+
+export default function V1Login() {
+  return (
+    <div className="relative w-full min-h-screen bg-black overflow-hidden flex items-center justify-center p-6 font-sans">
+      
+      {/* Background Hero Layer */}
+      <div className="absolute inset-0 z-0 opacity-20 contrast-150 grayscale">
+        <img 
+          src="/v1-assets/fills/d87592b80b239a86f246a1402cbf6bd7068d1e47.png" 
+          alt="" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Main Auth Card */}
+      <div className="relative z-20 w-full max-w-lg bg-black/60 backdrop-blur-2xl border border-[#EEFF00]/10 p-12 rounded-[40px] shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+        <div className="space-y-10">
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-black text-[#EEFF00] tracking-tighter uppercase italic">Welcome Back</h1>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">Accessing ECHUU Mainframe</p>
+          </div>
+
+          <div className="space-y-6">
+            <AuthInput label="User Identification" type="email" placeholder="NEURAL_LINK@ECHUU.AI" />
+            <AuthInput label="Access Code" type="password" placeholder="••••••••••••" />
+            <AuthButton>Decrypt & Login</AuthButton>
+          </div>
+
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em] font-black text-white/10"><span className="bg-transparent px-4">Secure Gateway</span></div>
+          </div>
+
+          <SocialButton 
+            icon="/v1-assets/fills/774627be89a12b5733ec566d9e28cb7cbdead78d.png" 
+            label="Google Authentication" 
+          />
+
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-white/30">
+            No profile detected? <Link href="/v1/auth/signup" className="text-[#EEFF00] hover:underline underline-offset-4">Register New Link</Link>
+          </p>
+        </div>
+      </div>
+
+      {/* Background decoration */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] border border-[#EEFF00]/5 rounded-full z-0 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] border border-[#EEFF00]/5 rounded-full z-0 pointer-events-none animate-pulse" />
+    </div>
+  );
+}

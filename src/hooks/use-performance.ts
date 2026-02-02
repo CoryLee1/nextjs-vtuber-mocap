@@ -9,7 +9,47 @@ export interface PerformanceSettings {
   shadows: boolean;
   bloom: boolean;
   optimization: 'auto' | 'manual';
+  // PERF: R3F 特定设置
+  postProcessing: boolean;
+  sparkles: boolean;
+  shadowMapSize: number;
+  hdrResolution: number;
+  particleCount: number;
 }
+
+// PERF: 性能预设配置
+const PERFORMANCE_PRESETS = {
+  low: {
+    postProcessing: false,
+    sparkles: false,
+    shadowMapSize: 256,
+    hdrResolution: 64,
+    particleCount: 10,
+    shadows: false,
+    bloom: false,
+    antialiasing: false,
+  },
+  medium: {
+    postProcessing: true,
+    sparkles: true,
+    shadowMapSize: 512,
+    hdrResolution: 256,
+    particleCount: 25,
+    shadows: true,
+    bloom: false,
+    antialiasing: true,
+  },
+  high: {
+    postProcessing: true,
+    sparkles: true,
+    shadowMapSize: 1024,
+    hdrResolution: 512,
+    particleCount: 50,
+    shadows: true,
+    bloom: true,
+    antialiasing: true,
+  },
+} as const;
 
 // 默认性能设置
 const defaultSettings: PerformanceSettings = {
@@ -18,8 +58,14 @@ const defaultSettings: PerformanceSettings = {
   resolution: 1,
   antialiasing: true,
   shadows: true,
-  bloom: true,
+  bloom: false, // PERF: 默认关闭 bloom
   optimization: 'auto',
+  // PERF: R3F 特定设置默认值
+  postProcessing: true,
+  sparkles: true,
+  shadowMapSize: 512,
+  hdrResolution: 256,
+  particleCount: 25,
 };
 
 export const usePerformance = () => {
@@ -55,28 +101,40 @@ export const usePerformance = () => {
     });
   }, []);
 
-  // 自动性能优化
+  // PERF: 自动性能优化 - 使用预设配置
   const autoOptimize = useCallback(() => {
     if (fps < 30) {
-      // 性能较差时降低质量
+      // 性能较差时使用低质量预设
       setSettings(prev => ({
         ...prev,
         quality: 'low',
-        shadows: false,
-        bloom: false,
-        antialiasing: false,
+        ...PERFORMANCE_PRESETS.low,
       }));
-    } else if (fps > 50) {
-      // 性能良好时提高质量
+    } else if (fps < 45) {
+      // 性能中等时使用中等预设
+      setSettings(prev => ({
+        ...prev,
+        quality: 'medium',
+        ...PERFORMANCE_PRESETS.medium,
+      }));
+    } else if (fps > 55) {
+      // 性能良好时使用高质量预设
       setSettings(prev => ({
         ...prev,
         quality: 'high',
-        shadows: true,
-        bloom: true,
-        antialiasing: true,
+        ...PERFORMANCE_PRESETS.high,
       }));
     }
   }, [fps]);
+
+  // PERF: 手动切换性能模式
+  const setPerformanceMode = useCallback((mode: 'low' | 'medium' | 'high') => {
+    setSettings(prev => ({
+      ...prev,
+      quality: mode,
+      ...PERFORMANCE_PRESETS[mode],
+    }));
+  }, []);
 
   // 监控 FPS
   const measureFPS = useCallback(() => {
@@ -168,8 +226,13 @@ export const usePerformance = () => {
     gpuUsage,
     updateSettings,
     autoOptimize,
+    setPerformanceMode, // PERF: 新增手动切换模式
     lazyLoad,
     preloadResource,
     preloadBatch,
+    PERFORMANCE_PRESETS, // PERF: 导出预设配置供其他组件使用
   };
-}; 
+};
+
+// PERF: 导出预设配置
+export { PERFORMANCE_PRESETS }; 

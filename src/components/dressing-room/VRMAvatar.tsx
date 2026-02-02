@@ -1,181 +1,39 @@
-import { useEffect, useRef, useCallback, useState, forwardRef, useMemo, memo } from 'react';
+import { useEffect, useRef, useCallback, forwardRef, useMemo, memo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { Face, Hand, Pose } from 'kalidokit';
-import { Euler, Object3D, Quaternion, Vector3, Mesh, CylinderGeometry, MeshBasicMaterial, Group } from 'three';
+import { Group } from 'three';
 import { lerp } from 'three/src/math/MathUtils.js';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { useSensitivitySettings } from '@/hooks/use-sensitivity-settings';
 import { useSceneStore, useMediaPipeCallback } from '@/hooks/use-scene-store';
 import { createVRMLookAtUpdater } from '@/hooks/use-vrm-lookat';
-import { calculateArms, calculateHandIK, smoothArmRotation, isArmVisible, validateHumanRotation } from '@/lib/arm-calculator';
 import { useAnimationManager } from '@/lib/animation-manager';
 import { ANIMATION_CONFIG } from '@/lib/constants';
-import { CoordinateAxes, ArmDirectionDebugger, DataDisplayPanel, SimpleArmAxes } from './DebugHelpers';
-import { HandDebugPanel } from './HandDebugPanel';
+import { CoordinateAxes, ArmDirectionDebugger, SimpleArmAxes } from './DebugHelpers';
 import { ArmDebugPanel } from './ArmDebugPanel';
 import { DEFAULT_AXIS_SETTINGS, DEFAULT_FINGER_AXIS_SETTINGS } from '@/config/vrm-defaults';
 import { ModelLoadingIndicator } from '@/components/ui/ModelLoadingIndicator';
 import { createPerformanceMonitor } from '@/lib/utils/performance-monitor';
 import { mapBoneName } from '@/lib/vrm/bone-mapping';
-import { detectVRMCapabilities } from '@/lib/vrm/capabilities';
-import { VRMMocapAdapter } from '@/lib/mocap/vrm-adapter';
 import { useVRMInfoLogger } from '@/lib/vrm/debug/use-vrm-info-logger';
 import { VRMController } from './VRMController';
 
-const tmpVec3 = new Vector3();
-const tmpQuat = new Quaternion();
-const tmpEuler = new Euler();
-
-// 性能优化的批量更新函数
-const batchUpdateDebugInfo = (debugInfo: any, updates: any) => {
-    Object.assign(debugInfo, updates);
-};
-
-// 优化的错误处理函数
-const handleProcessingError = (error: any, processName: string, debugInfo: any) => {
-    if (process.env.NODE_ENV === 'development') {
-        console.error(`VRMAvatar: ${processName} 错误`, error.message);
-    }
-    debugInfo.errorCount++;
-};
-
-interface BoneVisualizerProps {
-  vrm: any;
-}
-
-// PERF: 骨骼可视化组件 - 使用圆柱体
-const BoneVisualizerComponent: React.FC<BoneVisualizerProps> = ({ vrm }) => {
-    const [boneMeshes, setBoneMeshes] = useState<any[]>([]);
-
-    // PERF: 使用 ref 复用 Vector3 对象，避免每帧创建新对象
-    const tmpVec3_1 = useRef(new Vector3());
-    const tmpVec3_2 = useRef(new Vector3());
-    const tmpVec3_3 = useRef(new Vector3());
-    const tmpVec3_4 = useRef(new Vector3());
-    const tmpVec3_5 = useRef(new Vector3());
-    const tmpVec3_6 = useRef(new Vector3());
-
-    useEffect(() => {
-        if (!vrm?.humanoid) {
-            return;
-        }
-
-        // 使用正确的 VRM API 访问骨骼
-        const humanBones = vrm.humanoid.humanBones;
-        const boneNames = Object.keys(humanBones);
-
-        const meshes: any[] = [];
-
-        // 创建骨骼可视化 - 使用圆柱体
-        boneNames.forEach((boneName) => {
-            const bone = humanBones[boneName];
-            if (bone.node && bone.node.parent) {
-                const parent = bone.node.parent;
-                const child = bone.node;
-
-                // 获取父子节点的世界坐标
-                const parentWorldPos = parent.getWorldPosition(new Vector3());
-                const childWorldPos = child.getWorldPosition(new Vector3());
-
-                // 计算骨骼长度和方向
-                const direction = new Vector3().subVectors(childWorldPos, parentWorldPos);
-                const length = direction.length();
-
-                if (length > 0.01) { // 只显示有意义的骨骼
-                    // 创建细长圆柱体
-                    const geometry = new CylinderGeometry(0.02, 0.02, length, 8);
-                    const material = new MeshBasicMaterial({
-                        color: 0x00ff00, // 改为绿色，更容易看到
-                        transparent: true,
-                        opacity: 0.9 // 增加透明度
-                    });
-                    const mesh = new Mesh(geometry, material);
-
-                    // 设置圆柱体位置和旋转
-                    const center = new Vector3().addVectors(parentWorldPos, childWorldPos).multiplyScalar(0.5);
-                    mesh.position.copy(center);
-
-                    // 计算旋转以对齐骨骼方向
-                    const up = new Vector3(0, 1, 0);
-                    const axis = new Vector3().crossVectors(up, direction.normalize());
-                    const angle = Math.acos(up.dot(direction.normalize()));
-
-                    if (axis.length() > 0.001) {
-                        mesh.quaternion.setFromAxisAngle(axis, angle);
-                    }
-
-                    mesh.userData = { boneName: boneName };
-                    meshes.push(mesh);
-                }
-            }
-        });
-
-        setBoneMeshes(meshes);
-    }, [vrm]);
-
-    // 更新骨骼位置
-    // PERF: 使用 ref 复用的 Vector3 对象，避免每帧创建新对象
-    useFrame(() => {
-        if (!vrm?.humanoid) return;
-
-        // 使用正确的 VRM API 访问骨骼
-        const humanBones = vrm.humanoid.humanBones;
-        const boneNames = Object.keys(humanBones);
-
-        (boneMeshes as any[]).forEach((mesh: any, index: number) => {
-            const boneName = boneNames[index];
-            if (!boneName) return;
-
-            const bone = humanBones[boneName];
-            if (bone?.node?.parent) {
-                const parent = bone.node.parent;
-                const child = bone.node;
-
-                // PERF: 使用 ref 复用的 Vector3 对象
-                const parentWorldPos = parent.getWorldPosition(tmpVec3_1.current);
-                const childWorldPos = child.getWorldPosition(tmpVec3_2.current);
-
-                // PERF: 复用 Vector3 对象计算方向
-                tmpVec3_3.current.subVectors(childWorldPos, parentWorldPos);
-                const length = tmpVec3_3.current.length();
-
-                if (length > 0.01) {
-                    // PERF: 复用 Vector3 对象计算中心点
-                    tmpVec3_4.current.addVectors(parentWorldPos, childWorldPos).multiplyScalar(0.5);
-                    mesh.position.copy(tmpVec3_4.current);
-
-                    // PERF: 复用 Vector3 对象计算旋转
-                    tmpVec3_5.current.set(0, 1, 0); // up vector
-                    // normalize 会修改原对象，但我们已经保存了 length，所以可以安全地 normalize
-                    tmpVec3_3.current.normalize();
-                    tmpVec3_6.current.crossVectors(tmpVec3_5.current, tmpVec3_3.current);
-                    const angle = Math.acos(tmpVec3_5.current.dot(tmpVec3_3.current));
-                    const axis = tmpVec3_6.current;
-
-                    if (axis.length() > 0.001) {
-                        mesh.quaternion.setFromAxisAngle(axis, angle);
-                    }
-                }
-            }
-        });
-    });
-
-    return (
-        <group>
-            {boneMeshes.map((mesh, index) => (
-                <primitive key={`bone-${index}`} object={mesh} />
-            ))}
-        </group>
-    );
-};
-
-// PERF: 使用 memo 优化性能，避免不必要的重渲染
-const BoneVisualizer = memo(BoneVisualizerComponent, (prevProps, nextProps) => {
-    // 只有当 vrm 引用改变时才重新渲染
-    return prevProps.vrm === nextProps.vrm;
-});
+// PERF: 导入拆分的常量和组件
+import {
+  tmpVec3,
+  tmpQuat,
+  tmpEuler,
+  MOUTH_SHAPE_KEYS,
+  MOUTH_EXPRESSION_NAMES,
+  LEFT_FINGER_BONE_NAMES,
+  LEFT_FINGER_DATA_KEYS,
+  RIGHT_FINGER_BONE_NAMES,
+  RIGHT_FINGER_DATA_KEYS,
+  handleProcessingError,
+} from '@/components/vrm/constants';
+import { BoneVisualizer } from '@/components/vrm/BoneVisualizer';
 
 // VRMAvatar props interface for forwardRef
 interface VRMAvatarProps {
@@ -873,18 +731,12 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
             // **面部表情处理**
             if (riggedFace.current) {
                 try {
-                    // 口型同步
-                    const mouthShapes = [
-                        { name: 'aa', value: riggedFace.current.mouth?.shape?.A || 0 },
-                        { name: 'ih', value: riggedFace.current.mouth?.shape?.I || 0 },
-                        { name: 'ee', value: riggedFace.current.mouth?.shape?.E || 0 },
-                        { name: 'oh', value: riggedFace.current.mouth?.shape?.O || 0 },
-                        { name: 'ou', value: riggedFace.current.mouth?.shape?.U || 0 },
-                    ];
-
-                    mouthShapes.forEach(({ name, value }) => {
-                        lerpExpression(name, value, lerpFactor);
-                    });
+                    // PERF: 口型同步 - 使用预定义常量避免每帧创建数组
+                    const mouthShape = riggedFace.current.mouth?.shape;
+                    for (let i = 0; i < MOUTH_EXPRESSION_NAMES.length; i++) {
+                        const value = mouthShape?.[MOUTH_SHAPE_KEYS[i]] || 0;
+                        lerpExpression(MOUTH_EXPRESSION_NAMES[i], value, lerpFactor);
+                    }
 
                     // 眨眼同步
                     if (blinkData.current) {
@@ -990,39 +842,23 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                 }
             }
 
-            // **手指控制**
+            // PERF: **手指控制** - 使用预定义常量避免每帧创建数组
             if (riggedLeftHand.current) {
                 try {
-                    // 左手手指控制 - 镜像映射
-                    const leftFingerBones = [
-                        { bone: 'leftRingProximal', data: riggedLeftHand.current.LeftRingProximal },
-                        { bone: 'leftRingIntermediate', data: riggedLeftHand.current.LeftRingIntermediate },
-                        { bone: 'leftRingDistal', data: riggedLeftHand.current.LeftRingDistal },
-                        { bone: 'leftIndexProximal', data: riggedLeftHand.current.LeftIndexProximal },
-                        { bone: 'leftIndexIntermediate', data: riggedLeftHand.current.LeftIndexIntermediate },
-                        { bone: 'leftIndexDistal', data: riggedLeftHand.current.LeftIndexDistal },
-                        { bone: 'leftMiddleProximal', data: riggedLeftHand.current.LeftMiddleProximal },
-                        { bone: 'leftMiddleIntermediate', data: riggedLeftHand.current.LeftMiddleIntermediate },
-                        { bone: 'leftMiddleDistal', data: riggedLeftHand.current.LeftMiddleDistal },
-                        { bone: 'leftThumbProximal', data: riggedLeftHand.current.LeftThumbProximal },
-                        { bone: 'leftThumbMetacarpal', data: riggedLeftHand.current.LeftThumbIntermediate },
-                        { bone: 'leftThumbDistal', data: riggedLeftHand.current.LeftThumbDistal },
-                        { bone: 'leftLittleProximal', data: riggedLeftHand.current.LeftLittleProximal },
-                        { bone: 'leftLittleIntermediate', data: riggedLeftHand.current.LeftLittleIntermediate },
-                        { bone: 'leftLittleDistal', data: riggedLeftHand.current.LeftLittleDistal }
-                    ];
-
-                    leftFingerBones.forEach(({ bone, data }) => {
+                    // 左手手指控制 - 使用预定义数组
+                    const leftHand = riggedLeftHand.current;
+                    for (let i = 0; i < LEFT_FINGER_BONE_NAMES.length; i++) {
+                        const bone = LEFT_FINGER_BONE_NAMES[i];
+                        const data = leftHand[LEFT_FINGER_DATA_KEYS[i]];
                         if (data) {
                             const fingerConfig = handDebugAxisConfig?.[bone] || DEFAULT_FINGER_AXIS_SETTINGS;
-                            const rawFingerData = {
+                            rotateBone(bone, {
                                 x: -data.x * fingerConfig.x,
                                 y: -data.z * fingerConfig.y,
                                 z: data.y * fingerConfig.z,
-                            };
-                            rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
+                            }, boneLerpFactor * settings.fingerSpeed);
                         }
-                    });
+                    }
                 } catch (error) {
                     // console.warn('VRMAvatar: 左手处理错误', error);
                 }
@@ -1030,36 +866,20 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
 
             if (riggedRightHand.current) {
                 try {
-                    // 右手手指控制 - 镜像映射
-                    const rightFingerBones = [
-                        { bone: 'rightRingProximal', data: riggedRightHand.current.RightRingProximal },
-                        { bone: 'rightRingIntermediate', data: riggedRightHand.current.RightRingIntermediate },
-                        { bone: 'rightRingDistal', data: riggedRightHand.current.RightRingDistal },
-                        { bone: 'rightIndexProximal', data: riggedRightHand.current.RightIndexProximal },
-                        { bone: 'rightIndexIntermediate', data: riggedRightHand.current.RightIndexIntermediate },
-                        { bone: 'rightIndexDistal', data: riggedRightHand.current.RightIndexDistal },
-                        { bone: 'rightMiddleProximal', data: riggedRightHand.current.RightMiddleProximal },
-                        { bone: 'rightMiddleIntermediate', data: riggedRightHand.current.RightMiddleIntermediate },
-                        { bone: 'rightMiddleDistal', data: riggedRightHand.current.RightMiddleDistal },
-                        { bone: 'rightThumbProximal', data: riggedRightHand.current.RightThumbProximal },
-                        { bone: 'rightThumbMetacarpal', data: riggedRightHand.current.RightThumbIntermediate },
-                        { bone: 'rightThumbDistal', data: riggedRightHand.current.RightThumbDistal },
-                        { bone: 'rightLittleProximal', data: riggedRightHand.current.RightLittleProximal },
-                        { bone: 'rightLittleIntermediate', data: riggedRightHand.current.RightLittleIntermediate },
-                        { bone: 'rightLittleDistal', data: riggedRightHand.current.RightLittleDistal }
-                    ];
-
-                    rightFingerBones.forEach(({ bone, data }) => {
+                    // 右手手指控制 - 使用预定义数组
+                    const rightHand = riggedRightHand.current;
+                    for (let i = 0; i < RIGHT_FINGER_BONE_NAMES.length; i++) {
+                        const bone = RIGHT_FINGER_BONE_NAMES[i];
+                        const data = rightHand[RIGHT_FINGER_DATA_KEYS[i]];
                         if (data) {
                             const fingerConfig = handDebugAxisConfig?.[bone] || DEFAULT_FINGER_AXIS_SETTINGS;
-                            const rawFingerData = {
+                            rotateBone(bone, {
                                 x: -data.x * fingerConfig.x,
                                 y: -data.z * fingerConfig.y,
                                 z: data.y * fingerConfig.z,
-                            };
-                            rotateBone(bone, rawFingerData, boneLerpFactor * settings.fingerSpeed);
+                            }, boneLerpFactor * settings.fingerSpeed);
                         }
-                    });
+                    }
                 } catch (error) {
                     // console.warn('VRMAvatar: 右手处理错误', error);
                 }
@@ -1164,9 +984,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                             riggedPose={riggedPose}
                             showDebug={showDebug}
                         />
-                        {testSettings?.showRawData && (
-                            <DataDisplayPanel riggedPose={riggedPose} />
-                        )}
+                        {/* DataDisplayPanel removed - component not implemented */}
                         {/* 手臂坐标轴可视化 */}
                         <SimpleArmAxes vrm={vrm} showDebug={showArmAxes} />
                     </>

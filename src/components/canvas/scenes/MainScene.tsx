@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense, memo, useState } from 'react';
+import React, { useEffect, useRef, Suspense, memo } from 'react';
 import { Grid, Environment, Sparkles } from '@react-three/drei';
 import { PostEffectsWithAutofocus } from '@/components/post-processing/PostEffectsWithAutofocus';
 import { usePostProcessingSettings } from '@/hooks/use-post-processing-settings';
@@ -9,6 +9,7 @@ import { Vector3 } from 'three';
 import { CameraController } from '@/components/dressing-room/CameraController';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { usePerformance } from '@/hooks/use-performance';
 
 // PERF: 优化的加载指示器组件
 const LoadingIndicator = memo(() => (
@@ -54,7 +55,7 @@ const GridFloor = memo(() => (
   </>
 ));
 
-// PERF: 优化的光照组件
+// PERF: 优化的光照组件 - 降低阴影分辨率以提升性能
 const Lighting = memo(() => (
   <>
     {/* 主要光源 - 前方 */}
@@ -62,13 +63,13 @@ const Lighting = memo(() => (
       intensity={1.2}
       position={[5, 5, 5]}
       castShadow
-      shadow-mapSize-width={1024}
-      shadow-mapSize-height={1024}
-      shadow-camera-far={50}
-      shadow-camera-left={-10}
-      shadow-camera-right={10}
-      shadow-camera-top={10}
-      shadow-camera-bottom={-10}
+      shadow-mapSize-width={512}
+      shadow-mapSize-height={512}
+      shadow-camera-far={30}
+      shadow-camera-left={-8}
+      shadow-camera-right={8}
+      shadow-camera-top={8}
+      shadow-camera-bottom={-8}
       shadow-color="#ffffff"
     />
     
@@ -104,9 +105,12 @@ const Lighting = memo(() => (
  */
 export const MainScene: React.FC = () => {
   const vrmRef = useRef<any>(null);
-  const [headPosition, setHeadPosition] = useState<[number, number, number]>([0, 1.2, 0]);
+  // PERF: 使用 useRef 替代 useState，避免每帧触发重渲染
+  const headPositionRef = useRef<[number, number, number]>([0, 1.2, 0]);
   const headPositionVec3Ref = useRef(new Vector3(0, 1.2, 0));
   const { settings: postProcessingSettings } = usePostProcessingSettings();
+  // PERF: 获取性能设置
+  const { settings: perfSettings } = usePerformance();
   
   // 从 store 读取状态和更新方法
   const {
@@ -121,7 +125,7 @@ export const MainScene: React.FC = () => {
     updateDebugSettings,
   } = useSceneStore();
   
-  // 更新头部位置（用于 Autofocus）
+  // PERF: 更新头部位置（用于 Autofocus）- 使用 ref 避免重渲染
   useFrame(() => {
     // 从 store 获取 VRM 模型或从 ref 获取
     const vrm = vrmModel || vrmRef.current?.userData?.vrm;
@@ -133,23 +137,20 @@ export const MainScene: React.FC = () => {
       } else if (typeof vrm.humanoid.getNormalizedBoneNode === 'function') {
         headBone = vrm.humanoid.getNormalizedBoneNode('head');
       }
-      
+
       if (headBone) {
         headBone.getWorldPosition(headPositionVec3Ref.current);
-        setHeadPosition([
-          headPositionVec3Ref.current.x,
-          headPositionVec3Ref.current.y,
-          headPositionVec3Ref.current.z,
-        ]);
+        // PERF: 直接更新 ref，不触发重渲染
+        headPositionRef.current[0] = headPositionVec3Ref.current.x;
+        headPositionRef.current[1] = headPositionVec3Ref.current.y;
+        headPositionRef.current[2] = headPositionVec3Ref.current.z;
       } else if (vrm.scene) {
         // 降级方案：使用场景位置
         vrm.scene.getWorldPosition(headPositionVec3Ref.current);
         headPositionVec3Ref.current.y = 1.2;
-        setHeadPosition([
-          headPositionVec3Ref.current.x,
-          headPositionVec3Ref.current.y,
-          headPositionVec3Ref.current.z,
-        ]);
+        headPositionRef.current[0] = headPositionVec3Ref.current.x;
+        headPositionRef.current[1] = headPositionVec3Ref.current.y;
+        headPositionRef.current[2] = headPositionVec3Ref.current.z;
       }
     }
   });
@@ -168,11 +169,11 @@ export const MainScene: React.FC = () => {
 
   return (
     <>
-      {/* HDR 环境贴图 */}
+      {/* PERF: HDR 环境贴图 - 根据性能模式调整分辨率 */}
       <Environment
-        files="/HDR_IntoTheClouds.hdr"
+        files="/images/SKY.hdr"
         background
-        resolution={256}
+        resolution={perfSettings.hdrResolution}
       />
 
       {/* 相机控制器 */}
@@ -232,21 +233,25 @@ export const MainScene: React.FC = () => {
         </Suspense>
       </group>
       
-      {/* Sparkles 特效（包裹角色上半身） */}
-      <Sparkles
-        count={50}
-        scale={2}
-        size={3}
-        speed={0.3}
-        color="#ffffff"
-        position={[0, 1.2, 0]} // 角色上半身位置
-      />
+      {/* PERF: Sparkles 特效 - 根据性能模式控制 */}
+      {perfSettings.sparkles && (
+        <Sparkles
+          count={perfSettings.particleCount}
+          scale={2}
+          size={2.5}
+          speed={0.3}
+          color="#ffffff"
+          position={[0, 1.2, 0]}
+        />
+      )}
       
-      {/* 后期处理：包含所有效果（颜色、噪点、晕影、色调映射）和自动对焦 */}
-      <PostEffectsWithAutofocus
-        autofocusTarget={headPosition}
-        settings={postProcessingSettings}
-      />
+      {/* PERF: 后期处理 - 根据性能模式控制 */}
+      {perfSettings.postProcessing && (
+        <PostEffectsWithAutofocus
+          autofocusTarget={headPositionRef.current}
+          settings={postProcessingSettings}
+        />
+      )}
     </>
   );
 };

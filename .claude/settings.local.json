@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 30 npm run dev:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(where:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(timeout 45 npm run dev:*)",
+      "WebSearch"
+    ]
+  }
+}

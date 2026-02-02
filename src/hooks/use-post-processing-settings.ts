@@ -10,7 +10,7 @@ import { persist } from 'zustand/middleware';
 
 const STORAGE_KEY = 'vrm-app-post-settings';
 
-// 默认配置
+// PERF: 默认配置 - 禁用高消耗效果以提升性能
 const DEFAULT_SETTINGS = {
   brightness: 0,
   contrast: 0,
@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS = {
   noiseOpacity: 0,
   vignetteDarkness: 0.5,
   toneMappingMode: 0, // 0 = ACES_FILMIC
-  autofocusEnabled: true,
+  autofocusEnabled: false, // PERF: 默认禁用 - DOF 效果 GPU 密集型
   autofocusBokehScale: 10,
 };
 
