@@ -34,18 +34,17 @@ export const metadata: Metadata = {
 
 interface RootLayoutProps {
   children: React.ReactNode
-  params: { locale: string }
+  params: { locale?: string }
 }
 
 export default async function RootLayout({
   children,
-  params: { locale }
+  params = {}
 }: RootLayoutProps) {
   try {
+    const locale = params?.locale ?? 'zh'
     // 验证语言是否支持
-    // 如果是静态文件请求（如 favicon.ico），不应该进入这里（由 middleware 处理）
     if (!locale || !locales.includes(locale as any)) {
-      console.warn(`Unsupported locale: ${locale}, redirecting to default`)
       notFound();
     }
 

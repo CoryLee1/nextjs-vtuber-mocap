@@ -2,8 +2,8 @@
 export const locales = ['zh', 'en', 'ja'] as const;
 export type Locale = typeof locales[number];
 
-// 默认语言
-export const defaultLocale: Locale = 'zh';
+// 默认语言（Echuu 默认英文）
+export const defaultLocale: Locale = 'en';
 
 // 语言配置
 export const localeConfig = {

@@ -40,10 +40,21 @@ import sceneBaseIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 183.png';
 import sceneOverlayIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 179.png';
 import sceneRibbonIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 180.png';
 import calendarIcon from '@/app/v1/assets/ECHUU V1 UX_img/8035b537838f81a942811ef8fecd8c5b 1.png';
+import echuuLogo from '@/app/v1/assets/logo-5-12.png';
 import accentSmall from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 262 (Stroke).svg';
 import type { VRMModel } from '@/types';
 import { getModels } from '@/lib/resource-manager';
 import { s3Uploader } from '@/lib/s3-uploader';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/style.css';
+
+/** 单次直播回忆：供 agent 下次直播参考 */
+export type StreamMemory = {
+  date: string; // YYYY-MM-DD
+  topic: string;
+  summary?: string;
+  participantsRemembered?: string[]; // 被记住的观众/互动者
+};
 
 // 通义千问 TTS 系统音色：value 与后端 voice 参数一致；补充支持语言、性别、特色便于选择
 const TTS_VOICES: {
@@ -77,6 +88,12 @@ import accentLarge from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 264 (Stroke).sv
 
 const ECHUU_CONFIG_KEY = 'echuu_config';
 const ECHUU_LIVE_SETTINGS_KEY = 'echuu_live_settings';
+
+/** 支持的直播推流平台 */
+const LIVE_PLATFORMS: { id: 'twitch' | 'youtube'; labelZh: string; labelEn: string }[] = [
+  { id: 'twitch', labelZh: 'Twitch', labelEn: 'Twitch' },
+  { id: 'youtube', labelZh: 'YouTube', labelEn: 'YouTube' },
+];
 const ECHUU_SOUND_SETTINGS_KEY = 'echuu_sound_settings';
 const ECHUU_SCENE_SETTINGS_KEY = 'echuu_scene_settings';
 const ECHUU_CALENDAR_SETTINGS_KEY = 'echuu_calendar_settings';
@@ -95,12 +112,12 @@ type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar';
 export const BrandOverlay = memo(() => {
   return (
     <div className="fixed top-8 left-8 z-50 flex items-center space-x-3 pointer-events-auto group">
-      <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-2xl shadow-blue-500/20 transform group-hover:rotate-6 transition-transform duration-300">
-        EC
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-2xl shadow-blue-500/20 transform group-hover:rotate-6 transition-transform duration-300 bg-transparent">
+        <img src={echuuLogo.src} alt="Echuu" className="w-full h-full object-contain" />
       </div>
       <div className="flex flex-col">
-        <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
-          Echuu AI Vtubing
+        <h1 className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">
+          AI Vtuber
         </h1>
       </div>
     </div>
@@ -108,6 +125,8 @@ export const BrandOverlay = memo(() => {
 });
 
 BrandOverlay.displayName = 'BrandOverlay';
+
+const ECHUU_VIEW_COUNT_KEY = 'echuu_view_count';
 
 // 2. Top Right Power Toggle
 export const PowerToggle = memo(({ 
@@ -118,26 +137,46 @@ export const PowerToggle = memo(({
   onToggle: () => void 
 }) => {
   const { onlineCount, connectionState, connect } = useEchuuWebSocket();
+  const { locale } = useI18n();
+  const [viewCount, setViewCount] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    return parseInt(window.localStorage.getItem(ECHUU_VIEW_COUNT_KEY) || '0', 10);
+  });
+  const incrementedRef = useRef(false);
 
   useEffect(() => {
     connect();
   }, [connect]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || incrementedRef.current) return;
+    incrementedRef.current = true;
+    const prev = parseInt(window.localStorage.getItem(ECHUU_VIEW_COUNT_KEY) || '0', 10);
+    const next = prev + 1;
+    window.localStorage.setItem(ECHUU_VIEW_COUNT_KEY, String(next));
+    setViewCount(next);
+  }, []);
+
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
       <div className="flex items-center gap-4">
-        {/* Online count bar (replaces old ON/OFF) */}
+        {/* 访问次数 + 在线人数 合并为一个胶囊 */}
         <div
-          className="flex items-center space-x-3 px-6 py-2.5 rounded-full border-2 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900 border-blue-500 text-blue-500 scale-105"
-          title="当前在线人数（来自 Echuu WebSocket）"
+          className="flex items-center gap-3 px-5 py-2.5 rounded-full border-2 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900 border-blue-500 text-blue-500 scale-105"
+          title={locale === 'zh' ? '本站访问次数（本机）· 当前在线人数' : 'Page views (this device) · Online now'}
         >
+          <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+            {locale === 'zh' ? '访问' : 'VIEWS'}
+          </span>
+          <span className="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">{viewCount}</span>
+          <span className="w-px h-4 bg-slate-300 dark:bg-slate-600" aria-hidden />
           <div
             className={cn(
-              "w-2 h-2 rounded-full",
+              "w-2 h-2 rounded-full shrink-0",
               connectionState === 'connected' ? "bg-blue-500 animate-pulse" : "bg-slate-300 dark:bg-slate-600"
             )}
           />
-          <span className="text-xs font-black uppercase tracking-widest">ONLINE</span>
+          <span className="text-xs font-black uppercase tracking-widest">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
           <span className="text-xs font-black tabular-nums">{onlineCount}</span>
         </div>
 
@@ -293,6 +332,9 @@ export const StreamRoomSidebar = memo(({
   const hdrInputRef = useRef<HTMLInputElement>(null);
   const sceneFbxInputRef = useRef<HTMLInputElement>(null);
   const [calendarMemo, setCalendarMemo] = useState('');
+  const [streamMemories, setStreamMemories] = useState<StreamMemory[]>([]);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+  const [memoryDraft, setMemoryDraft] = useState<{ topic: string; summary: string; participants: string }>({ topic: '', summary: '', participants: '' });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -314,7 +356,8 @@ export const StreamRoomSidebar = memo(({
     if (storedLive) {
       try {
         const parsed = JSON.parse(storedLive);
-        setLivePlatform(parsed.platform || '');
+        const p = parsed.platform === 'twitch' || parsed.platform === 'youtube' ? parsed.platform : '';
+        setLivePlatform(p);
         setLiveKey(parsed.key || '');
       } catch {
         // ignore invalid storage
@@ -355,6 +398,9 @@ export const StreamRoomSidebar = memo(({
       try {
         const parsed = JSON.parse(storedCalendar);
         setCalendarMemo(parsed.memo || '');
+        if (Array.isArray(parsed.streamMemories)) {
+          setStreamMemories(parsed.streamMemories);
+        }
       } catch {
         // ignore invalid storage
       }
@@ -379,6 +425,21 @@ export const StreamRoomSidebar = memo(({
       }));
     }
   }, [echuuConfig, panelOpen, panelType]);
+
+  // 日历选中日期变化时，把该日期的回忆填入草稿
+  useEffect(() => {
+    if (!selectedCalendarDate) {
+      setMemoryDraft({ topic: '', summary: '', participants: '' });
+      return;
+    }
+    const dateStr = selectedCalendarDate.toISOString().slice(0, 10);
+    const mem = streamMemories.find((m) => m.date === dateStr);
+    setMemoryDraft({
+      topic: mem?.topic ?? '',
+      summary: mem?.summary ?? '',
+      participants: Array.isArray(mem?.participantsRemembered) ? mem.participantsRemembered.join('、') : '',
+    });
+  }, [selectedCalendarDate, streamMemories]);
 
   // 与 ModelManager 一致：合并本地预设（resource-manager）+ S3 列表
   useEffect(() => {
@@ -462,9 +523,28 @@ export const StreamRoomSidebar = memo(({
         setSceneFbxUrl(sceneFbxUrl || null);
       }
       if (panelType === 'calendar') {
+        let nextMemories = streamMemories;
+        if (selectedCalendarDate) {
+          const dateStr = selectedCalendarDate.toISOString().slice(0, 10);
+          const next: StreamMemory = {
+            date: dateStr,
+            topic: memoryDraft.topic.trim(),
+            summary: memoryDraft.summary.trim() || undefined,
+            participantsRemembered: memoryDraft.participants
+              .split(/[,，、\s]+/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+          };
+          const filtered = streamMemories.filter((m) => m.date !== dateStr);
+          nextMemories =
+            next.topic || next.summary || (next.participantsRemembered?.length ?? 0) > 0
+              ? [...filtered, next]
+              : filtered;
+          setStreamMemories(nextMemories);
+        }
         window.localStorage.setItem(
           ECHUU_CALENDAR_SETTINGS_KEY,
-          JSON.stringify({ memo: calendarMemo })
+          JSON.stringify({ memo: calendarMemo, streamMemories: nextMemories })
         );
       }
     }
@@ -765,18 +845,47 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'live' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">直播平台</label>
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '直播平台' : 'Streaming Platform'}</label>
+              <Select
+                value={livePlatform || '__none__'}
+                onValueChange={(v) => setLivePlatform(v === '__none__' ? '' : (v as 'twitch' | 'youtube'))}
+              >
+                <SelectTrigger className="h-12 bg-white dark:bg-slate-800 rounded-lg px-4 text-slate-800 dark:text-slate-200">
+                  <SelectValue placeholder={locale === 'zh' ? '选择平台' : 'Select platform'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{locale === 'zh' ? '请选择' : 'Select…'}</SelectItem>
+                  {LIVE_PLATFORMS.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {locale === 'zh' ? p.labelZh : p.labelEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="text-[12px] text-slate-500">
+                {locale === 'zh' ? '推流密钥 (Stream Key)' : 'Stream Key'}
+              </label>
               <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={livePlatform}
-                onChange={(event) => setLivePlatform(event.target.value)}
-              />
-              <label className="text-[12px] text-slate-500">key</label>
-              <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                type="password"
+                autoComplete="off"
+                className="h-12 bg-white dark:bg-slate-800 rounded-lg px-4 text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
+                placeholder={
+                  livePlatform === 'twitch'
+                    ? (locale === 'zh' ? 'Twitch 主推流密钥' : 'Twitch primary stream key')
+                    : livePlatform === 'youtube'
+                      ? (locale === 'zh' ? 'YouTube 推流密钥' : 'YouTube stream key')
+                      : (locale === 'zh' ? '请先选择平台' : 'Select a platform first')
+                }
                 value={liveKey}
-                onChange={(event) => setLiveKey(event.target.value)}
+                onChange={(e) => setLiveKey(e.target.value)}
+                disabled={!livePlatform}
               />
+              {livePlatform && (
+                <p className="text-[11px] text-slate-400">
+                  {livePlatform === 'twitch' && (locale === 'zh' ? '在 Twitch 创作者后台 → 设置 → 直播 中获取主推流密钥。' : 'Get your primary stream key from Twitch Creator Dashboard → Settings → Stream.')}
+                  {livePlatform === 'youtube' && (locale === 'zh' ? '在 YouTube 工作室 → 推流 中创建并复制推流密钥。' : 'Create and copy your stream key from YouTube Studio → Go live.')}
+                </p>
+              )}
             </div>
           )}
 
@@ -867,14 +976,61 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'calendar' && (
             <div className="flex flex-col gap-4">
-              <div className="h-[240px] bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-400 text-sm">
-                Calendar
+              <div className="echuu-calendar-wrap flex rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                <div className="flex-1 min-w-0 p-3">
+                  <DayPicker
+                    mode="single"
+                    weekStartsOn={0}
+                    defaultMonth={new Date()}
+                    selected={selectedCalendarDate ?? new Date()}
+                    onSelect={(d) => setSelectedCalendarDate(d ?? null)}
+                    modifiers={{
+                      hasMemory: streamMemories.map((m) => new Date(m.date + 'T12:00:00')),
+                    }}
+                    modifiersClassNames={{
+                      hasMemory: 'echuu-day-memory',
+                    }}
+                  />
+                </div>
+                <div className="w-[100px] flex-shrink-0 rounded-r-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                  <img
+                    src="/images/calendar-sky.png"
+                    alt=""
+                    className="w-full h-full object-cover min-h-[200px]"
+                  />
+                </div>
               </div>
-              <label className="text-[12px] text-slate-500">回忆内容</label>
+              <label className="text-[12px] text-slate-500">回忆内容（供下次直播参考）</label>
+              {selectedCalendarDate ? (
+                <div className="flex flex-col gap-2">
+                  <input
+                    className="h-9 bg-white dark:bg-slate-800 rounded-lg px-3 text-slate-800 dark:text-slate-200 text-sm placeholder:text-slate-400"
+                    placeholder={locale === 'zh' ? '直播主题' : 'Stream topic'}
+                    value={memoryDraft.topic}
+                    onChange={(e) => setMemoryDraft((p) => ({ ...p, topic: e.target.value }))}
+                  />
+                  <textarea
+                    className="min-h-[60px] bg-white dark:bg-slate-800 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-200 text-sm resize-none placeholder:text-slate-400"
+                    placeholder={locale === 'zh' ? '讲了什么、互动亮点' : 'What was covered, highlights'}
+                    value={memoryDraft.summary}
+                    onChange={(e) => setMemoryDraft((p) => ({ ...p, summary: e.target.value }))}
+                  />
+                  <input
+                    className="h-9 bg-white dark:bg-slate-800 rounded-lg px-3 text-slate-800 dark:text-slate-200 text-sm placeholder:text-slate-400"
+                    placeholder={locale === 'zh' ? '谁被记住了（多人用顿号、逗号分隔）' : 'Who was remembered (comma-separated)'}
+                    value={memoryDraft.participants}
+                    onChange={(e) => setMemoryDraft((p) => ({ ...p, participants: e.target.value }))}
+                  />
+                </div>
+              ) : (
+                <p className="text-slate-400 text-sm py-2">{locale === 'zh' ? '选择日期查看或添加直播回忆' : 'Select a date to view or add stream memory'}</p>
+              )}
+              <label className="text-[12px] text-slate-500 pt-1">备注</label>
               <textarea
-                className="h-32 bg-white rounded-lg px-4 py-3 text-slate-800 resize-none"
+                className="h-20 bg-white dark:bg-slate-800 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-200 resize-none text-sm"
+                placeholder={locale === 'zh' ? '其他备注' : 'Other notes'}
                 value={calendarMemo}
-                onChange={(event) => setCalendarMemo(event.target.value)}
+                onChange={(e) => setCalendarMemo(e.target.value)}
               />
             </div>
           )}

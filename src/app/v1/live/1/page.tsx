@@ -30,10 +30,22 @@ import calendarIcon from '../../assets/ECHUU V1 UX_img/8035b537838f81a942811ef8f
 import accentSmall from '../../assets/ECHUU V1 UX_icon/Vector 262 (Stroke).svg';
 import accentMedium from '../../assets/ECHUU V1 UX_icon/Vector 263 (Stroke).svg';
 import accentLarge from '../../assets/ECHUU V1 UX_icon/Vector 264 (Stroke).svg';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const ECHUU_CONFIG_KEY = 'echuu_config';
 const ECHUU_MODEL_KEY = 'echuu_model';
 const ECHUU_LIVE_SETTINGS_KEY = 'echuu_live_settings';
+
+const LIVE_PLATFORMS: { id: 'twitch' | 'youtube'; labelZh: string; labelEn: string }[] = [
+  { id: 'twitch', labelZh: 'Twitch', labelEn: 'Twitch' },
+  { id: 'youtube', labelZh: 'YouTube', labelEn: 'YouTube' },
+];
 const ECHUU_SOUND_SETTINGS_KEY = 'echuu_sound_settings';
 const ECHUU_SCENE_SETTINGS_KEY = 'echuu_scene_settings';
 const ECHUU_CALENDAR_SETTINGS_KEY = 'echuu_calendar_settings';
@@ -177,7 +189,8 @@ export default function V1Live1() {
     if (storedLive) {
       try {
         const parsed = JSON.parse(storedLive);
-        setLivePlatform(parsed.platform || '');
+        const p = parsed.platform === 'twitch' || parsed.platform === 'youtube' ? parsed.platform : '';
+        setLivePlatform(p);
         setLiveKey(parsed.key || '');
       } catch {
         // ignore invalid storage
@@ -560,17 +573,44 @@ export default function V1Live1() {
             {panelType === 'live' && (
               <div className="flex flex-col gap-4">
                 <label className="text-[12px] text-slate-500">直播平台</label>
+                <Select
+                  value={livePlatform || '__none__'}
+                  onValueChange={(v) => setLivePlatform(v === '__none__' ? '' : (v as 'twitch' | 'youtube'))}
+                >
+                  <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
+                    <SelectValue placeholder="选择平台" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">请选择</SelectItem>
+                    {LIVE_PLATFORMS.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.labelZh}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <label className="text-[12px] text-slate-500">推流密钥 (Stream Key)</label>
                 <input
-                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                  value={livePlatform}
-                  onChange={(event) => setLivePlatform(event.target.value)}
-                />
-                <label className="text-[12px] text-slate-500">key</label>
-                <input
-                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  type="password"
+                  autoComplete="off"
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800 placeholder:text-slate-400"
+                  placeholder={
+                    livePlatform === 'twitch'
+                      ? 'Twitch 主推流密钥'
+                      : livePlatform === 'youtube'
+                        ? 'YouTube 推流密钥'
+                        : '请先选择平台'
+                  }
                   value={liveKey}
-                  onChange={(event) => setLiveKey(event.target.value)}
+                  onChange={(e) => setLiveKey(e.target.value)}
+                  disabled={!livePlatform}
                 />
+                {livePlatform && (
+                  <p className="text-[11px] text-slate-400">
+                    {livePlatform === 'twitch' && '在 Twitch 创作者后台 → 设置 → 直播 中获取主推流密钥。'}
+                    {livePlatform === 'youtube' && '在 YouTube 工作室 → 推流 中创建并复制推流密钥。'}
+                  </p>
+                )}
               </div>
             )}
 

@@ -87,3 +87,18 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 }
+
+/* ========== 侧栏 Calendar（react-day-picker）有回忆的日期高亮 ========== */
+.echuu-calendar-wrap .echuu-day-memory {
+  background: hsl(38 92% 94%) !important;
+  color: hsl(38 92% 50%);
+  font-weight: 600;
+}
+.dark .echuu-calendar-wrap .echuu-day-memory {
+  background: hsl(38 92% 18%) !important;
+  color: hsl(38 92% 55%);
+}
+.echuu-calendar-wrap .echuu-day-memory[data-selected] {
+  background: var(--rdp-accent-background-color, hsl(217 91% 60%)) !important;
+  color: var(--rdp-accent-foreground-color, #fff) !important;
+}
