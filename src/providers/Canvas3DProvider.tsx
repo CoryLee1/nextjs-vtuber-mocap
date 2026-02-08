@@ -52,6 +52,7 @@ function calculateDPR(settings: { quality: 'low' | 'medium' | 'high'; resolution
 export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { settings } = usePerformance();
   const setCanvasReady = useSceneStore((state) => state.setCanvasReady);
+  const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
   const pathname = usePathname();
 
   // 检查是否在测试 Loading 页，如果是则禁用 Canvas 以实现完全隔离
@@ -72,12 +73,15 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {/* 持久化 Canvas - 固定定位，覆盖整个视口，接收鼠标事件 */}
       {!isTestingLoading && (
         <div 
-          className="fixed inset-0" 
+          className="fixed top-0 right-0 bottom-0"
           style={{ 
             zIndex: 0, 
             pointerEvents: 'auto',
-            overscrollBehavior: 'contain', // ✅ 防止页面滚动干扰
-            touchAction: 'none', // ✅ 禁用触摸默认行为（触摸板/触控更稳）
+            overscrollBehavior: 'contain',
+            touchAction: 'none',
+            left: streamPanelOpen ? 560 : 0,
+            width: streamPanelOpen ? 'calc(100% - 560px)' : '100%',
+            transition: 'left 0.3s ease-in-out, width 0.3s ease-in-out',
           }}
         >
           <Canvas

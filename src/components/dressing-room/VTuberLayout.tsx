@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useCallback } from 'react';
 import { 
   BrandOverlay, 
   PowerToggle, 
@@ -9,6 +9,7 @@ import {
   StreamRoomSidebar,
   StreamRoomChatPanel
 } from './UILayoutRedesign';
+import { useSceneStore } from '@/hooks/use-scene-store';
 
 // 状态指示器接口 (保留以兼容 VTuberApp.tsx)
 interface StatusIndicatorProps {
@@ -47,6 +48,10 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
   controlProps
 }) => {
   const [isStreamPanelOpen, setIsStreamPanelOpen] = useState(false);
+  const handlePanelOpenChange = useCallback((open: boolean) => {
+    setIsStreamPanelOpen(open);
+    useSceneStore.getState().setStreamPanelOpen(open);
+  }, []);
 
   return (
     <div className="relative w-full h-screen overflow-hidden theme-transition pointer-events-none bg-background/20">
@@ -69,7 +74,7 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
       />
 
       {/* 2.5 左侧 StreamRoom 控制 + 右侧 Chat */}
-      <StreamRoomSidebar onPanelOpenChange={setIsStreamPanelOpen} />
+      <StreamRoomSidebar onPanelOpenChange={handlePanelOpenChange} />
       <StreamRoomChatPanel />
 
       {/* 3. 左下角信息面板 */}

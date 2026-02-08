@@ -473,7 +473,7 @@ export const StreamRoomSidebar = memo(({
       <div
         className={`fixed left-0 top-0 z-30 h-screen transition-transform duration-300 ease-in-out ${panelOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'}`}
       >
-        <div className="w-[560px] h-full bg-[#E7ECF3] shadow-[0_20px_60px_rgba(0,0,0,0.2)] border border-white/60 rounded-tr-[20px] rounded-br-[20px] p-10 flex flex-col gap-6 pointer-events-auto overflow-y-auto">
+        <div className="w-[560px] h-full bg-[#E7ECF3] border border-white/60 p-10 flex flex-col gap-6 pointer-events-auto overflow-y-auto">
           <div className="flex items-center justify-between">
             <div className="text-[12px] text-slate-500 tracking-widest uppercase">
               {panelType === 'character' && 'Character Setting'}

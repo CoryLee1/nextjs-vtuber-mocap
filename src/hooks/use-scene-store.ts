@@ -30,6 +30,9 @@ interface SceneState {
   /** Canvas 是否已挂载并准备就绪 */
   canvasReady: boolean;
   setCanvasReady: (ready: boolean) => void;
+  /** Stream 侧边栏是否打开（用于 Canvas 区域自适应，避免被盖住） */
+  streamPanelOpen: boolean;
+  setStreamPanelOpen: (open: boolean) => void;
 
   // ========== 场景控制 ==========
   /** 当前激活的场景 */
@@ -140,6 +143,10 @@ export const useSceneStore = create<SceneState>()(
   canvasReady: false,
   setCanvasReady: (ready: boolean) => {
     set({ canvasReady: ready });
+  },
+  streamPanelOpen: false,
+  setStreamPanelOpen: (open: boolean) => {
+    set({ streamPanelOpen: open });
   },
 
   // ========== 场景控制 ==========
