@@ -123,6 +123,18 @@
       "step2": "确保光线充足，面部清晰可见",
       "step3": "保持距离摄像头 50-100cm",
       "step4": "使用按钮管理模型和动画"
+    },
+    "character": {
+      "name": "名称",
+      "voice": "声音",
+      "voicePlaceholder": "选择 TTS 音色",
+      "model": "模型",
+      "modelPlaceholder": "选择 .vrm 模型",
+      "background": "背景",
+      "backgroundHint": "角色背景、世界观等设定",
+      "persona": "人物设定",
+      "topic": "直播主题",
+      "confirm": "确认"
     }
   },
   "settings": {

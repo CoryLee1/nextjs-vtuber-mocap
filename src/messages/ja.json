@@ -110,6 +110,18 @@
       "success": "操作成功",
       "warning": "警告",
       "info": "情報"
+    },
+    "character": {
+      "name": "名前",
+      "voice": "声",
+      "voicePlaceholder": "TTS音色を選択",
+      "model": "モデル",
+      "modelPlaceholder": ".vrmモデルを選択",
+      "background": "背景",
+      "backgroundHint": "キャラクターの背景・世界観など",
+      "persona": "人物設定",
+      "topic": "配信テーマ",
+      "confirm": "確認"
     }
   },
   "settings": {

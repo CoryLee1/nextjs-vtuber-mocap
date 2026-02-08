@@ -76,6 +76,12 @@ interface SceneState {
   updateDebugSettings: (settings: Partial<DebugSettings>) => void;
 
   // ========== 场景引用 ==========
+  /** 请求截帧（时间戳，由 UI 设置；Canvas 内 useFrame 响应后清空） */
+  takePhotoRequest: number | null;
+  setTakePhotoRequest: (ts: number | null) => void;
+  /** 截帧结果 Blob URL（Canvas 内写入；UI 消费后清空） */
+  lastCaptureBlobUrl: string | null;
+  setLastCaptureBlobUrl: (url: string | null) => void;
   /** VRM 模型引用（用于调试面板等） */
   vrmRef: React.RefObject<any> | null;
   /** 设置 VRM 引用 */
@@ -92,6 +98,7 @@ interface SceneState {
   // ========== Echuu Live 状态 ==========
   echuuConfig: {
     characterName: string;
+    voice: string;
     persona: string;
     background: string;
     topic: string;
@@ -271,6 +278,10 @@ export const useSceneStore = create<SceneState>()(
   },
 
   // ========== 场景引用 ==========
+  takePhotoRequest: null,
+  setTakePhotoRequest: (ts: number | null) => set({ takePhotoRequest: ts }),
+  lastCaptureBlobUrl: null,
+  setLastCaptureBlobUrl: (url: string | null) => set({ lastCaptureBlobUrl: url }),
   vrmRef: null,
   setVrmRef: (ref: React.RefObject<any> | null) => {
     set({ vrmRef: ref });
@@ -289,6 +300,7 @@ export const useSceneStore = create<SceneState>()(
   // ========== Echuu Live 状态 ==========
   echuuConfig: {
     characterName: '六螺',
+    voice: 'Cherry',
     persona: '一个性格古怪、喜欢碎碎念的虚拟主播',
     background: '正在直播，和观众聊天',
     topic: '关于上司的超劲爆八卦',

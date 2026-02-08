@@ -33,6 +33,12 @@ import accentLarge from '../../assets/ECHUU V1 UX_icon/Vector 264 (Stroke).svg';
 
 const ECHUU_CONFIG_KEY = 'echuu_config';
 const ECHUU_MODEL_KEY = 'echuu_model';
+const ECHUU_LIVE_SETTINGS_KEY = 'echuu_live_settings';
+const ECHUU_SOUND_SETTINGS_KEY = 'echuu_sound_settings';
+const ECHUU_SCENE_SETTINGS_KEY = 'echuu_scene_settings';
+const ECHUU_CALENDAR_SETTINGS_KEY = 'echuu_calendar_settings';
+
+type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar';
 
 const StreamRoomAvatar = () => {
   const { echuuConfig, vrmModelUrl } = useSceneStore();
@@ -72,6 +78,24 @@ export default function V1Live1() {
   } = useSceneStore();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState('');
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
+  const [characterDraft, setCharacterDraft] = useState({
+    characterName: echuuConfig.characterName,
+    voice: echuuConfig.voice || 'Cherry',
+    modelUrl: echuuConfig.modelUrl || '',
+    modelName: echuuConfig.modelName || '',
+    persona: echuuConfig.persona,
+    background: echuuConfig.background,
+    topic: echuuConfig.topic,
+  });
+  const [livePlatform, setLivePlatform] = useState('');
+  const [liveKey, setLiveKey] = useState('');
+  const [bgm, setBgm] = useState('');
+  const [voice, setVoice] = useState('');
+  const [hdr, setHdr] = useState('');
+  const [sceneName, setSceneName] = useState('');
+  const [calendarMemo, setCalendarMemo] = useState('');
   const audioQueueRef = useRef(createEchuuAudioQueue({
     onStart: () => setEchuuAudioPlaying(true),
     onEnd: () => setEchuuAudioPlaying(false),
@@ -109,6 +133,16 @@ export default function V1Live1() {
       try {
         const parsed = JSON.parse(storedConfig);
         setEchuuConfig(parsed);
+        setCharacterDraft((prev) => ({
+          ...prev,
+          characterName: parsed.characterName || prev.characterName,
+          voice: parsed.voice || prev.voice,
+          modelUrl: parsed.modelUrl || prev.modelUrl,
+          modelName: parsed.modelName || prev.modelName,
+          persona: parsed.persona || prev.persona,
+          background: parsed.background || prev.background,
+          topic: parsed.topic || prev.topic,
+        }));
       } catch {
         // ignore invalid config
       }
@@ -125,6 +159,75 @@ export default function V1Live1() {
       }
     }
   }, [setEchuuConfig, setVRMModelUrl]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedLive = window.localStorage.getItem(ECHUU_LIVE_SETTINGS_KEY);
+    const storedSound = window.localStorage.getItem(ECHUU_SOUND_SETTINGS_KEY);
+    const storedScene = window.localStorage.getItem(ECHUU_SCENE_SETTINGS_KEY);
+    const storedCalendar = window.localStorage.getItem(ECHUU_CALENDAR_SETTINGS_KEY);
+
+    if (storedLive) {
+      try {
+        const parsed = JSON.parse(storedLive);
+        setLivePlatform(parsed.platform || '');
+        setLiveKey(parsed.key || '');
+      } catch {
+        // ignore invalid storage
+      }
+    }
+    if (storedSound) {
+      try {
+        const parsed = JSON.parse(storedSound);
+        setBgm(parsed.bgm || '');
+        setVoice(parsed.voice || '');
+      } catch {
+        // ignore invalid storage
+      }
+    }
+    if (storedScene) {
+      try {
+        const parsed = JSON.parse(storedScene);
+        setHdr(parsed.hdr || '');
+        setSceneName(parsed.scene || '');
+      } catch {
+        // ignore invalid storage
+      }
+    }
+    if (storedCalendar) {
+      try {
+        const parsed = JSON.parse(storedCalendar);
+        setCalendarMemo(parsed.memo || '');
+      } catch {
+        // ignore invalid storage
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (panelType === 'character' && panelOpen) {
+      setCharacterDraft((prev) => ({
+        ...prev,
+        characterName: echuuConfig.characterName,
+        voice: echuuConfig.voice || 'Cherry',
+        modelUrl: echuuConfig.modelUrl || '',
+        modelName: echuuConfig.modelName || '',
+        persona: echuuConfig.persona,
+        background: echuuConfig.background,
+        topic: echuuConfig.topic,
+      }));
+    }
+  }, [
+    echuuConfig.background,
+    echuuConfig.characterName,
+    echuuConfig.modelName,
+    echuuConfig.modelUrl,
+    echuuConfig.persona,
+    echuuConfig.topic,
+    echuuConfig.voice,
+    panelOpen,
+    panelType,
+  ]);
 
   const subtitleText = useMemo(() => currentStep?.speech || '', [currentStep?.speech]);
 
@@ -143,6 +246,59 @@ export default function V1Live1() {
     } finally {
       setIsStarting(false);
     }
+  };
+
+  const handleOpenPanel = (type: StreamRoomPanel) => {
+    if (panelOpen && panelType === type) {
+      setPanelOpen(false);
+      return;
+    }
+    setPanelType(type);
+    setPanelOpen(true);
+  };
+
+  const handlePanelSave = () => {
+    if (typeof window !== 'undefined') {
+      if (panelType === 'character') {
+        const nextConfig = {
+          ...echuuConfig,
+          characterName: characterDraft.characterName,
+          voice: characterDraft.voice || 'Cherry',
+          modelUrl: characterDraft.modelUrl || echuuConfig.modelUrl,
+          modelName: characterDraft.modelName || echuuConfig.modelName,
+          persona: characterDraft.persona,
+          background: characterDraft.background,
+          topic: characterDraft.topic,
+        };
+        setEchuuConfig(nextConfig);
+        window.localStorage.setItem(ECHUU_CONFIG_KEY, JSON.stringify(nextConfig));
+      }
+      if (panelType === 'live') {
+        window.localStorage.setItem(
+          ECHUU_LIVE_SETTINGS_KEY,
+          JSON.stringify({ platform: livePlatform, key: liveKey })
+        );
+      }
+      if (panelType === 'sound') {
+        window.localStorage.setItem(
+          ECHUU_SOUND_SETTINGS_KEY,
+          JSON.stringify({ bgm, voice })
+        );
+      }
+      if (panelType === 'scene') {
+        window.localStorage.setItem(
+          ECHUU_SCENE_SETTINGS_KEY,
+          JSON.stringify({ hdr, scene: sceneName })
+        );
+      }
+      if (panelType === 'calendar') {
+        window.localStorage.setItem(
+          ECHUU_CALENDAR_SETTINGS_KEY,
+          JSON.stringify({ memo: calendarMemo })
+        );
+      }
+    }
+    setPanelOpen(false);
   };
 
   return (
@@ -246,48 +402,213 @@ export default function V1Live1() {
         ) : null}
 
         {/* Left UIControl */}
-        <div className="absolute z-40" style={{ left: '93px', top: '66px', width: '154px', height: '808px' }}>
-          {/* Character Setting-btn */}
-          <a href="/v1/live/character" className="absolute block cursor-pointer hover:scale-105 transition-transform" style={{ left: '10px', top: '0px', width: '142px', height: '161px' }}>
-            <img src={characterIcon.src} alt="" className="absolute" style={{ left: '0px', top: '12px', width: '142px', height: '142px' }} />
-            <img src={accentSmall.src} alt="" className="absolute" style={{ left: '69px', top: '17px', width: '19px', height: '7px', transform: 'rotate(3.04deg)' }} />
-            <img src={accentMedium.src} alt="" className="absolute" style={{ left: '66px', top: '9px', width: '26px', height: '8px', transform: 'rotate(3.04deg)' }} />
-            <img src={accentLarge.src} alt="" className="absolute" style={{ left: '58px', top: '0px', width: '37px', height: '11px', transform: 'rotate(3.04deg)' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black" style={{ left: '13px', top: '146px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+        <div
+          className="absolute z-40 flex flex-col items-center justify-center gap-[29px]"
+          style={{ left: '93px', top: 'calc(50% - 405px - 6.73px)', width: '154px', height: '811.74px' }}
+        >
+          <button
+            type="button"
+            onClick={() => handleOpenPanel('character')}
+            className={`relative w-[152px] h-[121px] transition-transform ${panelOpen && panelType === 'character' ? 'scale-105' : 'hover:scale-105'}`}
+          >
+            <img src={characterIcon.src} alt="" className="absolute" style={{ left: '22px', top: '6px', width: '106px', height: '106px' }} />
+            <img src={accentSmall.src} alt="" className="absolute" style={{ left: '77px', top: '14px', width: '19px', height: '7px', transform: 'rotate(3.04deg)' }} />
+            <img src={accentMedium.src} alt="" className="absolute" style={{ left: '73px', top: '8px', width: '26px', height: '8px', transform: 'rotate(3.04deg)' }} />
+            <img src={accentLarge.src} alt="" className="absolute" style={{ left: '65px', top: '0px', width: '37px', height: '11px', transform: 'rotate(3.04deg)' }} />
+            <div className="absolute text-[12px] leading-[13px] text-black w-full text-center" style={{ left: '0px', top: '108px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
               Character Setting
             </div>
-          </a>
+          </button>
 
-          {/* LiveSetting-btn */}
-          <a href="/v1/live/1" className="absolute block cursor-pointer hover:scale-105 transition-transform" style={{ left: '7px', top: '168px', width: '147px', height: '162px' }}>
-            <img src={liveSettingIcon.src} alt="" className="absolute" style={{ left: '0px', top: '0px', width: '147px', height: '147px' }} />
-            <div className="absolute" style={{ left: '25px', top: '52px', width: '78px', height: '63px', background: '#D9D9D9', mixBlendMode: 'multiply', borderRadius: '10px' }} />
-            <div className="absolute" style={{ left: '46px', top: '74px', width: '36px', height: '20px' }}>
+          <button
+            type="button"
+            onClick={() => handleOpenPanel('live')}
+            className={`relative w-[153px] h-[112px] transition-transform ${panelOpen && panelType === 'live' ? 'scale-105' : 'hover:scale-105'}`}
+          >
+            <img src={liveSettingIcon.src} alt="" className="absolute" style={{ left: '27px', top: '6px', width: '98px', height: '98px' }} />
+            <div className="absolute" style={{ left: '46px', top: '34px', width: '52px', height: '42px', background: '#D9D9D9', mixBlendMode: 'multiply', borderRadius: '10px' }} />
+            <div className="absolute" style={{ left: '64px', top: '52px', width: '36px', height: '20px' }}>
               <div className="absolute" style={{ left: '0px', top: '5px', width: '7px', height: '7px', background: '#FF5C5C', borderRadius: '2px' }} />
               <div className="absolute text-[12px] leading-[20px] text-[#FF5C5C]" style={{ left: '11px', top: '0px', fontFamily: 'Dubai', fontWeight: 700 }}>LIVE</div>
             </div>
-            <div className="absolute text-[14px] leading-[15px] text-black" style={{ left: '38px', top: '147px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>Live Setting</div>
-          </a>
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '96px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+              Live Setting
+            </div>
+          </button>
 
-          {/* Sound Setting-btn */}
-          <a href="/v1/live/sound" className="absolute block cursor-pointer hover:scale-105 transition-transform" style={{ left: '33px', top: '373px', width: '96px', height: '108px' }}>
-            <img src={soundSettingIcon.src} alt="" className="absolute" style={{ left: '9px', top: '0px', width: '78px', height: '83px' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black" style={{ left: '0px', top: '93px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>Sound Setting</div>
-          </a>
+          <button
+            type="button"
+            onClick={() => handleOpenPanel('sound')}
+            className={`relative w-[114px] h-[92px] transition-transform ${panelOpen && panelType === 'sound' ? 'scale-105' : 'hover:scale-105'}`}
+          >
+            <img src={soundSettingIcon.src} alt="" className="absolute" style={{ left: '24px', top: '0px', width: '66px', height: '71px' }} />
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '79px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+              Sound Setting
+            </div>
+          </button>
 
-          {/* scene-button */}
-          <a href="/v1/live/scene" className="absolute block cursor-pointer hover:scale-105 transition-transform" style={{ left: '0px', top: '500px', width: '154px', height: '165px' }}>
-            <img src={sceneBaseIcon.src} alt="" className="absolute" style={{ left: '0px', top: '62px', width: '154px', height: '95px' }} />
-            <img src={sceneOverlayIcon.src} alt="" className="absolute" style={{ left: '2px', top: '0px', width: '150px', height: '150px' }} />
-            <img src={sceneRibbonIcon.src} alt="" className="absolute" style={{ left: '43px', top: '40px', width: '69px', height: '69px', transform: 'matrix(0.98, -0.18, 0.18, 0.98, 0, 0)' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black" style={{ left: '56px', top: '150px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>Scene</div>
-          </a>
+          <button
+            type="button"
+            onClick={() => handleOpenPanel('scene')}
+            className={`relative w-[156px] h-[141px] transition-transform ${panelOpen && panelType === 'scene' ? 'scale-105' : 'hover:scale-105'}`}
+          >
+            <img src={sceneBaseIcon.src} alt="" className="absolute" style={{ left: '12px', top: '54px', width: '131px', height: '81px' }} />
+            <img src={sceneOverlayIcon.src} alt="" className="absolute" style={{ left: '14px', top: '8px', width: '127px', height: '127px' }} />
+            <img src={sceneRibbonIcon.src} alt="" className="absolute" style={{ left: '58px', top: '42px', width: '59px', height: '59px', transform: 'matrix(0.98, -0.18, 0.18, 0.98, 0, 0)' }} />
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '126px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+              Scene
+            </div>
+          </button>
 
-          {/* Calendar Memory-btn */}
-          <a href="/v1/live/calendar" className="absolute block cursor-pointer hover:scale-105 transition-transform" style={{ left: '15px', top: '710px', width: '120px', height: '98px' }}>
-            <img src={calendarIcon.src} alt="" className="absolute" style={{ left: '20px', top: '0px', width: '80px', height: '80px' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black" style={{ left: '0px', top: '83px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>Calendar Memory</div>
-          </a>
+          <button
+            type="button"
+            onClick={() => handleOpenPanel('calendar')}
+            className={`relative w-[152px] h-[83px] transition-transform ${panelOpen && panelType === 'calendar' ? 'scale-105' : 'hover:scale-105'}`}
+          >
+            <img src={calendarIcon.src} alt="" className="absolute" style={{ left: '42px', top: '0px', width: '68px', height: '68px' }} />
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '71px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+              Calendar Memory
+            </div>
+          </button>
+        </div>
+
+        {/* Left Slide Panel */}
+        <div
+          className={`absolute z-30 transition-transform duration-300 ${panelOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'}`}
+          style={{ left: '0px', top: '120px', width: '540px', height: '700px' }}
+        >
+          <div className="w-full h-full bg-[#E7ECF3] shadow-[0_20px_60px_rgba(0,0,0,0.2)] border border-white/60 rounded-[20px] p-10 flex flex-col gap-6 pointer-events-auto">
+            <div className="flex items-center justify-between">
+              <div className="text-[12px] text-slate-500 tracking-widest uppercase">
+                {panelType === 'character' && 'Character Setting'}
+                {panelType === 'live' && 'Live Setting'}
+                {panelType === 'sound' && 'Sound Setting'}
+                {panelType === 'scene' && 'Scene'}
+                {panelType === 'calendar' && 'Calendar Memory'}
+              </div>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-700 transition"
+                onClick={() => setPanelOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {panelType === 'character' && (
+              <div className="flex flex-col gap-4">
+                <label className="text-[12px] text-slate-500">名称</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={characterDraft.characterName}
+                  onChange={(event) => setCharacterDraft((prev) => ({ ...prev, characterName: event.target.value }))}
+                />
+                <label className="text-[12px] text-slate-500">声音</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={characterDraft.voice}
+                  onChange={(event) => setCharacterDraft((prev) => ({ ...prev, voice: event.target.value }))}
+                />
+                <label className="text-[12px] text-slate-500">模型</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={characterDraft.modelName}
+                  onChange={(event) => setCharacterDraft((prev) => ({ ...prev, modelName: event.target.value }))}
+                />
+                <label className="text-[12px] text-slate-500">背景</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={characterDraft.background}
+                  onChange={(event) => setCharacterDraft((prev) => ({ ...prev, background: event.target.value }))}
+                />
+                <label className="text-[12px] text-slate-500">人物设定</label>
+                <textarea
+                  className="h-24 bg-white rounded-lg px-4 py-3 text-slate-800 resize-none"
+                  value={characterDraft.persona}
+                  onChange={(event) => setCharacterDraft((prev) => ({ ...prev, persona: event.target.value }))}
+                />
+                <label className="text-[12px] text-slate-500">直播主题</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={characterDraft.topic}
+                  onChange={(event) => setCharacterDraft((prev) => ({ ...prev, topic: event.target.value }))}
+                />
+              </div>
+            )}
+
+            {panelType === 'live' && (
+              <div className="flex flex-col gap-4">
+                <label className="text-[12px] text-slate-500">直播平台</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={livePlatform}
+                  onChange={(event) => setLivePlatform(event.target.value)}
+                />
+                <label className="text-[12px] text-slate-500">key</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={liveKey}
+                  onChange={(event) => setLiveKey(event.target.value)}
+                />
+              </div>
+            )}
+
+            {panelType === 'sound' && (
+              <div className="flex flex-col gap-4">
+                <label className="text-[12px] text-slate-500">BGM背景音</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={bgm}
+                  onChange={(event) => setBgm(event.target.value)}
+                />
+                <label className="text-[12px] text-slate-500">人声音</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={voice}
+                  onChange={(event) => setVoice(event.target.value)}
+                />
+              </div>
+            )}
+
+            {panelType === 'scene' && (
+              <div className="flex flex-col gap-4">
+                <label className="text-[12px] text-slate-500">HDR</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={hdr}
+                  onChange={(event) => setHdr(event.target.value)}
+                />
+                <label className="text-[12px] text-slate-500">3D Scene</label>
+                <input
+                  className="h-12 bg-white rounded-lg px-4 text-slate-800"
+                  value={sceneName}
+                  onChange={(event) => setSceneName(event.target.value)}
+                />
+              </div>
+            )}
+
+            {panelType === 'calendar' && (
+              <div className="flex flex-col gap-4">
+                <div className="h-[240px] bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-400 text-sm">
+                  Calendar
+                </div>
+                <label className="text-[12px] text-slate-500">回忆内容</label>
+                <textarea
+                  className="h-32 bg-white rounded-lg px-4 py-3 text-slate-800 resize-none"
+                  value={calendarMemo}
+                  onChange={(event) => setCalendarMemo(event.target.value)}
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handlePanelSave}
+              className="mt-auto h-12 bg-black text-white rounded-lg text-sm tracking-widest"
+            >
+              确认
+            </button>
+          </div>
         </div>
 
         {/* CSS Variable for scaling */}

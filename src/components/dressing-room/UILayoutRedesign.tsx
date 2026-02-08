@@ -18,12 +18,20 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { ProfileButton } from '@/components/auth/ProfileButton';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { toast } from '@/hooks/use-toast';
 import characterIcon from '@/app/v1/assets/ECHUU V1 UX_img/Gemini_Generated_Image_unppndunppndunpp (1) 1.png';
 import liveSettingIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 190.png';
 import soundSettingIcon from '@/app/v1/assets/ECHUU V1 UX_img/b2d19cebb7369ec09e51e8da12cd64d2 1.png';
@@ -32,6 +40,37 @@ import sceneOverlayIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 179.png';
 import sceneRibbonIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 180.png';
 import calendarIcon from '@/app/v1/assets/ECHUU V1 UX_img/8035b537838f81a942811ef8fecd8c5b 1.png';
 import accentSmall from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 262 (Stroke).svg';
+import type { VRMModel } from '@/types';
+import { getModels } from '@/lib/resource-manager';
+import { s3Uploader } from '@/lib/s3-uploader';
+
+// 通义千问 TTS 系统音色：value 与后端 voice 参数一致；补充支持语言、性别、特色便于选择
+const TTS_VOICES: {
+  value: string;
+  labelZh: string;
+  labelEn: string;
+  gender: 'male' | 'female';
+  languages: string;   // 支持语种简述，如 "中/英/日"
+  traitZh: string;
+  traitEn: string;
+}[] = [
+  { value: 'Cherry', labelZh: '芊悦', labelEn: 'Cherry', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '阳光积极、亲切自然', traitEn: 'Warm, natural, upbeat' },
+  { value: 'Serena', labelZh: '苏瑶', labelEn: 'Serena', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '温柔小姐姐', traitEn: 'Gentle, soft' },
+  { value: 'Ethan', labelZh: '晨煦', labelEn: 'Ethan', gender: 'male', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '阳光温暖、活力朝气', traitEn: 'Warm, energetic' },
+  { value: 'Chelsie', labelZh: '千雪', labelEn: 'Chelsie', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '二次元虚拟女友', traitEn: 'Anime-style, sweet' },
+  { value: 'Momo', labelZh: '茉兔', labelEn: 'Momo', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '撒娇搞怪、逗你开心', traitEn: 'Playful, cute' },
+  { value: 'Vivian', labelZh: '十三', labelEn: 'Vivian', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '拽拽的、可爱小暴躁', traitEn: 'Sassy, cute' },
+  { value: 'Moon', labelZh: '月白', labelEn: 'Moon', gender: 'male', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '率性帅气', traitEn: 'Cool, casual' },
+  { value: 'Maia', labelZh: '四月', labelEn: 'Maia', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '知性与温柔', traitEn: 'Refined, gentle' },
+  { value: 'Kai', labelZh: '凯', labelEn: 'Kai', gender: 'male', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '耳朵的一场 SPA', traitEn: 'Relaxing, smooth' },
+  { value: 'Jennifer', labelZh: '詹妮弗', labelEn: 'Jennifer', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '品牌级、电影质感美语女声', traitEn: 'Premium US English, cinematic' },
+  { value: 'Ryan', labelZh: '甜茶', labelEn: 'Ryan', gender: 'male', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '节奏拉满、戏感炸裂', traitEn: 'Dynamic, expressive' },
+  { value: 'Bella', labelZh: '萌宝', labelEn: 'Bella', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '小萝莉', traitEn: 'Young, cute' },
+  { value: 'Neil', labelZh: '阿闻', labelEn: 'Neil', gender: 'male', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '专业新闻主持人', traitEn: 'Professional news anchor' },
+  { value: 'Nini', labelZh: '邻家妹妹', labelEn: 'Nini', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '又软又黏、甜', traitEn: 'Sweet, soft' },
+  { value: 'Sohee', labelZh: '素熙', labelEn: 'Sohee', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '温柔开朗韩国欧尼', traitEn: 'Warm Korean style' },
+  { value: 'Ono Anna', labelZh: '小野杏', labelEn: 'Ono Anna', gender: 'female', languages: '中/英/日/韩/法/德/俄/西/意/葡', traitZh: '鬼灵精怪青梅竹马', traitEn: 'Playful, anime style' },
+];
 import accentMedium from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 263 (Stroke).svg';
 import accentLarge from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 264 (Stroke).svg';
 
@@ -102,7 +141,7 @@ export const PowerToggle = memo(({
 
 PowerToggle.displayName = 'PowerToggle';
 
-// 3. Bottom Left Info Panels
+// 3. Bottom Left Info Panels（已隐藏：使用说明 + 当前状态）
 export const InfoPanels = memo(({ 
   modelName, 
   animationName, 
@@ -112,58 +151,7 @@ export const InfoPanels = memo(({
   animationName: string, 
   showBones: boolean 
 }) => {
-  const { t } = useI18n();
-
-  return (
-    <div className="fixed bottom-8 right-8 z-50 flex flex-col space-y-4 pointer-events-auto w-72 group">
-      {/* Instructions Panel */}
-      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-white/20 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden rounded-[24px] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.16)] translate-x-24 opacity-0 group-hover:translate-x-0 group-hover:opacity-100">
-        <CardContent className="p-5 space-y-4">
-          <div className="flex items-center space-x-2 text-blue-500">
-            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-            <h3 className="text-[11px] font-black uppercase tracking-[0.15em]">{t('vtuber.instructions.title')}</h3>
-          </div>
-          <ul className="space-y-2.5">
-            {[
-              t('vtuber.instructions.step1'),
-              t('vtuber.instructions.step2'),
-              t('vtuber.instructions.step3'),
-              t('vtuber.instructions.step4')
-            ].map((step, i) => (
-              <li key={i} className="flex items-start space-x-3 text-[12px] font-medium text-slate-600 dark:text-slate-400 leading-snug">
-                <span className="text-blue-500/50 font-black mt-[-1px]">•</span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Status Panel */}
-      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-white/20 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden rounded-[24px] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.16)] translate-x-24 opacity-0 group-hover:translate-x-0 group-hover:opacity-100">
-        <CardContent className="p-5 space-y-4">
-          <div className="flex items-center space-x-2 text-blue-500">
-            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-            <h3 className="text-[11px] font-black uppercase tracking-[0.15em]">{t('vtuber.status.title')}</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{t('vtuber.status.model')}</span>
-              <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">{modelName}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{t('vtuber.status.animation')}</span>
-              <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">{animationName}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{t('vtuber.status.bones')}</span>
-              <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200">{showBones ? t('vtuber.status.show') : t('vtuber.status.hide')}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return null;
 });
 
 InfoPanels.displayName = 'InfoPanels';
@@ -264,32 +252,47 @@ export const StreamRoomSidebar = memo(({
 }: {
   onPanelOpenChange?: (isOpen: boolean) => void;
 }) => {
-  const { echuuConfig, setEchuuConfig } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, setVRMModelUrl } = useSceneStore();
+  const { t, locale } = useI18n();
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
   const [characterDraft, setCharacterDraft] = useState({
     characterName: echuuConfig.characterName,
+    voice: echuuConfig.voice || 'Cherry',
+    modelUrl: echuuConfig.modelUrl || '',
+    modelName: echuuConfig.modelName || '',
     persona: echuuConfig.persona,
     background: echuuConfig.background,
     topic: echuuConfig.topic,
-    modelName: echuuConfig.modelName,
-    voice: '',
   });
+  const [vrmModels, setVrmModels] = useState<VRMModel[]>([]);
+  const [uploadingVrm, setUploadingVrm] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [livePlatform, setLivePlatform] = useState('');
   const [liveKey, setLiveKey] = useState('');
   const [bgm, setBgm] = useState('');
-  const [voice, setVoice] = useState('');
+  const [soundVoice, setSoundVoice] = useState('');
   const [hdr, setHdr] = useState('');
   const [sceneName, setSceneName] = useState('');
   const [calendarMemo, setCalendarMemo] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const storedConfig = window.localStorage.getItem(ECHUU_CONFIG_KEY);
     const storedLive = window.localStorage.getItem(ECHUU_LIVE_SETTINGS_KEY);
     const storedSound = window.localStorage.getItem(ECHUU_SOUND_SETTINGS_KEY);
     const storedScene = window.localStorage.getItem(ECHUU_SCENE_SETTINGS_KEY);
     const storedCalendar = window.localStorage.getItem(ECHUU_CALENDAR_SETTINGS_KEY);
 
+    if (storedConfig) {
+      try {
+        const parsed = JSON.parse(storedConfig);
+        setEchuuConfig(parsed);
+        if (parsed.modelUrl) setVRMModelUrl(parsed.modelUrl);
+      } catch {
+        // ignore invalid storage
+      }
+    }
     if (storedLive) {
       try {
         const parsed = JSON.parse(storedLive);
@@ -303,7 +306,7 @@ export const StreamRoomSidebar = memo(({
       try {
         const parsed = JSON.parse(storedSound);
         setBgm(parsed.bgm || '');
-        setVoice(parsed.voice || '');
+        setSoundVoice(parsed.voice || '');
       } catch {
         // ignore invalid storage
       }
@@ -325,7 +328,7 @@ export const StreamRoomSidebar = memo(({
         // ignore invalid storage
       }
     }
-  }, []);
+  }, [setEchuuConfig, setVRMModelUrl]);
 
   useEffect(() => {
     onPanelOpenChange?.(panelOpen);
@@ -336,13 +339,48 @@ export const StreamRoomSidebar = memo(({
       setCharacterDraft((prev) => ({
         ...prev,
         characterName: echuuConfig.characterName,
+        voice: echuuConfig.voice || 'Cherry',
+        modelUrl: echuuConfig.modelUrl || '',
+        modelName: echuuConfig.modelName || '',
         persona: echuuConfig.persona,
         background: echuuConfig.background,
         topic: echuuConfig.topic,
-        modelName: echuuConfig.modelName,
       }));
     }
   }, [echuuConfig, panelOpen, panelType]);
+
+  // 与 ModelManager 一致：合并本地预设（resource-manager）+ S3 列表
+  useEffect(() => {
+    if (panelType !== 'character' || !panelOpen) return;
+    const load = async () => {
+      try {
+        const local = await getModels(undefined);
+        const localModels: VRMModel[] = Array.isArray(local) ? local.map((m: any) => ({
+          id: m.id || m.name,
+          name: m.name,
+          url: m.url,
+          category: m.category || 'vrm',
+          thumbnail: m.thumbnail,
+          tags: m.tags,
+          description: m.description,
+        })) : [];
+        const res = await fetch('/api/s3/resources?type=models');
+        const body = await res.json().catch(() => ({}));
+        const s3List: VRMModel[] = body.success && body.data ? body.data : [];
+        const seen = new Set(localModels.map((m) => m.url));
+        s3List.forEach((m) => {
+          if (!seen.has(m.url)) {
+            localModels.push(m);
+            seen.add(m.url);
+          }
+        });
+        setVrmModels(localModels);
+      } catch {
+        setVrmModels([]);
+      }
+    };
+    load();
+  }, [panelType, panelOpen]);
 
   const handleOpenPanel = (type: StreamRoomPanel) => {
     if (panelOpen && panelType === type) {
@@ -359,13 +397,16 @@ export const StreamRoomSidebar = memo(({
         const nextConfig = {
           ...echuuConfig,
           characterName: characterDraft.characterName,
+          voice: characterDraft.voice || 'Cherry',
+          modelUrl: characterDraft.modelUrl || echuuConfig.modelUrl,
+          modelName: characterDraft.modelName || echuuConfig.modelName,
           persona: characterDraft.persona,
           background: characterDraft.background,
           topic: characterDraft.topic,
-          modelName: characterDraft.modelName,
         };
         setEchuuConfig(nextConfig);
         window.localStorage.setItem(ECHUU_CONFIG_KEY, JSON.stringify(nextConfig));
+        if (nextConfig.modelUrl) setVRMModelUrl(nextConfig.modelUrl);
       }
       if (panelType === 'live') {
         window.localStorage.setItem(
@@ -376,7 +417,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'sound') {
         window.localStorage.setItem(
           ECHUU_SOUND_SETTINGS_KEY,
-          JSON.stringify({ bgm, voice })
+          JSON.stringify({ bgm, voice: soundVoice })
         );
       }
       if (panelType === 'scene') {
@@ -393,6 +434,36 @@ export const StreamRoomSidebar = memo(({
       }
     }
     setPanelOpen(false);
+  };
+
+  const handleVrmUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const errors = s3Uploader.validateVRMFile(file);
+    if (errors.length > 0) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      return;
+    }
+    setUploadingVrm(true);
+    try {
+      const result = await s3Uploader.uploadFile(file);
+      const name = file.name.replace(/\.vrm$/i, '');
+      const newModel: VRMModel = { id: `upload-${Date.now()}`, name, url: result.url };
+      setVrmModels((prev) => [newModel, ...prev]);
+      setCharacterDraft((prev) => ({ ...prev, modelUrl: result.url, modelName: name }));
+      const nextConfig = { ...echuuConfig, modelUrl: result.url, modelName: name };
+      setEchuuConfig(nextConfig);
+      setVRMModelUrl(result.url);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(ECHUU_CONFIG_KEY, JSON.stringify(nextConfig));
+      }
+      toast({ title: locale === 'zh' ? '模型已上传并应用' : 'Model uploaded and applied' });
+    } catch (err) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+    } finally {
+      setUploadingVrm(false);
+    }
   };
 
   return (
@@ -493,41 +564,99 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'character' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">名称</label>
+              <label className="text-[12px] text-slate-500">{t('vtuber.character.name')}</label>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
                 value={characterDraft.characterName}
-                onChange={(event) => setCharacterDraft((prev) => ({ ...prev, characterName: event.target.value }))}
+                onChange={(e) => setCharacterDraft((prev) => ({ ...prev, characterName: e.target.value }))}
               />
-              <label className="text-[12px] text-slate-500">声音</label>
+              <label className="text-[12px] text-slate-500">{t('vtuber.character.voice')}</label>
+              <Select
+                value={characterDraft.voice || 'Cherry'}
+                onValueChange={(v) => setCharacterDraft((prev) => ({ ...prev, voice: v }))}
+              >
+                <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
+                  <SelectValue placeholder={t('vtuber.character.voicePlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {TTS_VOICES.map((v) => {
+                    const genderTag = v.gender === 'female' ? (locale === 'zh' ? '女' : 'F') : (locale === 'zh' ? '男' : 'M');
+                    const name = locale === 'zh' ? v.labelZh : v.labelEn;
+                    const trait = locale === 'zh' ? v.traitZh : v.traitEn;
+                    const langShort = locale === 'zh' ? '中/英/日等' : 'EN/ZH/JP etc.';
+                    return (
+                      <SelectItem key={v.value} value={v.value}>
+                        <span className="block truncate" title={`${locale === 'zh' ? '支持语种' : 'Languages'}: ${v.languages} · ${trait}`}>
+                          {name} ({genderTag}) {langShort} · {trait}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <label className="text-[12px] text-slate-500">{t('vtuber.character.model')}</label>
+              <Select
+                value={characterDraft.modelUrl || ''}
+                onValueChange={(url) => {
+                  const m = vrmModels.find((x) => x.url === url);
+                  setCharacterDraft((prev) => ({
+                    ...prev,
+                    modelUrl: url,
+                    modelName: m ? m.name : prev.modelName,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
+                  <SelectValue placeholder={t('vtuber.character.modelPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    ...(characterDraft.modelUrl && !vrmModels.some((m) => m.url === characterDraft.modelUrl)
+                      ? [{ id: 'current', name: characterDraft.modelName || 'Current', url: characterDraft.modelUrl }]
+                      : []),
+                    ...vrmModels,
+                  ].map((m) => (
+                    <SelectItem key={m.id} value={m.url}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={characterDraft.voice}
-                onChange={(event) => setCharacterDraft((prev) => ({ ...prev, voice: event.target.value }))}
+                ref={uploadInputRef}
+                type="file"
+                accept=".vrm"
+                className="hidden"
+                onChange={handleVrmUpload}
               />
-              <label className="text-[12px] text-slate-500">模型</label>
-              <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={characterDraft.modelName}
-                onChange={(event) => setCharacterDraft((prev) => ({ ...prev, modelName: event.target.value }))}
-              />
-              <label className="text-[12px] text-slate-500">背景</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={uploadingVrm}
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                {uploadingVrm ? (locale === 'zh' ? '上传中…' : 'Uploading…') : (locale === 'zh' ? '上传 .vrm 模型' : 'Upload .vrm model')}
+              </Button>
+              <label className="text-[12px] text-slate-500">{t('vtuber.character.background')}</label>
+              <p className="text-[11px] text-slate-400 -mt-1">{t('vtuber.character.backgroundHint')}</p>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
                 value={characterDraft.background}
-                onChange={(event) => setCharacterDraft((prev) => ({ ...prev, background: event.target.value }))}
+                onChange={(e) => setCharacterDraft((prev) => ({ ...prev, background: e.target.value }))}
               />
-              <label className="text-[12px] text-slate-500">人物设定</label>
+              <label className="text-[12px] text-slate-500">{t('vtuber.character.persona')}</label>
               <textarea
                 className="h-24 bg-white rounded-lg px-4 py-3 text-slate-800 resize-none"
                 value={characterDraft.persona}
-                onChange={(event) => setCharacterDraft((prev) => ({ ...prev, persona: event.target.value }))}
+                onChange={(e) => setCharacterDraft((prev) => ({ ...prev, persona: e.target.value }))}
               />
-              <label className="text-[12px] text-slate-500">直播主题</label>
+              <label className="text-[12px] text-slate-500">{t('vtuber.character.topic')}</label>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
                 value={characterDraft.topic}
-                onChange={(event) => setCharacterDraft((prev) => ({ ...prev, topic: event.target.value }))}
+                onChange={(e) => setCharacterDraft((prev) => ({ ...prev, topic: e.target.value }))}
               />
             </div>
           )}
@@ -560,8 +689,8 @@ export const StreamRoomSidebar = memo(({
               <label className="text-[12px] text-slate-500">人声音</label>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={voice}
-                onChange={(event) => setVoice(event.target.value)}
+                value={soundVoice}
+                onChange={(event) => setSoundVoice(event.target.value)}
               />
             </div>
           )}
@@ -602,7 +731,7 @@ export const StreamRoomSidebar = memo(({
             onClick={handlePanelSave}
             className="mt-auto h-12 bg-black text-white rounded-lg text-sm tracking-widest"
           >
-            确认
+            {panelType === 'character' ? t('vtuber.character.confirm') : t('app.confirm')}
           </button>
         </div>
       </div>
@@ -611,6 +740,95 @@ export const StreamRoomSidebar = memo(({
 });
 
 StreamRoomSidebar.displayName = 'StreamRoomSidebar';
+
+// 聊天面板底部按钮：语言切换 + 直播拍照（仅截 3D 画布，不含 UI，可编辑）
+const ChatPanelFooterButtons = memo(() => {
+  const { locale, changeLocale } = useI18n();
+  const canvasReady = useSceneStore((s) => s.canvasReady);
+  const lastCaptureBlobUrl = useSceneStore((s) => s.lastCaptureBlobUrl);
+  const setLastCaptureBlobUrl = useSceneStore((s) => s.setLastCaptureBlobUrl);
+  const [langOpen, setLangOpen] = useState(false);
+
+  // 发请求：由 Canvas 内 TakePhotoCapture 在 useFrame 中截帧并写回 lastCaptureBlobUrl
+  const handleTakePhoto = () => {
+    if (!canvasReady) {
+      toast({ title: '无法截图', description: '3D 场景未就绪，请稍后再试', variant: 'destructive' });
+      return;
+    }
+    useSceneStore.getState().setTakePhotoRequest(Date.now());
+  };
+
+  // 消费截帧结果：下载 + 新标签页 + toast，然后清空；blob URL 延迟 revoke 以便新标签页加载
+  useEffect(() => {
+    if (!lastCaptureBlobUrl) return;
+    const url = lastCaptureBlobUrl;
+    const name = `stream-photo-${Date.now()}.png`;
+    setLastCaptureBlobUrl(null);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    const w = window.open(url, '_blank', 'noopener');
+    if (w) w.document.title = name;
+    toast({ title: '已保存', description: `已下载并在新标签页打开：${name}` });
+    if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, [lastCaptureBlobUrl, setLastCaptureBlobUrl]);
+
+  const locales = [
+    { code: 'zh' as const, label: '中文', flag: '🇨🇳' },
+    { code: 'en' as const, label: 'English', flag: '🇺🇸' },
+    { code: 'ja' as const, label: '日本語', flag: '🇯🇵' },
+  ];
+
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <div className="relative w-full">
+        <button
+          type="button"
+          onClick={() => setLangOpen((o) => !o)}
+          className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#EEFF00] text-[#EEFF00] text-[11px] font-bold w-full"
+          aria-label="语言 / Language"
+        >
+          <Languages className="h-4 w-4" />
+          <span>{locales.find((l) => l.code === locale)?.label ?? locale}</span>
+        </button>
+        {langOpen && (
+          <>
+            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#EEFF00]/50 min-w-[120px] z-20 shadow-lg">
+              {locales.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => {
+                    changeLocale(l.code);
+                    setLangOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${l.code === locale ? 'text-[#EEFF00] font-bold' : 'text-white/90'}`}
+                >
+                  <span>{l.flag}</span>
+                  <span>{l.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="fixed inset-0 z-10" aria-hidden onClick={() => setLangOpen(false)} />
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={handleTakePhoto}
+        disabled={!canvasReady}
+        className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#EEFF00] text-[#EEFF00] text-[11px] font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Take photo (3D view only)"
+        title={canvasReady ? '截取 3D 画面（可编辑）' : '3D 场景就绪后可用'}
+      >
+        <Camera className="h-4 w-4" />
+        <span>Take Photo</span>
+      </button>
+    </div>
+  );
+});
+ChatPanelFooterButtons.displayName = 'ChatPanelFooterButtons';
 
 // 4.6 右侧弹幕 Chat 面板
 export const StreamRoomChatPanel = memo(() => {
@@ -634,7 +852,7 @@ export const StreamRoomChatPanel = memo(() => {
   };
 
   return (
-    <div className="fixed right-8 top-28 z-40 pointer-events-auto">
+    <div className="fixed right-8 top-28 z-40 pointer-events-auto flex flex-col gap-3">
       <div
         className={`relative h-[520px] transition-all duration-300 ${
           collapsed ? 'w-[56px]' : 'w-[340px]'
@@ -645,7 +863,7 @@ export const StreamRoomChatPanel = memo(() => {
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#EEFF00] text-xs font-black"
+          className="absolute left-[13px] right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#EEFF00] text-xs font-black"
           aria-label={collapsed ? '展开聊天' : '收起聊天'}
         >
           {collapsed ? '<<' : '>>'}
@@ -694,22 +912,55 @@ export const StreamRoomChatPanel = memo(() => {
           </>
         )}
       </div>
+      {/* 语言切换 + 直播拍照：放在 chat 面板下方一竖列 */}
+      <div className={`flex flex-col gap-2 transition-all duration-300 ${collapsed ? 'w-[56px]' : 'w-[340px]'}`}>
+        <ChatPanelFooterButtons />
+      </div>
     </div>
   );
 });
 
 StreamRoomChatPanel.displayName = 'StreamRoomChatPanel';
 
-// 5. Bottom Center Camera Button
+// 5. Go Live bar (Figma: Frame 1261157366) — centered in 3D canvas area
 export const GoLiveButton = memo(() => {
+  const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
+  const topic = useSceneStore((state) => state.echuuConfig.topic);
+
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-      <Link
-        href="/v1/live/1"
-        className="w-16 h-16 rounded-[24px] flex items-center justify-center shadow-2xl transition-all duration-500 transform hover:scale-110 active:scale-90 bg-blue-600 text-white shadow-blue-600/30"
-      >
-        <Play className="h-7 w-7" />
-      </Link>
+    <div
+      className={cn(
+        'fixed bottom-[74px] -translate-x-1/2 z-50 pointer-events-auto transition-[left] duration-300 ease-in-out',
+        streamPanelOpen ? 'left-[calc(560px+(100vw-560px)/2)]' : 'left-1/2'
+      )}
+    >
+      {/* Bar: 最小 214×53，随文案宽度自适应 */}
+      <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-[#E9E9E9] rounded-[26.5px] flex items-center gap-0">
+        {/* go-btn: 40×40 circle, left 5px top 7px — glass + shadow */}
+        <Link
+          href="/v1/live/1"
+          className="absolute left-[5px] top-[7px] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0"
+          style={{
+            background: 'rgba(255, 255, 255, 0.068)',
+            boxShadow:
+              '-11.15px -10.39px 48px -12px rgba(0, 0, 0, 0.15), inset 2.15px 2px 9.24px rgba(255, 255, 255, 0.126), inset 1.22px 1.13px 4.62px rgba(255, 255, 255, 0.126)',
+            backdropFilter: 'blur(7.58px)',
+          }}
+          aria-label="Go Live"
+        >
+          <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-[#EEFF00] text-[#E9E9E9]">
+            <Play className="h-3 w-3" strokeWidth={2} />
+          </span>
+        </Link>
+        {/* Stream Topic — 与侧边栏「直播主题」一致，来自 echuuConfig.topic；左侧留出 59px 与 play 对齐 */}
+        <span
+          className="pl-[46px] pr-2 text-[15px] leading-[15px] text-black flex items-center max-w-[280px] truncate"
+          style={{ fontFamily: "'Subway Ticker', system-ui, sans-serif" }}
+          title={topic?.trim() || undefined}
+        >
+          {topic?.trim() || 'Stream Topic'}
+        </span>
+      </div>
     </div>
   );
 });

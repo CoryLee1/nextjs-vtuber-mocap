@@ -171,14 +171,14 @@ const CameraControllerComponent: React.FC<CameraControllerProps> = ({
       {/* CameraShake 效果 */}
       {enableShake && (
         <CameraShake
-          maxYaw={0.15} // Max amount camera can yaw in either direction（增大）
-          maxPitch={0.08} // Max amount camera can pitch in either direction（增大）
-          maxRoll={0.08} // Max amount camera can roll in either direction（增大）
+          maxYaw={0.06} // 降低呼吸晃动幅度
+          maxPitch={0.03} // 降低呼吸晃动幅度
+          maxRoll={0.03} // 降低呼吸晃动幅度
           yawFrequency={0.05} // Frequency of the the yaw rotation
           pitchFrequency={0.2} // Frequency of the pitch rotation
           rollFrequency={0.2} // Frequency of the roll rotation
-          intensity={1.5} // initial intensity of the shake（增大）
-          decayRate={0.75} // if decay = true this is the rate at which intensity will reduce at（增大，衰减更慢）
+          intensity={0.6} // 降低整体强度
+          decayRate={0.9} // 更快衰减，减少抖动存在感
         />
       )}
     </>

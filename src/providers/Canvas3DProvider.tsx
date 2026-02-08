@@ -60,9 +60,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Canvas 卸载时清理就绪状态
   useEffect(() => {
-    return () => {
-      setCanvasReady(false);
-    };
+    return () => setCanvasReady(false);
   }, [setCanvasReady]);
 
   return (
@@ -90,7 +88,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             gl={{
               antialias: true, // 强制启用抗锯齿以消除锯齿边缘
               alpha: false, // 不透明背景
-              preserveDrawingBuffer: false, // 提升性能（除非需要截图功能）
+              preserveDrawingBuffer: true, // 启用以便截图（仅截 3D 画布，不含 UI）
               powerPreference: 'high-performance',
               stencil: false, // 禁用模板缓冲以提升性能
               depth: true,

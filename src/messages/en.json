@@ -123,6 +123,18 @@
       "step2": "Ensure good lighting and face visibility",
       "step3": "Stay 50-100cm away from camera",
       "step4": "Use buttons to manage models and animations"
+    },
+    "character": {
+      "name": "Name",
+      "voice": "Voice",
+      "voicePlaceholder": "Select TTS voice",
+      "model": "Model",
+      "modelPlaceholder": "Select .vrm model",
+      "background": "Background",
+      "backgroundHint": "Character background, world-setting, etc.",
+      "persona": "Persona",
+      "topic": "Stream topic",
+      "confirm": "Confirm"
     }
   },
   "settings": {
