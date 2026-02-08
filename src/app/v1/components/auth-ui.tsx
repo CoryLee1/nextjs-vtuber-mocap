@@ -37,13 +37,15 @@ export const AuthInput = ({ label, ...props }: React.InputHTMLAttributes<HTMLInp
   );
 };
 
-export const SocialButton = ({ icon, label, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string, label: string }) => {
+export const SocialButton = ({ icon, label, className, disabled, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: string, label: string }) => {
   return (
     <button 
       className={cn(
         "flex items-center justify-center space-x-4 w-full py-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all",
+        disabled && "opacity-40 cursor-not-allowed hover:bg-white/5",
         className
       )}
+      disabled={disabled}
       {...props}
     >
       <img src={icon} alt="" className="w-5 h-5 object-contain" />

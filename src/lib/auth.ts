@@ -48,12 +48,30 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      // 让前端能拿到 userId
+    async session({ session, token, user }) {
       if (session.user) {
-        (session.user as any).id = user.id;
+        (session.user as any).id = user?.id ?? token?.sub ?? (token as any)?.id ?? null;
       }
       return session;
+    },
+    async jwt({ token, user }) {
+      if (user?.id) {
+        (token as any).id = user.id;
+      }
+      return token;
+    },
+    async redirect({ url, baseUrl }) {
+      // 统一回到 /zh（新手引导页），避免跳到 /v1
+      if (url.startsWith(`${baseUrl}/v1`)) {
+        return `${baseUrl}/zh`;
+      }
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      return `${baseUrl}/zh`;
     },
   },
   pages: {

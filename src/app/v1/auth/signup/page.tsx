@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { getProviders, signIn } from 'next-auth/react';
 import { AuthButton, AuthInput, SocialButton } from '../../components/auth-ui';
 
 export default function V1SignUp() {
@@ -13,6 +13,13 @@ export default function V1SignUp() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  React.useEffect(() => {
+    getProviders()
+      .then((providers) => setGoogleEnabled(Boolean(providers?.google)))
+      .catch(() => setGoogleEnabled(false));
+  }, []);
 
   return (
     <div className="relative w-full min-h-screen bg-black overflow-hidden flex items-center justify-center p-6">
@@ -114,8 +121,14 @@ export default function V1SignUp() {
           <SocialButton 
             icon="/v1-assets/fills/774627be89a12b5733ec566d9e28cb7cbdead78d.png" 
             label="Connect with Google" 
+            disabled={!googleEnabled}
             onClick={() => signIn('google', { callbackUrl: '/zh' })}
           />
+          {!googleEnabled && (
+            <div className="text-[10px] text-white/40 text-center">
+              未检测到 Google OAuth 配置，请设置 `GOOGLE_CLIENT_ID/SECRET` 和 `NEXTAUTH_URL`。
+            </div>
+          )}
 
           <p className="text-center text-xs font-bold uppercase tracking-widest text-white/30">
             Already registered? <Link href="/v1/auth/login" className="text-[#EEFF00] hover:underline underline-offset-4">Sign In Protocol</Link>

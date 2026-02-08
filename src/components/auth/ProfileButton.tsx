@@ -28,10 +28,11 @@ export function ProfileButton() {
   const [name, setName] = useState(initialName);
   const [image, setImage] = useState(initialImage);
   const [saving, setSaving] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   if (status !== 'authenticated') return null;
 
-  const avatarSrc = image || initialImage || '/images/CoryProfile.png';
+  const avatarSrc = !imgError && (image || initialImage) ? (image || initialImage) : '/images/CoryProfile.png';
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
@@ -49,7 +50,12 @@ export function ProfileButton() {
           title="Profile"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
+          <img
+            src={avatarSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
         </button>
       </DialogTrigger>
 
@@ -62,7 +68,12 @@ export function ProfileButton() {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-black/10 border border-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
+              <img
+                src={avatarSrc}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={() => setImgError(true)}
+              />
             </div>
             <div className="flex-1 space-y-2">
               <div className="text-xs text-muted-foreground">更换头像（本地图片，会保存到你的用户资料）</div>

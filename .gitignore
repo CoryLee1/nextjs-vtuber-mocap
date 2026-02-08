@@ -76,3 +76,4 @@ temp/
 # public/models/*.fbx
 # public/models/*.glb
 API_KEY_SETUP.md
+public/client_secret_*.json

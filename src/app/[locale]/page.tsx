@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { signIn, useSession } from 'next-auth/react';
+import { getProviders, signIn, useSession } from 'next-auth/react';
 import LoadingPage from '@/components/ui/LoadingPage';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui';
@@ -22,6 +22,7 @@ export default function HomePage() {
   const [nickname, setNickname] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
 
   // 模拟加载完成后的逻辑
   const handleLoadingComplete = () => {
@@ -40,6 +41,16 @@ export default function HomePage() {
       setShowOnboarding(false);
     }
   }, [isLoading, status]);
+
+  useEffect(() => {
+    getProviders()
+      .then((providers) => {
+        setGoogleEnabled(Boolean(providers?.google));
+      })
+      .catch(() => {
+        setGoogleEnabled(false);
+      });
+  }, []);
 
   return (
     <main className="relative w-full h-screen bg-black overflow-hidden">
@@ -159,8 +170,14 @@ export default function HomePage() {
               <SocialButton
                 icon="/v1-assets/fills/774627be89a12b5733ec566d9e28cb7cbdead78d.png"
                 label="Google Authentication"
+                disabled={!googleEnabled}
                 onClick={() => signIn('google', { callbackUrl: '/zh' })}
               />
+              {!googleEnabled && (
+                <div className="text-[10px] text-white/40">
+                  未检测到 Google OAuth 配置，请设置 `GOOGLE_CLIENT_ID/SECRET` 和 `NEXTAUTH_URL`。
+                </div>
+              )}
             </div>
           </div>
         </div>
