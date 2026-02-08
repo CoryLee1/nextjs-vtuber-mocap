@@ -32,6 +32,7 @@ import { useEffect } from 'react';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { ProfileButton } from '@/components/auth/ProfileButton';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { toast } from '@/hooks/use-toast';
 import characterIcon from '@/app/v1/assets/ECHUU V1 UX_img/Gemini_Generated_Image_unppndunppndunpp (1) 1.png';
 import liveSettingIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 190.png';
@@ -42,6 +43,7 @@ import sceneRibbonIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 180.png';
 import calendarIcon from '@/app/v1/assets/ECHUU V1 UX_img/8035b537838f81a942811ef8fecd8c5b 1.png';
 import echuuLogo from '@/app/v1/assets/logo-5-12.png';
 import accentSmall from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 262 (Stroke).svg';
+import mocapBtnIcon from '@/app/v1/assets/ECHUU V1 UX_icon/mocap btn.svg';
 import type { VRMModel } from '@/types';
 import { getModels } from '@/lib/resource-manager';
 import { s3Uploader } from '@/lib/s3-uploader';
@@ -106,7 +108,7 @@ const BGM_PRESETS: { id: string; url: string; nameZh: string; nameEn: string }[]
   { id: 'absent-wip', url: '/sounds/bgm/absent-wip-Cynthia-xmyri.mp3', nameZh: 'Absent WIP', nameEn: 'Absent WIP' },
 ];
 
-type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar';
+type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar' | 'mocap';
 
 // 1. Top Left Branding
 export const BrandOverlay = memo(() => {
@@ -296,12 +298,16 @@ ActionButtonStack.displayName = 'ActionButtonStack';
 
 // 4.5 左侧 StreamRoom 控制 + 面板
 export const StreamRoomSidebar = memo(({
-  onPanelOpenChange
+  onPanelOpenChange,
+  onCameraToggle,
 }: {
   onPanelOpenChange?: (isOpen: boolean) => void;
+  /** 开启/关闭摄像头动捕（与右上角电源一致，驱动 3D 模型 puppetry） */
+  onCameraToggle?: () => void;
 }) => {
   const { echuuConfig, setEchuuConfig, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl } = useSceneStore();
   const { t, locale } = useI18n();
+  const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
   const [characterDraft, setCharacterDraft] = useState({
@@ -720,6 +726,17 @@ export const StreamRoomSidebar = memo(({
               Calendar Memory
             </div>
           </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenPanel('mocap')}
+            className={`relative w-[152px] h-[118px] transition-transform ${panelOpen && panelType === 'mocap' ? 'scale-105' : 'hover:scale-105'}`}
+          >
+            <img src={mocapBtnIcon.src} alt="" className="absolute left-1/2 top-0 h-[102px] w-[80px] -translate-x-1/2 object-contain" />
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '105px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+              Webcam Mocap
+            </div>
+          </button>
         </div>
       </div>
 
@@ -734,6 +751,7 @@ export const StreamRoomSidebar = memo(({
               {panelType === 'sound' && 'Sound Setting'}
               {panelType === 'scene' && 'Scene'}
               {panelType === 'calendar' && 'Calendar Memory'}
+              {panelType === 'mocap' && 'Webcam Mocap'}
             </div>
             <button
               type="button"
@@ -1035,6 +1053,38 @@ export const StreamRoomSidebar = memo(({
             </div>
           )}
 
+          {panelType === 'mocap' && (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {locale === 'zh'
+                  ? '开启后，摄像头会捕捉你的人脸与身体动作，主画面中的 3D 形象将实时跟随（puppetry）。'
+                  : 'When enabled, the webcam captures your face and body; the 3D avatar in the main view will follow in real time (puppetry).'}
+              </p>
+              {onCameraToggle && (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={cn('inline-block h-2 w-2 rounded-full', isCameraActive ? 'bg-green-500' : 'bg-slate-300')} />
+                    <span className="text-slate-600 dark:text-slate-400">
+                      {isCameraActive
+                        ? (locale === 'zh' ? '动捕已开启' : 'Mocap active')
+                        : (locale === 'zh' ? '动捕未开启' : 'Mocap off')}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={isCameraActive ? 'outline' : 'default'}
+                    className="w-full"
+                    onClick={onCameraToggle}
+                  >
+                    {isCameraActive
+                      ? (locale === 'zh' ? '关闭摄像头动捕' : 'Stop Webcam Mocap')
+                      : (locale === 'zh' ? '开启摄像头动捕' : 'Start Webcam Mocap')}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handlePanelSave}
@@ -1172,7 +1222,7 @@ export const StreamRoomChatPanel = memo(() => {
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="absolute left-[13px] right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#EEFF00] text-xs font-black"
+          className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#EEFF00] text-xs font-black"
           aria-label={collapsed ? '展开聊天' : '收起聊天'}
         >
           {collapsed ? '<<' : '>>'}

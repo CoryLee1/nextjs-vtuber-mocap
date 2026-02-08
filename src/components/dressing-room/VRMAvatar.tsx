@@ -429,20 +429,11 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         // 注意：视线追踪现在由 useVRMLookAt hook 处理（见下方 804 行）
     }, [vrm, scene]);
     
-    // ✅ VRM 信息记录器（自动提取并保存模型信息）
-    // 在开发环境中自动保存为 JSON 文件
-    // PERF: filename 使用 useMemo 确保只在 VRM 变化时生成一次
-    const vrmInfoFilename = useMemo(() => {
-        if (!vrm) return 'vrm-info.json';
-        // 使用 VRM 实例的唯一标识（或时间戳）作为文件名
-        return `vrm-info-${Date.now()}.json`;
-    }, [vrm]);
-    
+    // VRM 信息记录器：仅挂载 hook 避免 ReferenceError，已关闭自动保存与日志
     useVRMInfoLogger({
-        vrm,
-        autoSave: process.env.NODE_ENV === 'development', // 开发环境自动保存
-        filename: vrmInfoFilename,
-        logToConsole: true, // 在控制台输出
+      vrm,
+      autoSave: false,
+      logToConsole: false,
     });
 
     // MediaPipe 结果处理回调 - 性能优化版本

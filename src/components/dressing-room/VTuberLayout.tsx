@@ -75,7 +75,7 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
       />
 
       {/* 2.5 左侧 StreamRoom 控制 + 右侧 Chat */}
-      <StreamRoomSidebar onPanelOpenChange={handlePanelOpenChange} />
+      <StreamRoomSidebar onPanelOpenChange={handlePanelOpenChange} onCameraToggle={controlProps.onCameraToggle} />
       <StreamRoomChatPanel />
 
       {/* 3. 左下角信息面板 */}
