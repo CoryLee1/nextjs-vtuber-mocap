@@ -11,7 +11,7 @@ interface LiveMonitorProps {
 export const LiveMonitor = ({ title, subtitle, children, className }: LiveMonitorProps) => {
   return (
     <div className={cn(
-      "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] z-30",
+      "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-[1000px] h-[85vh] max-h-[600px] z-30",
       "bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[60px] overflow-hidden flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-500",
       className
     )}>

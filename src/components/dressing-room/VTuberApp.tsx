@@ -243,19 +243,6 @@ export default function VTuberApp() {
           onClose={handleCloseDebugPanel}
         />
       )}
-
-      {/* 开发环境下的调试按钮 */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-4 left-4 z-40 pointer-events-auto">
-          <button
-            onClick={handleOpenDebugPanel}
-            className="px-3 py-2 bg-sky-500 text-white rounded-lg text-sm hover:bg-sky-600 transition-colors pointer-events-auto"
-            title={`${t('vtuber.controls.debugTools')} (Ctrl+Shift+D)`}
-          >
-            {t('vtuber.controls.debug')}
-          </button>
-        </div>
-      )}
     </VTuberLayout>
   );
 }

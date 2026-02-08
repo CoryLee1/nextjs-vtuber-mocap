@@ -96,9 +96,9 @@ export const InfoPanels = memo(({
   const { t } = useI18n();
 
   return (
-    <div className="fixed bottom-8 left-8 z-50 flex flex-col space-y-4 pointer-events-auto w-72">
+    <div className="fixed bottom-8 right-8 z-50 flex flex-col space-y-4 pointer-events-auto w-72 group">
       {/* Instructions Panel */}
-      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-white/20 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden rounded-[24px] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.16)]">
+      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-white/20 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden rounded-[24px] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.16)] translate-x-24 opacity-0 group-hover:translate-x-0 group-hover:opacity-100">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center space-x-2 text-blue-500">
             <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
@@ -121,7 +121,7 @@ export const InfoPanels = memo(({
       </Card>
 
       {/* Status Panel */}
-      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-white/20 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden rounded-[24px] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.16)]">
+      <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-white/20 dark:border-slate-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden rounded-[24px] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.16)] translate-x-24 opacity-0 group-hover:translate-x-0 group-hover:opacity-100">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center space-x-2 text-blue-500">
             <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
@@ -178,7 +178,7 @@ export const ActionButtonStack = memo(({
       : `/zh${pathname}`;
 
   return (
-    <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center space-y-5 pointer-events-auto">
+    <div className="fixed bottom-8 left-8 z-50 flex flex-col items-center space-y-5 pointer-events-auto">
       {/* Model Manager */}
       <button 
         onClick={onOpenModelManager}

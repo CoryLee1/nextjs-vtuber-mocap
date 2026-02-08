@@ -53,10 +53,8 @@ interface CameraWidgetProps {
 
 export const CameraWidget: React.FC<CameraWidgetProps> = ({ 
   isActive = false, 
-  onToggle, 
   onError 
 }) => {
-    const [isStarted, setIsStarted] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const holisticRef = useRef<any>(null);
@@ -327,7 +325,6 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
             }
             
             // 重置状态
-            setIsStarted(false);
             setVideoElement(null);
             setIsCameraActive(false);
         }
@@ -335,7 +332,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
     // 当灵敏度设置变化时重新初始化 Holistic
     useEffect(() => {
-        if (isStarted && holisticRef.current) {
+        if (isActive && holisticRef.current) {
             stopCamera();
             setTimeout(() => {
                 startCamera();
@@ -343,14 +340,9 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
         }
     }, [settings.minDetectionConfidence, settings.minTrackingConfidence, settings.minHandDetectionConfidence, settings.minHandTrackingConfidence]);
 
-    // 切换摄像头状态
-    const toggleCamera = () => {
-        setIsStarted(!isStarted);
-    };
-
     // 监听启动状态变化
     useEffect(() => {
-        if (isStarted) {
+        if (isActive) {
             startCamera();
         } else {
             stopCamera();
@@ -360,38 +352,10 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
         return () => {
             stopCamera();
         };
-    }, [isStarted]);
+    }, [isActive, settings.minDetectionConfidence, settings.minTrackingConfidence, settings.minHandDetectionConfidence, settings.minHandTrackingConfidence]);
 
     return (
         <>
-            {/* 摄像头控制按钮 */}
-            <button
-                onClick={toggleCamera}
-                className={`
-          fixed bottom-2 right-52 z-20 p-3 rounded-full text-white 
-          transition-all duration-300 shadow-lg hover:shadow-xl pointer-events-auto
-          ${isStarted
-                        ? 'bg-red-500 hover:bg-red-600 active:bg-red-700'
-                        : 'bg-vtuber-primary hover:bg-vtuber-secondary active:bg-blue-700'
-                    }
-        `}
-                title={isStarted ? '停止摄像头' : '开启摄像头'}
-            >
-                <div className="w-5 h-5">
-                    {isStarted ? (
-                        // 停止图标
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 6h12v12H6z" />
-                        </svg>
-                    ) : (
-                        // 摄像头图标
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M17 10.5V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4z" />
-                        </svg>
-                    )}
-                </div>
-            </button>
-
             {/* 错误提示 */}
             {error && (
                 <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-md pointer-events-auto">
@@ -423,7 +387,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
             )}
 
             {/* 摄像头预览窗口 */}
-            {isStarted && (
+            {isActive && (
                 <div className="fixed bottom-2 right-2 w-48 h-36 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl z-10 bg-black pointer-events-auto">
                     {/* 画布层 - 显示检测结果 */}
                     <canvas

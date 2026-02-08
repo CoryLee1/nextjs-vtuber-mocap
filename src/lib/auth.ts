@@ -48,16 +48,27 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, token, user }) {
+    async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = user?.id ?? token?.sub ?? (token as any)?.id ?? null;
+        (session.user as any).id = (token as any)?.id ?? token?.sub ?? null;
+        session.user.name = (token as any)?.name ?? session.user.name;
+        session.user.email = (token as any)?.email ?? session.user.email;
+        // 避免把大图片塞进 JWT/Session，防止响应头过大
+        session.user.image = undefined;
       }
       return session;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user?.id) {
         (token as any).id = user.id;
+        (token as any).name = user.name ?? null;
+        (token as any).email = user.email ?? null;
       }
+      if (trigger === 'update' && session) {
+        (token as any).name = (session as any).name ?? (token as any).name;
+      }
+      delete (token as any).picture;
+      delete (token as any).image;
       return token;
     },
     async redirect({ url, baseUrl }) {

@@ -119,6 +119,8 @@ export const MainScene: React.FC = () => {
     cameraSettings,
     debugSettings,
     vrmModel,
+    echuuCue,
+    echuuAudioPlaying,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
@@ -229,6 +231,8 @@ export const MainScene: React.FC = () => {
             onMocapStatusUpdate={(status: any) => {
               // 可以在这里处理 mocap 状态更新
             }}
+            echuuCue={echuuCue}
+            echuuAudioPlaying={echuuAudioPlaying}
           />
         </Suspense>
       </group>

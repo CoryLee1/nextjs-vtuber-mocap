@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { VRM } from '@pixiv/three-vrm';
 import type { CameraSettings } from '@/types/vtuber';
 import type { Object3D, Mesh, Material } from 'three';
+import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
 
 /**
  * 场景类型
@@ -84,6 +85,21 @@ interface SceneState {
   handDetectionStateRef: any;
   /** 设置手部检测状态引用 */
   setHandDetectionStateRef: (ref: any) => void;
+
+  // ========== Echuu Live 状态 ==========
+  echuuConfig: {
+    characterName: string;
+    persona: string;
+    background: string;
+    topic: string;
+    modelUrl: string;
+    modelName: string;
+  };
+  setEchuuConfig: (config: Partial<SceneState['echuuConfig']>) => void;
+  echuuCue: EchuuCue | null;
+  setEchuuCue: (cue: EchuuCue | null) => void;
+  echuuAudioPlaying: boolean;
+  setEchuuAudioPlaying: (playing: boolean) => void;
 }
 
 /**
@@ -262,6 +278,28 @@ export const useSceneStore = create<SceneState>()(
   setHandDetectionStateRef: (ref: any) => {
     set({ handDetectionStateRef: ref });
   },
+
+  // ========== Echuu Live 状态 ==========
+  echuuConfig: {
+    characterName: '六螺',
+    persona: '一个性格古怪、喜欢碎碎念的虚拟主播',
+    background: '正在直播，和观众聊天',
+    topic: '关于上司的超劲爆八卦',
+    modelUrl: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
+    modelName: 'Avatar Sample A',
+  },
+  setEchuuConfig: (config) => {
+    set((state) => ({
+      echuuConfig: {
+        ...state.echuuConfig,
+        ...config,
+      },
+    }));
+  },
+  echuuCue: null,
+  setEchuuCue: (cue) => set({ echuuCue: cue }),
+  echuuAudioPlaying: false,
+  setEchuuAudioPlaying: (playing) => set({ echuuAudioPlaying: playing }),
   }))
 );
 

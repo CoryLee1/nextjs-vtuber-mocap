@@ -1,10 +1,10 @@
-import React, { ReactNode, memo, useState } from 'react';
+import React, { ReactNode } from 'react';
 import { 
   BrandOverlay, 
   PowerToggle, 
   InfoPanels, 
   ActionButtonStack, 
-  CameraActionButton 
+  GoLiveButton 
 } from './UILayoutRedesign';
 
 // 状态指示器接口 (保留以兼容 VTuberApp.tsx)
@@ -72,14 +72,13 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
         onOpenAnimationLibrary={controlProps.onOpenAnimationLibrary}
         onToggleBones={controlProps.onToggleBones}
         onOpenSettings={controlProps.onOpenConfigManager}
+        onCameraToggle={controlProps.onCameraToggle}
         isBonesVisible={controlProps.showBones}
+        isCameraActive={controlProps.isCameraActive}
       />
 
-      {/* 5. 底部中间主操作按钮 (摄像头) */}
-      <CameraActionButton 
-        isActive={statusProps.isActive} 
-        onToggle={controlProps.onCameraToggle} 
-      />
+      {/* 5. 底部中间主操作按钮 (Go Live) */}
+      <GoLiveButton />
     </div>
   );
 };

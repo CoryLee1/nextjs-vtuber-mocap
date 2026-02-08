@@ -19,6 +19,8 @@ import { createPerformanceMonitor } from '@/lib/utils/performance-monitor';
 import { mapBoneName } from '@/lib/vrm/bone-mapping';
 import { useVRMInfoLogger } from '@/lib/vrm/debug/use-vrm-info-logger';
 import { VRMController } from './VRMController';
+import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
+import { applyEchuuCue } from '@/lib/echuu-vrm-bridge';
 
 // PERF: 导入拆分的常量和组件
 import {
@@ -55,6 +57,8 @@ interface VRMAvatarProps {
     handDebugAxisConfig?: any;
     onHandAxisChange?: any;
     onRiggedHandUpdate?: any;
+    echuuCue?: EchuuCue | null;
+    echuuAudioPlaying?: boolean;
     [key: string]: any;
 }
 export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
@@ -76,6 +80,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     handDebugAxisConfig = null,
     onHandAxisChange = null,
     onRiggedHandUpdate = null,
+    echuuCue = null,
+    echuuAudioPlaying = false,
     ...props
 }, ref) => {
     const { camera } = useThree();
@@ -710,6 +716,11 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         // 获取当前模式
         const animationState = getAnimationState();
         const currentMode = animationState.currentMode;
+
+        const shouldApplyEchuu = (echuuCue || echuuAudioPlaying) && currentMode === 'idle';
+        if (shouldApplyEchuu) {
+            applyEchuuCue(vrm, echuuCue, echuuAudioPlaying, state.clock.getElapsedTime(), delta);
+        }
         
 
 

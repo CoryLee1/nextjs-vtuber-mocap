@@ -93,17 +93,21 @@ export default function V1SignUp() {
                     return;
                   }
 
-                  const loginRes = await signIn('credentials', {
-                    email,
-                    password,
-                    redirect: false,
-                    callbackUrl: '/zh',
-                  });
-                  if (!loginRes || loginRes.error) {
-                    router.push('/v1/auth/login');
-                    return;
+                  try {
+                    const loginRes = await signIn('credentials', {
+                      email,
+                      password,
+                      redirect: false,
+                      callbackUrl: '/zh',
+                    });
+                    if (!loginRes || loginRes.error) {
+                      router.push('/v1/auth/login');
+                      return;
+                    }
+                    router.push(loginRes.url || '/zh');
+                  } catch {
+                    setError('登录请求失败，请稍后重试');
                   }
-                  router.push(loginRes.url || '/zh');
                 } finally {
                   setLoading(false);
                 }

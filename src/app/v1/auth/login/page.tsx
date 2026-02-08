@@ -75,6 +75,8 @@ export default function V1Login() {
                     return;
                   }
                   router.push(res.url || '/zh');
+                } catch {
+                  setError('登录请求失败，请稍后重试');
                 } finally {
                   setLoading(false);
                 }

@@ -6,7 +6,7 @@ export default function V1Layout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-black text-white font-sans">
+    <div className="h-screen overflow-hidden bg-black text-white font-sans">
       {children}
     </div>
   );

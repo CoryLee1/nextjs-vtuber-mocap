@@ -1,13 +1,42 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AuthButton } from '../../components/auth-ui';
+import { getModels } from '@/lib/resource-manager';
+import type { VRMModel } from '@/types';
+import { useSceneStore } from '@/hooks/use-scene-store';
+
+const ECHUU_MODEL_KEY = 'echuu_model';
 
 export default function V1OCSelection() {
+  const router = useRouter();
+  const [models, setModels] = useState<VRMModel[]>([]);
+  const { setVRMModelUrl, setEchuuConfig } = useSceneStore();
+
+  useEffect(() => {
+    const loadModels = async () => {
+      const list = await getModels();
+      setModels(list || []);
+    };
+    loadModels();
+  }, []);
+
+  const handleSelect = (model: VRMModel) => {
+    setVRMModelUrl(model.url);
+    setEchuuConfig({ modelUrl: model.url, modelName: model.name });
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(ECHUU_MODEL_KEY, JSON.stringify({
+        id: model.id,
+        name: model.name,
+        url: model.url,
+      }));
+    }
+    router.push('/v1/live/character');
+  };
+
   return (
     <div className="relative w-full min-h-screen bg-black overflow-hidden flex items-center justify-center p-6 font-sans">
-      
       {/* Background with individual fill */}
       <div className="absolute inset-0 z-0">
         <img 
@@ -40,19 +69,26 @@ export default function V1OCSelection() {
         </div>
 
         {/* Right: Choice Panel */}
-        <div className="space-y-12">
+        <div className="space-y-8">
           <div className="space-y-4">
-            <h1 className="text-5xl font-black text-[#EEFF00] tracking-tighter uppercase italic leading-tight">Resume<br />Neural Link?</h1>
-            <p className="text-white/60 text-lg">You have an active Agent configuration from your previous session. Choose your protocol.</p>
+            <h1 className="text-5xl font-black text-[#EEFF00] tracking-tighter uppercase italic leading-tight">Choose<br />Your Agent</h1>
+            <p className="text-white/60 text-lg">Select a VRM model to continue to persona setup.</p>
           </div>
 
-          <div className="space-y-4">
-            <Link href="/v1/settings/1" className="block">
-              <AuthButton className="h-20 text-lg">Resume Current OC</AuthButton>
-            </Link>
-            <Link href="/v1/settings/1" className="block">
-              <AuthButton variant="secondary" className="h-20 text-lg">Initialize New Agent</AuthButton>
-            </Link>
+          <div className="grid grid-cols-1 gap-4 max-h-[360px] overflow-y-auto pr-2">
+            {models.map((model) => (
+              <AuthButton
+                key={model.id}
+                className="h-16 text-lg justify-between px-6"
+                onClick={() => handleSelect(model)}
+              >
+                <span>{model.name}</span>
+                <span className="text-[10px] text-white/60 uppercase">{model.category}</span>
+              </AuthButton>
+            ))}
+            {models.length === 0 && (
+              <div className="text-white/40 text-sm">No models available.</div>
+            )}
           </div>
 
           <div className="pt-8 border-t border-white/5">

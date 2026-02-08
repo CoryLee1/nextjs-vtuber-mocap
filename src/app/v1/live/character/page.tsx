@@ -1,10 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { LiveHeader, LiveToolbar } from '../../components/live-ui';
 import { LiveMonitor, CharacterSettingItem } from '../../components/live-monitor';
+import { useSceneStore } from '@/hooks/use-scene-store';
+
+const ECHUU_CONFIG_KEY = 'echuu_config';
 
 export default function V1LiveCharacter() {
+  const { echuuConfig, setEchuuConfig } = useSceneStore();
+  const [characterName, setCharacterName] = useState(echuuConfig.characterName);
+  const [persona, setPersona] = useState(echuuConfig.persona);
+  const [background, setBackground] = useState(echuuConfig.background);
+  const [topic, setTopic] = useState(echuuConfig.topic);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(ECHUU_CONFIG_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setCharacterName(parsed.characterName || echuuConfig.characterName);
+        setPersona(parsed.persona || echuuConfig.persona);
+        setBackground(parsed.background || echuuConfig.background);
+        setTopic(parsed.topic || echuuConfig.topic);
+      } catch {
+        // ignore invalid config
+      }
+    }
+  }, [echuuConfig.background, echuuConfig.characterName, echuuConfig.persona, echuuConfig.topic]);
+
+  useEffect(() => {
+    const next = {
+      characterName,
+      persona,
+      background,
+      topic,
+    };
+    setEchuuConfig(next);
+    if (typeof window !== 'undefined') {
+      const current = useSceneStore.getState().echuuConfig;
+      window.localStorage.setItem(ECHUU_CONFIG_KEY, JSON.stringify({
+        ...current,
+        ...next,
+      }));
+    }
+  }, [background, characterName, persona, topic, setEchuuConfig]);
+
   const settings = [
     { label: 'Active Agent', value: 'AGENT_CORY_V1', active: true },
     { label: 'Neural Blend', value: 'EXPRESSION_PACK_01', active: false },
@@ -31,6 +73,45 @@ export default function V1LiveCharacter() {
         title="Agent Config" 
         subtitle="Neural Character Calibration"
       >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className="space-y-2">
+            <label className="text-[10px] text-white/60 uppercase tracking-widest">Character Name</label>
+            <input
+              className="w-full h-12 rounded-[18px] bg-black/40 border border-white/10 px-4 text-white"
+              value={characterName}
+              onChange={(event) => setCharacterName(event.target.value)}
+              placeholder="Character name"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] text-white/60 uppercase tracking-widest">Topic</label>
+            <input
+              className="w-full h-12 rounded-[18px] bg-black/40 border border-white/10 px-4 text-white"
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              placeholder="Streaming topic"
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] text-white/60 uppercase tracking-widest">Persona</label>
+            <textarea
+              className="w-full h-24 rounded-[18px] bg-black/40 border border-white/10 px-4 py-3 text-white resize-none"
+              value={persona}
+              onChange={(event) => setPersona(event.target.value)}
+              placeholder="Persona description"
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-[10px] text-white/60 uppercase tracking-widest">Background</label>
+            <textarea
+              className="w-full h-20 rounded-[18px] bg-black/40 border border-white/10 px-4 py-3 text-white resize-none"
+              value={background}
+              onChange={(event) => setBackground(event.target.value)}
+              placeholder="Background context"
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-6">
           {settings.map((s, i) => (
             <CharacterSettingItem key={i} {...s} />

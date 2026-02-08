@@ -140,14 +140,19 @@ export default function HomePage() {
                       }
                     }
 
-                    const result = await signIn('credentials', {
-                      email,
-                      password,
-                      redirect: false,
-                      callbackUrl: '/zh',
-                    });
-                    if (!result || result.error) {
-                      setAuthError('邮箱或密码不正确');
+                    try {
+                      const result = await signIn('credentials', {
+                        email,
+                        password,
+                        redirect: false,
+                        callbackUrl: '/zh',
+                      });
+                      if (!result || result.error) {
+                        setAuthError('邮箱或密码不正确');
+                        return;
+                      }
+                    } catch {
+                      setAuthError('登录请求失败，请稍后重试');
                       return;
                     }
                   } finally {

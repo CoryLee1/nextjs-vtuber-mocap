@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import unionIcon from '../assets/ECHUU V1 UX_icon/Union.svg';
 import chatVector1 from '../assets/ECHUU V1 UX_icon/Vector-1.svg';
 import chatVector2 from '../assets/ECHUU V1 UX_icon/Vector-2.svg';
@@ -11,8 +11,10 @@ import ellipse458 from '../assets/ECHUU V1 UX_icon/Ellipse 458.svg';
 import voiceIcon from '../assets/ECHUU V1 UX_img/4d7820fc426bfc79e3eca47f3742b91d 1.png';
 import decoTop from '../assets/ECHUU V1 UX_img/fe424fdbe4fd640ad4ec9e5d7e26363b 1.png';
 import decoLeft from '../assets/ECHUU V1 UX_img/db13c5aa82b66b348df53b3b1ab7faa2 1.png';
+import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 
 export const LiveHeader = () => {
+  const onlineCount = useEchuuWebSocket((state) => state.onlineCount);
   return (
     <div className="absolute top-0 left-0 w-full p-8 flex justify-between items-start z-50 pointer-events-none">
       <div className="flex items-center space-x-6 pointer-events-auto">
@@ -29,6 +31,10 @@ export const LiveHeader = () => {
       </div>
 
       <div className="flex space-x-4 pointer-events-auto">
+        <div className="bg-[#EEFF00]/20 border border-[#EEFF00] px-4 py-2 rounded-xl flex items-center space-x-2">
+          <span className="text-[10px] font-black text-[#EEFF00] uppercase tracking-widest">Online</span>
+          <span className="text-[10px] font-black text-[#EEFF00] font-mono">{onlineCount}</span>
+        </div>
         <div className="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center space-x-3">
           <span className="text-[10px] font-bold text-white/40 uppercase">Bitrate</span>
           <span className="text-[10px] font-black text-white font-mono">12.4 Mbps</span>
@@ -43,6 +49,31 @@ export const LiveHeader = () => {
 };
 
 export const ChatPanel = () => {
+  const { chatMessages, sendDanmaku } = useEchuuWebSocket();
+  const [inputValue, setInputValue] = useState('');
+  const messageRef = useRef<HTMLDivElement | null>(null);
+  const recentMessages = useMemo(() => chatMessages.slice(-20), [chatMessages]);
+
+  useEffect(() => {
+    if (messageRef.current) {
+      messageRef.current.scrollTop = messageRef.current.scrollHeight;
+    }
+  }, [recentMessages]);
+
+  const handleSend = () => {
+    const text = inputValue.trim();
+    if (!text) return;
+    sendDanmaku(text);
+    setInputValue('');
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* ChatPanel-container */}
@@ -114,23 +145,16 @@ export const ChatPanel = () => {
           overflow: 'hidden',
         }}
       >
-        彼岸の木：（桌子 hp-1）<br />
-        永远的时光：再见<br />
-        彼岸の木：你试试跳起来呢<br />
-        彼岸の木：啃着玩<br />
-        猫尾巴：有点破了<br />
-        寻找失踪已久的 JIU：嘿嘿<br />
-        彼岸の木：“嘿嘿”<br />
-        彼岸の木：他可以斜着<br />
-        一只白色狮子：突然发现自己是 bt<br />
-        猫尾巴：梅开二度<br />
-        一只白色狮子：当洛恩字正腔圆的骂人时有种兴奋的感觉 😼<br />
-        上善若水的袋鼠星官：去玩最 BT 的版本<br />
-        上善若水的袋鼠星官：经典玩的时像写者，玩完了觉得好玩<br />
-        主播 · 洛恩 Ron：I wanna avoid being<br />
-        猫尾巴：avoid being trolled<br />
-        那就再跳会儿舞吧：就喜欢看紫薯玩 😺<br />
-        流星雨·余生：嘿嘿耳朵
+        <div ref={messageRef} className="h-full overflow-y-auto pr-2 pointer-events-auto">
+          {recentMessages.map((msg, index) => (
+            <div key={`${msg.user}-${msg.timestamp}-${index}`} className="mb-1">
+              <span className={msg.isAI ? 'text-[#EEFF00]' : 'text-white'}>
+                {msg.user}：
+              </span>
+              <span className="ml-1">{msg.text}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Union */}
@@ -212,24 +236,24 @@ export const ChatPanel = () => {
             borderRadius: '73px',
           }}
         />
-        <div
-          className="absolute"
+        <input
+          className="absolute bg-transparent text-white outline-none pointer-events-auto"
           style={{
             left: '16px',
             top: '0px',
             width: '231px',
             height: '35px',
-            display: 'flex',
-            alignItems: 'center',
             color: '#8D8D8D',
             fontFamily: 'FZLanTingHeiS-L-GB',
             fontWeight: 400,
             fontSize: '10px',
             lineHeight: '12px',
           }}
-        >
-          Chat with your streamer...
-        </div>
+          placeholder="Chat with your streamer..."
+          value={inputValue}
+          onChange={(event) => setInputValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
         {/* Voice-btn */}
         <div className="absolute" style={{ left: '252.15px', top: '4px', width: '82.92px', height: '31px' }}>
           <div
@@ -252,7 +276,12 @@ export const ChatPanel = () => {
           />
         </div>
         {/* Send-btn */}
-        <div className="absolute" style={{ left: '252.15px', top: '4px', width: '37.23px', height: '27.31px' }}>
+        <button
+          type="button"
+          className="absolute pointer-events-auto"
+          style={{ left: '252.15px', top: '4px', width: '37.23px', height: '27.31px' }}
+          onClick={handleSend}
+        >
           <div
             className="absolute"
             style={{
@@ -265,7 +294,7 @@ export const ChatPanel = () => {
               borderRadius: '73px',
             }}
           />
-        </div>
+        </button>
         <div
           className="absolute"
           style={{

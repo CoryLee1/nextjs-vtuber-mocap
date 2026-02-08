@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +11,6 @@ import {
   X, 
   Upload, 
   Users, 
-  Play,
-  Camera,
   Settings
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
@@ -24,27 +23,33 @@ interface OnboardingGuideProps {
 const steps = [
   {
     id: 1,
-    title: 'UPLOAD YOUR AVATAR',
-    description: '支持 .vrm 文件',
+    title: 'SELECT / UPLOAD MODEL',
+    description: '选择或上传 .vrm',
     icon: Upload,
-    content: '上传您的VRM格式虚拟形象文件，开始您的VTuber之旅。',
-    details: 'Want a customized model? Make it from Vroid Studio: Link'
+    content: '选择或上传您的VRM模型，作为直播角色的外观。',
+    details: 'Want a customized model? Make it from Vroid Studio: Link',
+    actionLabel: '选择/上传模型',
+    actionHref: '/v1/auth/oc-selection',
   },
   {
     id: 2,
-    title: 'SET UP YOUR CHARACTER',
-    description: '配置您的角色',
+    title: 'CHARACTER PERSONA',
+    description: '填写人设背景',
     icon: Users,
-    content: '调整角色设置，包括动作捕捉参数和显示选项。',
-    details: 'Configure motion capture settings and visual preferences'
+    content: '填写角色名字、性格、人设与背景设定。',
+    details: 'Define who your VTuber is before going live.',
+    actionLabel: '设置角色人设',
+    actionHref: '/v1/live/character',
   },
   {
     id: 3,
-    title: 'GO LIVE',
-    description: '开始直播',
-    icon: Play,
-    content: '启动摄像头，开始您的实时动作捕捉体验。',
-    details: 'Enable camera and start your real-time motion capture session'
+    title: 'SET STREAM TOPIC',
+    description: '设定直播主题',
+    icon: Settings,
+    content: '输入本场直播的话题与方向。',
+    details: 'Once ready, jump into the Stream Room.',
+    actionLabel: '进入直播间',
+    actionHref: '/v1/live/1',
   }
 ];
 
@@ -200,6 +205,15 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                   <p className="text-sm text-blue-300">
                     {currentStep.details}
                   </p>
+                  {currentStep.actionHref && (
+                    <div className="mt-6">
+                      <Link href={currentStep.actionHref}>
+                        <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
+                          {currentStep.actionLabel}
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
