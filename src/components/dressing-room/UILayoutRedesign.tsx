@@ -259,7 +259,11 @@ export const ActionButtonStack = memo(({
 ActionButtonStack.displayName = 'ActionButtonStack';
 
 // 4.5 左侧 StreamRoom 控制 + 面板
-export const StreamRoomSidebar = memo(() => {
+export const StreamRoomSidebar = memo(({
+  onPanelOpenChange
+}: {
+  onPanelOpenChange?: (isOpen: boolean) => void;
+}) => {
   const { echuuConfig, setEchuuConfig } = useSceneStore();
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
@@ -322,6 +326,10 @@ export const StreamRoomSidebar = memo(() => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    onPanelOpenChange?.(panelOpen);
+  }, [onPanelOpenChange, panelOpen]);
 
   useEffect(() => {
     if (panelType === 'character' && panelOpen) {
@@ -389,7 +397,11 @@ export const StreamRoomSidebar = memo(() => {
 
   return (
     <>
-      <div className="fixed left-[93px] top-1/2 -translate-y-1/2 z-40 pointer-events-auto">
+      <div 
+        className={`fixed left-[93px] top-1/2 -translate-y-1/2 z-40 pointer-events-auto transition-transform duration-300 ease-in-out ${
+          panelOpen ? 'translate-x-[480px]' : 'translate-x-0'
+        }`}
+      >
         <div className="flex flex-col items-center justify-center gap-[30px]">
           <button
             type="button"
@@ -459,9 +471,9 @@ export const StreamRoomSidebar = memo(() => {
       </div>
 
       <div
-        className={`fixed left-0 top-24 z-30 transition-transform duration-300 ${panelOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'}`}
+        className={`fixed left-0 top-0 z-30 h-screen transition-transform duration-300 ease-in-out ${panelOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'}`}
       >
-        <div className="w-[560px] h-[720px] bg-[#E7ECF3] shadow-[0_20px_60px_rgba(0,0,0,0.2)] border border-white/60 rounded-[20px] p-10 flex flex-col gap-6 pointer-events-auto">
+        <div className="w-[560px] h-full bg-[#E7ECF3] shadow-[0_20px_60px_rgba(0,0,0,0.2)] border border-white/60 rounded-tr-[20px] rounded-br-[20px] p-10 flex flex-col gap-6 pointer-events-auto overflow-y-auto">
           <div className="flex items-center justify-between">
             <div className="text-[12px] text-slate-500 tracking-widest uppercase">
               {panelType === 'character' && 'Character Setting'}

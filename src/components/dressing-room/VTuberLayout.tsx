@@ -1,10 +1,13 @@
-import React, { ReactNode } from 'react';
+"use client";
+
+import React, { ReactNode, useState } from 'react';
 import { 
   BrandOverlay, 
   PowerToggle, 
   InfoPanels, 
-  ActionButtonStack, 
-  GoLiveButton 
+  GoLiveButton,
+  StreamRoomSidebar,
+  StreamRoomChatPanel
 } from './UILayoutRedesign';
 
 // 状态指示器接口 (保留以兼容 VTuberApp.tsx)
@@ -43,10 +46,16 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
   statusProps,
   controlProps
 }) => {
+  const [isStreamPanelOpen, setIsStreamPanelOpen] = useState(false);
+
   return (
     <div className="relative w-full h-screen overflow-hidden theme-transition pointer-events-none bg-background/20">
       {/* 3D 场景容器 (由 layout 层级管理) */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
+      <div 
+        className={`absolute inset-0 w-full h-full pointer-events-none transition-all duration-300 ease-in-out ${
+          isStreamPanelOpen ? 'pl-[560px]' : 'pl-0'
+        }`}
+      >
         {children}
       </div>
 
@@ -59,6 +68,10 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
         onToggle={controlProps.onCameraToggle} 
       />
 
+      {/* 2.5 左侧 StreamRoom 控制 + 右侧 Chat */}
+      <StreamRoomSidebar onPanelOpenChange={setIsStreamPanelOpen} />
+      <StreamRoomChatPanel />
+
       {/* 3. 左下角信息面板 */}
       <InfoPanels 
         modelName={controlProps.modelName || 'Default Avatar'} 
@@ -66,20 +79,8 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
         showBones={controlProps.showBones} 
       />
 
-      {/* 4. 右下角操作按钮组 */}
-      <ActionButtonStack 
-        onOpenModelManager={controlProps.onOpenModelManager}
-        onOpenAnimationLibrary={controlProps.onOpenAnimationLibrary}
-        onToggleBones={controlProps.onToggleBones}
-        onOpenSettings={controlProps.onOpenConfigManager}
-        onCameraToggle={controlProps.onCameraToggle}
-        isBonesVisible={controlProps.showBones}
-        isCameraActive={controlProps.isCameraActive}
-      />
-
       {/* 5. 底部中间主操作按钮 (Go Live) */}
       <GoLiveButton />
     </div>
   );
 };
- 
