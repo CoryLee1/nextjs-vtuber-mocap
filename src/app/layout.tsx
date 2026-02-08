@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { BGMPlayer } from '@/components/dressing-room/BGMPlayer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="zh">
       <body className={inter.className}>
+        <BGMPlayer />
         {children}
       </body>
     </html>

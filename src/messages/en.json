@@ -135,6 +135,15 @@
       "persona": "Persona",
       "topic": "Stream topic",
       "confirm": "Confirm"
+    },
+    "sound": {
+      "bgm": "BGM",
+      "bgmPlaceholder": "Select or upload BGM",
+      "none": "None",
+      "uploadBgm": "Upload .mp3 BGM (max 15MB)",
+      "uploading": "Uploading…",
+      "bgmVolume": "BGM volume",
+      "voiceVolume": "Voice volume"
     }
   },
   "settings": {

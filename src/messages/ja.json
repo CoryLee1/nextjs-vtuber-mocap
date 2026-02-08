@@ -122,6 +122,15 @@
       "persona": "人物設定",
       "topic": "配信テーマ",
       "confirm": "確認"
+    },
+    "sound": {
+      "bgm": "BGM",
+      "bgmPlaceholder": "BGMを選択またはアップロード",
+      "none": "なし",
+      "uploadBgm": ".mp3 BGMをアップロード（15MBまで）",
+      "uploading": "アップロード中…",
+      "bgmVolume": "BGM音量",
+      "voiceVolume": "声の音量"
     }
   },
   "settings": {

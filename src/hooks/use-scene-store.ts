@@ -110,6 +110,12 @@ interface SceneState {
   setEchuuCue: (cue: EchuuCue | null) => void;
   echuuAudioPlaying: boolean;
   setEchuuAudioPlaying: (playing: boolean) => void;
+  /** BGM 播放 URL（空则停止） */
+  bgmUrl: string | null;
+  /** BGM 音量 0–100 */
+  bgmVolume: number;
+  setBgmUrl: (url: string | null) => void;
+  setBgmVolume: (v: number) => void;
 }
 
 /**
@@ -319,6 +325,10 @@ export const useSceneStore = create<SceneState>()(
   setEchuuCue: (cue) => set({ echuuCue: cue }),
   echuuAudioPlaying: false,
   setEchuuAudioPlaying: (playing) => set({ echuuAudioPlaying: playing }),
+  bgmUrl: null,
+  bgmVolume: 80,
+  setBgmUrl: (url) => set({ bgmUrl: url }),
+  setBgmVolume: (v) => set({ bgmVolume: Math.max(0, Math.min(100, v)) }),
   }))
 );
 

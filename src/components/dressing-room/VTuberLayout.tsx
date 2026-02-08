@@ -9,6 +9,7 @@ import {
   StreamRoomSidebar,
   StreamRoomChatPanel
 } from './UILayoutRedesign';
+import { BGMPlayer } from './BGMPlayer';
 import { useSceneStore } from '@/hooks/use-scene-store';
 
 // 状态指示器接口 (保留以兼容 VTuberApp.tsx)

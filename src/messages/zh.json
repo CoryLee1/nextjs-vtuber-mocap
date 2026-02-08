@@ -135,6 +135,15 @@
       "persona": "人物设定",
       "topic": "直播主题",
       "confirm": "确认"
+    },
+    "sound": {
+      "bgm": "BGM 背景音",
+      "bgmPlaceholder": "选择或上传 BGM",
+      "none": "无",
+      "uploadBgm": "上传 .mp3 BGM（限 15MB）",
+      "uploading": "上传中…",
+      "bgmVolume": "BGM 音量",
+      "voiceVolume": "人声音量"
     }
   },
   "settings": {

@@ -75,6 +75,8 @@ export default function V1Live1() {
     setScene,
     setEchuuCue,
     setEchuuAudioPlaying,
+    setBgmUrl,
+    setBgmVolume: setStoreBgmVolume,
   } = useSceneStore();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState('');
@@ -92,6 +94,8 @@ export default function V1Live1() {
   const [livePlatform, setLivePlatform] = useState('');
   const [liveKey, setLiveKey] = useState('');
   const [bgm, setBgm] = useState('');
+  const [bgmVolume, setBgmVolume] = useState(80);
+  const [voiceVolume, setVoiceVolume] = useState(100);
   const [voice, setVoice] = useState('');
   const [hdr, setHdr] = useState('');
   const [sceneName, setSceneName] = useState('');
@@ -181,6 +185,11 @@ export default function V1Live1() {
         const parsed = JSON.parse(storedSound);
         setBgm(parsed.bgm || '');
         setVoice(parsed.voice || '');
+        if (typeof parsed.bgmVolume === 'number') setBgmVolume(parsed.bgmVolume);
+        if (typeof parsed.voiceVolume === 'number') setVoiceVolume(parsed.voiceVolume);
+        if (parsed.bgm) setBgmUrl(parsed.bgm);
+        else setBgmUrl(null);
+        if (typeof parsed.bgmVolume === 'number') setStoreBgmVolume(parsed.bgmVolume);
       } catch {
         // ignore invalid storage
       }
@@ -282,8 +291,10 @@ export default function V1Live1() {
       if (panelType === 'sound') {
         window.localStorage.setItem(
           ECHUU_SOUND_SETTINGS_KEY,
-          JSON.stringify({ bgm, voice })
+          JSON.stringify({ bgm, voice, bgmVolume, voiceVolume })
         );
+        setBgmUrl(bgm || null);
+        setStoreBgmVolume(bgmVolume);
       }
       if (panelType === 'scene') {
         window.localStorage.setItem(

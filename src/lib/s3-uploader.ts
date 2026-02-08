@@ -62,13 +62,13 @@ export class S3Uploader {
   // 上传文件到 S3
   async uploadFile(file: File, onProgress?: ((progress: number) => void) | null): Promise<S3UploadResult> {
     try {
-      // 简化：只处理VRM和FBX
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
       const isVRM = fileExtension === 'vrm';
       const isAnimation = fileExtension === 'fbx' && file.name.toLowerCase().includes('animation');
-      const fileType = isVRM ? 'model/vrm' : 'application/octet-stream';
-      const folderName = isVRM ? 'vrm' : (isAnimation ? 'animations' : 'fbx');
-      
+      const isMP3 = fileExtension === 'mp3';
+      const fileType = isVRM ? 'model/vrm' : isMP3 ? 'audio/mpeg' : 'application/octet-stream';
+      const folderName = isVRM ? 'vrm' : isMP3 ? 'bgm' : (isAnimation ? 'animations' : 'fbx');
+
       // 直接使用原始文件名
       const fileName = `${folderName}/${file.name}`;
 
@@ -126,11 +126,11 @@ export class S3Uploader {
       console.error('S3 上传失败:', error);
       // 如果真实上传失败，使用模拟上传
       console.log('使用模拟上传模式');
-      // 重新生成文件名用于模拟上传
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
       const isVRM = fileExtension === 'vrm';
       const isAnimation = fileExtension === 'fbx' && file.name.toLowerCase().includes('animation');
-      const folderName = isVRM ? 'vrm' : (isAnimation ? 'animations' : 'fbx');
+      const isMP3 = fileExtension === 'mp3';
+      const folderName = isVRM ? 'vrm' : isMP3 ? 'bgm' : (isAnimation ? 'animations' : 'fbx');
       const fileName = `${folderName}/${file.name}`;
       return this.simulateUpload(file, fileName, onProgress);
     }
@@ -150,7 +150,8 @@ export class S3Uploader {
           const fileUrl = `${this.s3Config.baseUrl}/${fileName}`;
           const fileExtension = file.name.split('.').pop()?.toLowerCase();
           const isVRM = fileExtension === 'vrm';
-          const fileType = isVRM ? 'model/vrm' : 'application/octet-stream';
+          const isMP3 = fileExtension === 'mp3';
+          const fileType = isVRM ? 'model/vrm' : isMP3 ? 'audio/mpeg' : 'application/octet-stream';
           
           resolve({
             url: fileUrl,
@@ -200,6 +201,25 @@ export class S3Uploader {
       errors.push('❌ 文件不能为空');
     }
     
+    return errors;
+  }
+
+  /** BGM 上传大小上限 15MB */
+  static BGM_MAX_SIZE = 15 * 1024 * 1024;
+
+  // 验证 BGM 文件（仅 .mp3，限制大小）
+  validateBGMFile(file: File): string[] {
+    const errors: string[] = [];
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== 'mp3') {
+      errors.push('❌ BGM 仅支持 .mp3 格式');
+    }
+    if (file.size > S3Uploader.BGM_MAX_SIZE) {
+      errors.push(`❌ BGM 文件不能超过 ${S3Uploader.BGM_MAX_SIZE / 1024 / 1024}MB`);
+    }
+    if (file.size === 0) {
+      errors.push('❌ 文件不能为空');
+    }
     return errors;
   }
 

@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
@@ -79,6 +80,14 @@ const ECHUU_LIVE_SETTINGS_KEY = 'echuu_live_settings';
 const ECHUU_SOUND_SETTINGS_KEY = 'echuu_sound_settings';
 const ECHUU_SCENE_SETTINGS_KEY = 'echuu_scene_settings';
 const ECHUU_CALENDAR_SETTINGS_KEY = 'echuu_calendar_settings';
+
+// BGM 预设：4 首转为 MP3 后命名为 xxx-Cynthia-xmyri.mp3，放在 public/sounds/bgm/
+const BGM_PRESETS: { id: string; url: string; nameZh: string; nameEn: string }[] = [
+  { id: 'cold-background', url: '/sounds/bgm/cold-background-Cynthia-xmyri.mp3', nameZh: 'Cold Background', nameEn: 'Cold Background' },
+  { id: 'deep-sleep-wip', url: '/sounds/bgm/deep-sleep-wip-Cynthia-xmyri.mp3', nameZh: 'Deep Sleep WIP', nameEn: 'Deep Sleep WIP' },
+  { id: 'reboot-background-wip', url: '/sounds/bgm/reboot-background-wip-Cynthia-xmyri.mp3', nameZh: 'Reboot Background WIP', nameEn: 'Reboot Background WIP' },
+  { id: 'absent-wip', url: '/sounds/bgm/absent-wip-Cynthia-xmyri.mp3', nameZh: 'Absent WIP', nameEn: 'Absent WIP' },
+];
 
 type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar';
 
@@ -252,7 +261,7 @@ export const StreamRoomSidebar = memo(({
 }: {
   onPanelOpenChange?: (isOpen: boolean) => void;
 }) => {
-  const { echuuConfig, setEchuuConfig, setVRMModelUrl } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume } = useSceneStore();
   const { t, locale } = useI18n();
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
@@ -271,7 +280,11 @@ export const StreamRoomSidebar = memo(({
   const [livePlatform, setLivePlatform] = useState('');
   const [liveKey, setLiveKey] = useState('');
   const [bgm, setBgm] = useState('');
+  const [bgmVolume, setBgmVolume] = useState(80);
+  const [voiceVolume, setVoiceVolume] = useState(100);
   const [soundVoice, setSoundVoice] = useState('');
+  const [uploadingBgm, setUploadingBgm] = useState(false);
+  const bgmInputRef = useRef<HTMLInputElement>(null);
   const [hdr, setHdr] = useState('');
   const [sceneName, setSceneName] = useState('');
   const [calendarMemo, setCalendarMemo] = useState('');
@@ -307,6 +320,14 @@ export const StreamRoomSidebar = memo(({
         const parsed = JSON.parse(storedSound);
         setBgm(parsed.bgm || '');
         setSoundVoice(parsed.voice || '');
+        if (typeof parsed.bgmVolume === 'number') {
+          setBgmVolume(parsed.bgmVolume);
+          setStoreBgmVolume(parsed.bgmVolume);
+        }
+        if (typeof parsed.voiceVolume === 'number') setVoiceVolume(parsed.voiceVolume);
+        if (parsed.bgm) setBgmUrl(parsed.bgm);
+        else setBgmUrl(null);
+        if (typeof parsed.bgmVolume === 'number') setStoreBgmVolume(parsed.bgmVolume);
       } catch {
         // ignore invalid storage
       }
@@ -417,8 +438,10 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'sound') {
         window.localStorage.setItem(
           ECHUU_SOUND_SETTINGS_KEY,
-          JSON.stringify({ bgm, voice: soundVoice })
+          JSON.stringify({ bgm, voice: soundVoice, bgmVolume, voiceVolume })
         );
+        setBgmUrl(bgm || null);
+        setStoreBgmVolume(bgmVolume);
       }
       if (panelType === 'scene') {
         window.localStorage.setItem(
@@ -434,6 +457,28 @@ export const StreamRoomSidebar = memo(({
       }
     }
     setPanelOpen(false);
+  };
+
+  const handleBgmUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const errors = s3Uploader.validateBGMFile(file);
+    if (errors.length > 0) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      return;
+    }
+    setUploadingBgm(true);
+    try {
+      const result = await s3Uploader.uploadFile(file);
+      setBgm(result.url);
+      setBgmUrl(result.url);
+      toast({ title: locale === 'zh' ? 'BGM 已上传并应用' : 'BGM uploaded and applied' });
+    } catch (err) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+    } finally {
+      setUploadingBgm(false);
+    }
   };
 
   const handleVrmUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -680,18 +725,41 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'sound' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">BGM背景音</label>
-              <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={bgm}
-                onChange={(event) => setBgm(event.target.value)}
-              />
-              <label className="text-[12px] text-slate-500">人声音</label>
-              <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={soundVoice}
-                onChange={(event) => setSoundVoice(event.target.value)}
-              />
+              <label className="text-[12px] text-slate-500">{t('vtuber.sound.bgm')}</label>
+              <Select value={bgm || '__none__'} onValueChange={(v) => setBgm(v === '__none__' ? '' : v)}>
+                <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
+                  <SelectValue placeholder={t('vtuber.sound.bgmPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{t('vtuber.sound.none')}</SelectItem>
+                  {BGM_PRESETS.map((p) => (
+                    <SelectItem key={p.id} value={p.url}>
+                      {locale === 'zh' ? p.nameZh : p.nameEn}
+                    </SelectItem>
+                  ))}
+                  {bgm && !BGM_PRESETS.some((p) => p.url === bgm) && (
+                    <SelectItem value={bgm}>{locale === 'zh' ? '已上传的 BGM' : 'Uploaded BGM'}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <input ref={bgmInputRef} type="file" accept=".mp3" className="hidden" onChange={handleBgmUpload} />
+              <Button type="button" variant="outline" size="sm" className="w-full" disabled={uploadingBgm} onClick={() => bgmInputRef.current?.click()}>
+                {uploadingBgm ? t('vtuber.sound.uploading') : t('vtuber.sound.uploadBgm')}
+              </Button>
+              <div className="space-y-1">
+                <label className="text-[12px] text-slate-500">{t('vtuber.sound.bgmVolume')}</label>
+                <div className="flex items-center gap-2">
+                  <Slider min={0} max={100} step={1} value={bgmVolume} onValueChange={setBgmVolume} showValue={false} className="flex-1" />
+                  <span className="text-[12px] text-slate-600 w-8">{bgmVolume}%</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[12px] text-slate-500">{t('vtuber.sound.voiceVolume')}</label>
+                <div className="flex items-center gap-2">
+                  <Slider min={0} max={100} step={1} value={voiceVolume} onValueChange={setVoiceVolume} showValue={false} className="flex-1" />
+                  <span className="text-[12px] text-slate-600 w-8">{voiceVolume}%</span>
+                </div>
+              </div>
             </div>
           )}
 
