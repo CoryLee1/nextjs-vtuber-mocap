@@ -661,7 +661,7 @@ export const StreamRoomSidebar = memo(({
           panelOpen ? 'translate-x-[480px]' : 'translate-x-0'
         }`}
       >
-        <div className="flex flex-col items-center justify-center gap-[30px]">
+        <div className="flex flex-col items-center justify-center gap-[10px]">
           <button
             type="button"
             onClick={() => handleOpenPanel('character')}
@@ -1149,7 +1149,6 @@ const ChatPanelFooterButtons = memo(() => {
           aria-label="语言 / Language"
         >
           <Languages className="h-4 w-4" />
-          <span>{locales.find((l) => l.code === locale)?.label ?? locale}</span>
         </button>
         {langOpen && (
           <>
@@ -1182,7 +1181,6 @@ const ChatPanelFooterButtons = memo(() => {
         title={canvasReady ? '截取 3D 画面（可编辑）' : '3D 场景就绪后可用'}
       >
         <Camera className="h-4 w-4" />
-        <span>Take Photo</span>
       </button>
     </div>
   );

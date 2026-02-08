@@ -10,6 +10,7 @@ import {
   StreamRoomChatPanel
 } from './UILayoutRedesign';
 import { BGMPlayer } from './BGMPlayer';
+import { PixelTrail } from '@/components/effects/PixelTrail';
 import { useSceneStore } from '@/hooks/use-scene-store';
 
 // 状态指示器接口 (保留以兼容 VTuberApp.tsx)
@@ -87,6 +88,9 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
 
       {/* 5. 底部中间主操作按钮 (Go Live) */}
       <GoLiveButton />
+
+      {/* 6. 星星光标 + 像素轨迹 */}
+      <PixelTrail />
     </div>
   );
 };
