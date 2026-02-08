@@ -1,10 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { AuthButton, AuthInput, SocialButton } from '../../components/auth-ui';
 
 export default function V1Login() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   return (
     <div className="relative w-full min-h-screen bg-black overflow-hidden flex items-center justify-center p-6 font-sans">
       
@@ -26,9 +34,47 @@ export default function V1Login() {
           </div>
 
           <div className="space-y-6">
-            <AuthInput label="User Identification" type="email" placeholder="NEURAL_LINK@ECHUU.AI" />
-            <AuthInput label="Access Code" type="password" placeholder="••••••••••••" />
-            <AuthButton>Decrypt & Login</AuthButton>
+            <AuthInput
+              label="User Identification"
+              type="email"
+              placeholder="NEURAL_LINK@ECHUU.AI"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <AuthInput
+              label="Access Code"
+              type="password"
+              placeholder="••••••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {error && (
+              <div className="text-xs text-red-400 font-bold">{error}</div>
+            )}
+            <AuthButton
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  const res = await signIn('credentials', {
+                    email,
+                    password,
+                    redirect: false,
+                    callbackUrl: '/zh',
+                  });
+                  if (!res || res.error) {
+                    setError('邮箱或密码不正确');
+                    return;
+                  }
+                  router.push(res.url || '/zh');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              {loading ? 'Logging In…' : 'Decrypt & Login'}
+            </AuthButton>
           </div>
 
           <div className="relative py-4">
@@ -39,6 +85,7 @@ export default function V1Login() {
           <SocialButton 
             icon="/v1-assets/fills/774627be89a12b5733ec566d9e28cb7cbdead78d.png" 
             label="Google Authentication" 
+            onClick={() => signIn('google', { callbackUrl: '/zh' })}
           />
 
           <p className="text-center text-xs font-bold uppercase tracking-widest text-white/30">

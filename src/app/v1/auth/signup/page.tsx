@@ -1,10 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { AuthButton, AuthInput, SocialButton } from '../../components/auth-ui';
 
 export default function V1SignUp() {
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   return (
     <div className="relative w-full min-h-screen bg-black overflow-hidden flex items-center justify-center p-6">
       
@@ -36,9 +45,65 @@ export default function V1SignUp() {
           </div>
 
           <div className="space-y-6">
-            <AuthInput label="Email Address" type="email" placeholder="NEURAL_LINK@ECHUU.AI" />
-            <AuthInput label="Secret Key" type="password" placeholder="••••••••••••" />
-            <AuthButton>Initialize Account</AuthButton>
+            <AuthInput
+              label="Nickname"
+              type="text"
+              placeholder="ECHUU_USER"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <AuthInput
+              label="Email Address"
+              type="email"
+              placeholder="NEURAL_LINK@ECHUU.AI"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <AuthInput
+              label="Secret Key"
+              type="password"
+              placeholder="••••••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {error && (
+              <div className="text-xs text-red-400 font-bold">{error}</div>
+            )}
+            <AuthButton
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, name }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    setError(data?.error || '注册失败');
+                    return;
+                  }
+
+                  const loginRes = await signIn('credentials', {
+                    email,
+                    password,
+                    redirect: false,
+                    callbackUrl: '/zh',
+                  });
+                  if (!loginRes || loginRes.error) {
+                    router.push('/v1/auth/login');
+                    return;
+                  }
+                  router.push(loginRes.url || '/zh');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              {loading ? 'Creating…' : 'Initialize Account'}
+            </AuthButton>
           </div>
 
           <div className="relative py-4">
@@ -49,6 +114,7 @@ export default function V1SignUp() {
           <SocialButton 
             icon="/v1-assets/fills/774627be89a12b5733ec566d9e28cb7cbdead78d.png" 
             label="Connect with Google" 
+            onClick={() => signIn('google', { callbackUrl: '/zh' })}
           />
 
           <p className="text-center text-xs font-bold uppercase tracking-widest text-white/30">

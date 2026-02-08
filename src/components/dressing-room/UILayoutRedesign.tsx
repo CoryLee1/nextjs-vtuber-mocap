@@ -1,39 +1,40 @@
 "use client";
 
 import React, { memo } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
-  Camera, 
   Settings, 
   Users, 
   Play, 
-  Power,
   CheckCircle,
   HelpCircle,
   Info,
   ChevronRight,
   Monitor,
-  Layout
+  Layout,
+  Camera,
+  Languages
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
+import { useEffect } from 'react';
+import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
+import { ProfileButton } from '@/components/auth/ProfileButton';
 
 // 1. Top Left Branding
 export const BrandOverlay = memo(() => {
-  const { t } = useI18n();
   return (
     <div className="fixed top-8 left-8 z-50 flex items-center space-x-3 pointer-events-auto group">
       <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-2xl shadow-blue-500/20 transform group-hover:rotate-6 transition-transform duration-300">
-        VT
+        EC
       </div>
       <div className="flex flex-col">
         <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
-          VTuber Mocap
+          Echuu AI Vtubing
         </h1>
-        <p className="text-[10px] font-bold text-blue-500/80 uppercase tracking-[0.2em] mt-1">
-          Motion Capture
-        </p>
       </div>
     </div>
   );
@@ -44,30 +45,38 @@ BrandOverlay.displayName = 'BrandOverlay';
 // 2. Top Right Power Toggle
 export const PowerToggle = memo(({ 
   isActive, 
-  onToggle 
+  onToggle: _onToggle
 }: { 
   isActive: boolean, 
   onToggle: () => void 
 }) => {
+  const { onlineCount, connectionState, connect } = useEchuuWebSocket();
+
+  useEffect(() => {
+    connect();
+  }, [connect]);
+
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
-      <button
-        onClick={onToggle}
-        className={cn(
-          "flex items-center space-x-3 px-6 py-2.5 rounded-full border-2 transition-all duration-500 shadow-xl",
-          isActive 
-            ? "bg-white dark:bg-slate-900 border-blue-500 text-blue-500 scale-105" 
-            : "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-transparent text-slate-400 hover:border-slate-200 dark:hover:border-slate-700"
-        )}
-      >
-        <div className={cn(
-          "w-2 h-2 rounded-full",
-          isActive ? "bg-blue-500 animate-pulse" : "bg-slate-300 dark:bg-slate-600"
-        )} />
-        <span className="text-xs font-black uppercase tracking-widest">
-          {isActive ? 'On' : 'Off'}
-        </span>
-      </button>
+      <div className="flex items-center gap-4">
+        {/* Online count bar (replaces old ON/OFF) */}
+        <div
+          className="flex items-center space-x-3 px-6 py-2.5 rounded-full border-2 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900 border-blue-500 text-blue-500 scale-105"
+          title="当前在线人数（来自 Echuu WebSocket）"
+        >
+          <div
+            className={cn(
+              "w-2 h-2 rounded-full",
+              connectionState === 'connected' ? "bg-blue-500 animate-pulse" : "bg-slate-300 dark:bg-slate-600"
+            )}
+          />
+          <span className="text-xs font-black uppercase tracking-widest">ONLINE</span>
+          <span className="text-xs font-black tabular-nums">{onlineCount}</span>
+        </div>
+
+        {/* Profile button (only shows when logged-in) */}
+        <ProfileButton />
+      </div>
     </div>
   );
 });
@@ -146,33 +155,57 @@ export const ActionButtonStack = memo(({
   onOpenAnimationLibrary,
   onToggleBones,
   onOpenSettings,
-  isBonesVisible
+  onCameraToggle,
+  isBonesVisible,
+  isCameraActive
 }: {
   onOpenModelManager: () => void,
   onOpenAnimationLibrary: () => void,
   onToggleBones: () => void,
   onOpenSettings: () => void,
-  isBonesVisible: boolean
+  onCameraToggle: () => void,
+  isBonesVisible: boolean,
+  isCameraActive: boolean
 }) => {
+  const router = useRouter();
+  const pathname = usePathname() || '/';
+  const isZh = pathname.startsWith('/zh');
+  const isEn = pathname.startsWith('/en');
+  const nextLocalePath = isZh
+    ? `/en${pathname.slice(3) || ''}`
+    : isEn
+      ? `/zh${pathname.slice(3) || ''}`
+      : `/zh${pathname}`;
+
   return (
     <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center space-y-5 pointer-events-auto">
       {/* Model Manager */}
       <button 
         onClick={onOpenModelManager}
+        title="模型管理"
         className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-[0_8px_24px_rgba(59,130,246,0.3)] hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Users className="h-6 w-6" />
       </button>
 
-      {/* Ready Status Pill */}
-      <div className="bg-gradient-to-r from-violet-500 to-fuchsia-600 text-white px-5 py-2 rounded-2xl flex items-center space-x-2 shadow-xl">
-        <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ready</span>
-      </div>
+      {/* Camera Toggle */}
+      <button
+        onClick={onCameraToggle}
+        title={isCameraActive ? '停止摄像头' : '开启摄像头'}
+        className={cn(
+          "w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-110 active:scale-95",
+          isCameraActive
+            ? "bg-rose-500 text-white shadow-rose-500/30"
+            : "bg-blue-600 text-white shadow-blue-600/30"
+        )}
+      >
+        <Camera className={cn("h-6 w-6", isCameraActive && "animate-pulse")} />
+      </button>
 
       {/* Bones Toggle */}
       <button 
         onClick={onToggleBones}
+        title={isBonesVisible ? '隐藏骨骼' : '显示骨骼'}
         className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-110 active:scale-95",
           isBonesVisible 
@@ -186,9 +219,19 @@ export const ActionButtonStack = memo(({
       {/* Settings Toggle */}
       <button 
         onClick={onOpenSettings}
+        title="设置"
         className="w-14 h-14 bg-amber-400 rounded-2xl flex items-center justify-center text-white shadow-[0_8px_24px_rgba(251,191,36,0.3)] hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Layout className="h-6 w-6" />
+      </button>
+
+      {/* Language Toggle */}
+      <button
+        onClick={() => router.push(nextLocalePath)}
+        title={isZh ? '切换到 English' : '切换到中文'}
+        className="w-14 h-14 bg-slate-900/80 text-white rounded-2xl flex items-center justify-center shadow-xl border border-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
+      >
+        <Languages className="h-6 w-6" />
       </button>
     </div>
   );
@@ -197,28 +240,17 @@ export const ActionButtonStack = memo(({
 ActionButtonStack.displayName = 'ActionButtonStack';
 
 // 5. Bottom Center Camera Button
-export const CameraActionButton = memo(({ 
-  isActive, 
-  onToggle 
-}: { 
-  isActive: boolean, 
-  onToggle: () => void 
-}) => {
+export const GoLiveButton = memo(() => {
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-      <button
-        onClick={onToggle}
-        className={cn(
-          "w-16 h-16 rounded-[24px] flex items-center justify-center shadow-2xl transition-all duration-500 transform hover:scale-110 active:scale-90",
-          isActive 
-            ? "bg-rose-500 text-white shadow-rose-500/30 rotate-90" 
-            : "bg-blue-600 text-white shadow-blue-600/30"
-        )}
+      <Link
+        href="/v1/live/1"
+        className="w-16 h-16 rounded-[24px] flex items-center justify-center shadow-2xl transition-all duration-500 transform hover:scale-110 active:scale-90 bg-blue-600 text-white shadow-blue-600/30"
       >
-        <Camera className={cn("h-7 w-7", isActive && "animate-pulse")} />
-      </button>
+        <Play className="h-7 w-7" />
+      </Link>
     </div>
   );
 });
 
-CameraActionButton.displayName = 'CameraActionButton';
+GoLiveButton.displayName = 'GoLiveButton';

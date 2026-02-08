@@ -9,6 +9,7 @@ import { PostHogProvider } from '@/components/tracking/PostHogProvider'
 import { InternationalizationTracker } from '@/components/tracking/InternationalizationTracker'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import { Canvas3DProvider } from '@/providers/Canvas3DProvider'
+import { AuthProvider } from '@/providers/AuthProvider'
 import { locales } from '@/i18n/config'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -60,11 +61,13 @@ export default async function RootLayout({
           <NextIntlClientProvider messages={messages}>
             <PostHogProvider>
               <ThemeProvider>
-                <Canvas3DProvider>
-                  <InternationalizationTracker currentLocale={locale} />
-                  {children}
-                  <Toaster />
-                </Canvas3DProvider>
+                <AuthProvider>
+                  <Canvas3DProvider>
+                    <InternationalizationTracker currentLocale={locale} />
+                    {children}
+                    <Toaster />
+                  </Canvas3DProvider>
+                </AuthProvider>
               </ThemeProvider>
             </PostHogProvider>
           </NextIntlClientProvider>
