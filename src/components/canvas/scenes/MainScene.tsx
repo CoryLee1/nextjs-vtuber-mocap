@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, Suspense, memo } from 'react';
 import { Grid, Environment, Sparkles } from '@react-three/drei';
+import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PostEffectsWithAutofocus } from '@/components/post-processing/PostEffectsWithAutofocus';
 import { usePostProcessingSettings } from '@/hooks/use-post-processing-settings';
 import { useFrame } from '@react-three/fiber';
@@ -121,6 +122,7 @@ export const MainScene: React.FC = () => {
     vrmModel,
     echuuCue,
     echuuAudioPlaying,
+    hdrUrl,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
@@ -171,9 +173,9 @@ export const MainScene: React.FC = () => {
 
   return (
     <>
-      {/* PERF: HDR 环境贴图 - 根据性能模式调整分辨率 */}
+      {/* PERF: HDR 环境贴图 - 侧栏可选/上传，无则默认 */}
       <Environment
-        files="/images/SKY.hdr"
+        files={hdrUrl || '/images/SKY.hdr'}
         background
         resolution={perfSettings.hdrResolution}
       />
@@ -193,6 +195,9 @@ export const MainScene: React.FC = () => {
 
       {/* 网格地板 */}
       <GridFloor />
+
+      {/* 场景 FBX 道具（可选，带 Gizmo 控制） */}
+      <SceneFbxWithGizmo />
 
       {/* VRM 角色 */}
       <group position-y={0}>

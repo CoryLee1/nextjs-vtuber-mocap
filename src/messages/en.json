@@ -144,6 +144,15 @@
       "uploading": "Uploading…",
       "bgmVolume": "BGM volume",
       "voiceVolume": "Voice volume"
+    },
+    "scene": {
+      "hdr": "HDR environment",
+      "hdrPlaceholder": "Select or upload HDR",
+      "hdrDefault": "Default sky",
+      "uploading": "Uploading…",
+      "uploadHdr": "Upload .hdr (max 50MB)",
+      "sceneModel": "3D scene model",
+      "uploadSceneModel": "Upload .glb/.gltf scene (max 30MB)"
     }
   },
   "settings": {

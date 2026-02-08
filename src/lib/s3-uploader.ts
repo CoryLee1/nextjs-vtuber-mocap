@@ -59,17 +59,33 @@ export class S3Uploader {
     }
   }
 
-  // 上传文件到 S3
-  async uploadFile(file: File, onProgress?: ((progress: number) => void) | null): Promise<S3UploadResult> {
+  // 上传文件到 S3；options.purpose 可选 'hdr' | 'scene' 用于 HDR 或场景模型（GLB/GLTF）
+  async uploadFile(
+    file: File,
+    onProgress?: ((progress: number) => void) | null,
+    options?: { purpose?: 'hdr' | 'scene' }
+  ): Promise<S3UploadResult> {
     try {
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
       const isVRM = fileExtension === 'vrm';
       const isAnimation = fileExtension === 'fbx' && file.name.toLowerCase().includes('animation');
       const isMP3 = fileExtension === 'mp3';
-      const fileType = isVRM ? 'model/vrm' : isMP3 ? 'audio/mpeg' : 'application/octet-stream';
-      const folderName = isVRM ? 'vrm' : isMP3 ? 'bgm' : (isAnimation ? 'animations' : 'fbx');
+      const isHdr = fileExtension === 'hdr';
+      const isFbx = fileExtension === 'fbx';
+      const isGlb = fileExtension === 'glb';
+      const isGltf = fileExtension === 'gltf';
+      const purpose = options?.purpose;
+      let folderName: string;
+      if (purpose === 'hdr' && isHdr) folderName = 'hdr';
+      else if (purpose === 'scene' && (isGlb || isGltf)) folderName = 'scene';
+      else if (isVRM) folderName = 'vrm';
+      else if (isMP3) folderName = 'bgm';
+      else if (isAnimation) folderName = 'animations';
+      else if (isHdr) folderName = 'hdr';
+      else if (isFbx) folderName = 'fbx';
+      else folderName = 'fbx';
+      const fileType = isVRM ? 'model/vrm' : isMP3 ? 'audio/mpeg' : (isGlb ? 'model/gltf-binary' : isGltf ? 'model/gltf+json' : 'application/octet-stream');
 
-      // 直接使用原始文件名
       const fileName = `${folderName}/${file.name}`;
 
       // 使用服务器端上传避免CORS问题
@@ -124,13 +140,20 @@ export class S3Uploader {
 
     } catch (error) {
       console.error('S3 上传失败:', error);
-      // 如果真实上传失败，使用模拟上传
-      console.log('使用模拟上传模式');
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
-      const isVRM = fileExtension === 'vrm';
-      const isAnimation = fileExtension === 'fbx' && file.name.toLowerCase().includes('animation');
-      const isMP3 = fileExtension === 'mp3';
-      const folderName = isVRM ? 'vrm' : isMP3 ? 'bgm' : (isAnimation ? 'animations' : 'fbx');
+      const purpose = options?.purpose;
+      const isHdr = fileExtension === 'hdr';
+      const isFbx = fileExtension === 'fbx';
+      const isGlb = fileExtension === 'glb';
+      const isGltf = fileExtension === 'gltf';
+      let folderName: string;
+      if (purpose === 'hdr' && isHdr) folderName = 'hdr';
+      else if (purpose === 'scene' && (isGlb || isGltf)) folderName = 'scene';
+      else if (fileExtension === 'vrm') folderName = 'vrm';
+      else if (fileExtension === 'mp3') folderName = 'bgm';
+      else if (isFbx && file.name.toLowerCase().includes('animation')) folderName = 'animations';
+      else if (isHdr) folderName = 'hdr';
+      else folderName = 'fbx';
       const fileName = `${folderName}/${file.name}`;
       return this.simulateUpload(file, fileName, onProgress);
     }
@@ -206,6 +229,28 @@ export class S3Uploader {
 
   /** BGM 上传大小上限 15MB */
   static BGM_MAX_SIZE = 15 * 1024 * 1024;
+  /** HDR 上传大小上限 50MB */
+  static HDR_MAX_SIZE = 50 * 1024 * 1024;
+  /** 场景模型（GLB/GLTF）上传大小上限 30MB */
+  static SCENE_MODEL_MAX_SIZE = 30 * 1024 * 1024;
+
+  validateHDRFile(file: File): string[] {
+    const errors: string[] = [];
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== 'hdr') errors.push('❌ 仅支持 .hdr 格式');
+    if (file.size > S3Uploader.HDR_MAX_SIZE) errors.push(`❌ HDR 不能超过 ${S3Uploader.HDR_MAX_SIZE / 1024 / 1024}MB`);
+    if (file.size === 0) errors.push('❌ 文件不能为空');
+    return errors;
+  }
+
+  validateSceneModelFile(file: File): string[] {
+    const errors: string[] = [];
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== 'glb' && ext !== 'gltf') errors.push('❌ 场景仅支持 .glb / .gltf 格式');
+    if (file.size > S3Uploader.SCENE_MODEL_MAX_SIZE) errors.push(`❌ 场景模型不能超过 ${S3Uploader.SCENE_MODEL_MAX_SIZE / 1024 / 1024}MB`);
+    if (file.size === 0) errors.push('❌ 文件不能为空');
+    return errors;
+  }
 
   // 验证 BGM 文件（仅 .mp3，限制大小）
   validateBGMFile(file: File): string[] {

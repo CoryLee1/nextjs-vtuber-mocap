@@ -131,6 +131,15 @@
       "uploading": "アップロード中…",
       "bgmVolume": "BGM音量",
       "voiceVolume": "声の音量"
+    },
+    "scene": {
+      "hdr": "HDR環境",
+      "hdrPlaceholder": "HDRを選択またはアップロード",
+      "hdrDefault": "デフォルト空",
+      "uploading": "アップロード中…",
+      "uploadHdr": ".hdrをアップロード（50MBまで）",
+      "sceneModel": "3Dシーンモデル",
+      "uploadSceneModel": ".glb/.gltfシーンをアップロード（30MBまで）"
     }
   },
   "settings": {

@@ -144,6 +144,15 @@
       "uploading": "上传中…",
       "bgmVolume": "BGM 音量",
       "voiceVolume": "人声音量"
+    },
+    "scene": {
+      "hdr": "HDR 环境",
+      "hdrPlaceholder": "选择或上传 HDR",
+      "hdrDefault": "默认天空",
+      "uploading": "上传中…",
+      "uploadHdr": "上传 .hdr（限 50MB）",
+      "sceneModel": "3D 场景模型",
+      "uploadSceneModel": "上传 .glb/.gltf 场景（限 30MB）"
     }
   },
   "settings": {

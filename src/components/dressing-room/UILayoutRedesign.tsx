@@ -261,7 +261,7 @@ export const StreamRoomSidebar = memo(({
 }: {
   onPanelOpenChange?: (isOpen: boolean) => void;
 }) => {
-  const { echuuConfig, setEchuuConfig, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl } = useSceneStore();
   const { t, locale } = useI18n();
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
@@ -287,6 +287,11 @@ export const StreamRoomSidebar = memo(({
   const bgmInputRef = useRef<HTMLInputElement>(null);
   const [hdr, setHdr] = useState('');
   const [sceneName, setSceneName] = useState('');
+  const [sceneFbxUrl, setSceneFbxUrlState] = useState('');
+  const [uploadingHdr, setUploadingHdr] = useState(false);
+  const [uploadingSceneFbx, setUploadingSceneFbx] = useState(false);
+  const hdrInputRef = useRef<HTMLInputElement>(null);
+  const sceneFbxInputRef = useRef<HTMLInputElement>(null);
   const [calendarMemo, setCalendarMemo] = useState('');
 
   useEffect(() => {
@@ -337,6 +342,11 @@ export const StreamRoomSidebar = memo(({
         const parsed = JSON.parse(storedScene);
         setHdr(parsed.hdr || '');
         setSceneName(parsed.scene || '');
+        setSceneFbxUrlState(parsed.sceneFbxUrl || '');
+        if (parsed.hdr) setHdrUrl(parsed.hdr);
+        else setHdrUrl(null);
+        if (parsed.sceneFbxUrl) setSceneFbxUrl(parsed.sceneFbxUrl);
+        else setSceneFbxUrl(null);
       } catch {
         // ignore invalid storage
       }
@@ -446,8 +456,10 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl })
         );
+        setHdrUrl(hdr || null);
+        setSceneFbxUrl(sceneFbxUrl || null);
       }
       if (panelType === 'calendar') {
         window.localStorage.setItem(
@@ -478,6 +490,51 @@ export const StreamRoomSidebar = memo(({
       toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
     } finally {
       setUploadingBgm(false);
+    }
+  };
+
+  const handleHdrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const errors = s3Uploader.validateHDRFile(file);
+    if (errors.length > 0) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      return;
+    }
+    setUploadingHdr(true);
+    try {
+      const result = await s3Uploader.uploadFile(file, null, { purpose: 'hdr' });
+      setHdr(result.url);
+      setHdrUrl(result.url);
+      toast({ title: locale === 'zh' ? 'HDR 已上传，场景将更新' : 'HDR uploaded, scene will update' });
+    } catch (err) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+    } finally {
+      setUploadingHdr(false);
+    }
+  };
+
+  const handleSceneModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const errors = s3Uploader.validateSceneModelFile(file);
+    if (errors.length > 0) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      return;
+    }
+    setUploadingSceneFbx(true);
+    try {
+      const result = await s3Uploader.uploadFile(file, null, { purpose: 'scene' });
+      setSceneFbxUrlState(result.url);
+      setSceneFbxUrl(result.url);
+      setSceneName(file.name.replace(/\.(glb|gltf)$/i, ''));
+      toast({ title: locale === 'zh' ? '场景模型已上传' : 'Scene model uploaded' });
+    } catch (err) {
+      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+    } finally {
+      setUploadingSceneFbx(false);
     }
   };
 
@@ -765,18 +822,46 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'scene' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">HDR</label>
-              <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={hdr}
-                onChange={(event) => setHdr(event.target.value)}
-              />
-              <label className="text-[12px] text-slate-500">3D Scene</label>
-              <input
-                className="h-12 bg-white rounded-lg px-4 text-slate-800"
-                value={sceneName}
-                onChange={(event) => setSceneName(event.target.value)}
-              />
+              <label className="text-[12px] text-slate-500">{t('vtuber.scene.hdr')}</label>
+              <Select value={hdr || '__default__'} onValueChange={(v) => { const u = v === '__default__' ? '' : v; setHdr(u); setHdrUrl(u || null); }}>
+                <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
+                  <SelectValue placeholder={t('vtuber.scene.hdrPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default__">{t('vtuber.scene.hdrDefault')}</SelectItem>
+                  <SelectItem value="/images/SKY.hdr">SKY.hdr</SelectItem>
+                  {hdr && hdr !== '/images/SKY.hdr' && (
+                    <SelectItem value={hdr}>{locale === 'zh' ? '已上传的 HDR' : 'Uploaded HDR'}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {/* HDR 预览：预设用 SKY 缩略图，自定义显示占位 */}
+              <div className="w-full aspect-video rounded-lg overflow-hidden bg-slate-200 border border-slate-200 shrink-0">
+                {(!hdr || hdr === '/images/SKY.hdr') ? (
+                  <img src="/images/HDRSky.png" alt="HDR preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-300 to-slate-400 text-slate-600 text-xs font-medium">
+                    {locale === 'zh' ? '自定义 HDR' : 'Custom HDR'}
+                  </div>
+                )}
+              </div>
+              <input ref={hdrInputRef} type="file" accept=".hdr" className="hidden" onChange={handleHdrUpload} />
+              <Button type="button" variant="outline" size="sm" className="w-full" disabled={uploadingHdr} onClick={() => hdrInputRef.current?.click()}>
+                {uploadingHdr ? t('vtuber.scene.uploading') : t('vtuber.scene.uploadHdr')}
+              </Button>
+              <label className="text-[12px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
+              <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" className="flex-1" disabled={uploadingSceneFbx} onClick={() => sceneFbxInputRef.current?.click()}>
+                  {uploadingSceneFbx ? t('vtuber.scene.uploading') : t('vtuber.scene.uploadSceneModel')}
+                </Button>
+                {sceneFbxUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => { setSceneFbxUrlState(''); setSceneName(''); setSceneFbxUrl(null); }}>
+                    {locale === 'zh' ? '清除' : 'Clear'}
+                  </Button>
+                )}
+              </div>
+              <input ref={sceneFbxInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleSceneModelUpload} />
             </div>
           )}
 

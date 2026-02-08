@@ -116,6 +116,12 @@ interface SceneState {
   bgmVolume: number;
   setBgmUrl: (url: string | null) => void;
   setBgmVolume: (v: number) => void;
+  /** 场景 HDR 环境贴图 URL（空则用默认） */
+  hdrUrl: string | null;
+  /** 场景 FBX 模型 URL（3D 场景道具，可 Gizmo 控制） */
+  sceneFbxUrl: string | null;
+  setHdrUrl: (url: string | null) => void;
+  setSceneFbxUrl: (url: string | null) => void;
 }
 
 /**
@@ -329,6 +335,10 @@ export const useSceneStore = create<SceneState>()(
   bgmVolume: 80,
   setBgmUrl: (url) => set({ bgmUrl: url }),
   setBgmVolume: (v) => set({ bgmVolume: Math.max(0, Math.min(100, v)) }),
+  hdrUrl: null,
+  sceneFbxUrl: null,
+  setHdrUrl: (url) => set({ hdrUrl: url }),
+  setSceneFbxUrl: (url) => set({ sceneFbxUrl: url }),
   }))
 );
 

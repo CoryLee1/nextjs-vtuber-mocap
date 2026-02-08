@@ -77,6 +77,8 @@ export default function V1Live1() {
     setEchuuAudioPlaying,
     setBgmUrl,
     setBgmVolume: setStoreBgmVolume,
+    setHdrUrl,
+    setSceneFbxUrl,
   } = useSceneStore();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState('');
@@ -99,6 +101,7 @@ export default function V1Live1() {
   const [voice, setVoice] = useState('');
   const [hdr, setHdr] = useState('');
   const [sceneName, setSceneName] = useState('');
+  const [sceneFbxUrl, setSceneFbxUrlState] = useState('');
   const [calendarMemo, setCalendarMemo] = useState('');
   const audioQueueRef = useRef(createEchuuAudioQueue({
     onStart: () => setEchuuAudioPlaying(true),
@@ -199,6 +202,11 @@ export default function V1Live1() {
         const parsed = JSON.parse(storedScene);
         setHdr(parsed.hdr || '');
         setSceneName(parsed.scene || '');
+        setSceneFbxUrlState(parsed.sceneFbxUrl || '');
+        if (parsed.hdr) setHdrUrl(parsed.hdr);
+        else setHdrUrl(null);
+        if (parsed.sceneFbxUrl) setSceneFbxUrl(parsed.sceneFbxUrl);
+        else setSceneFbxUrl(null);
       } catch {
         // ignore invalid storage
       }
@@ -299,8 +307,10 @@ export default function V1Live1() {
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl })
         );
+        setHdrUrl(hdr || null);
+        setSceneFbxUrl(sceneFbxUrl || null);
       }
       if (panelType === 'calendar') {
         window.localStorage.setItem(
