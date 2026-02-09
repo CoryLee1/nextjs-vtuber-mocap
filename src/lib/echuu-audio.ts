@@ -2,6 +2,8 @@ type PlaybackCallbacks = {
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: unknown) => void;
+  /** 当前段音频时长（ms），用于 caption 与声音同步 */
+  onSegmentDuration?: (durationMs: number) => void;
 };
 
 const DEFAULT_MIME = 'audio/wav';
@@ -83,6 +85,11 @@ class EchuuAudioQueue {
     this.audio = audio;
     this.isPlaying = true;
     this.callbacks.onStart?.();
+
+    audio.onloadedmetadata = () => {
+      const durationMs = Number.isFinite(audio.duration) ? audio.duration * 1000 : 0;
+      if (durationMs > 0) this.callbacks.onSegmentDuration?.(durationMs);
+    };
 
     audio.onended = () => {
       this.isPlaying = false;

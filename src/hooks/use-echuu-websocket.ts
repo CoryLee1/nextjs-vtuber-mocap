@@ -32,6 +32,25 @@ export interface ChatMessage {
   timestamp?: number;
 }
 
+/** 后端 PerformerMemory 的同步快照（Calendar Memory 等用） */
+export interface MemorySnapshot {
+  script_progress?: { current_line?: number; total_lines?: number; current_stage?: string; completed_stages?: string[] };
+  danmaku_memory?: { received?: unknown[]; responded?: unknown[]; ignored?: unknown[]; pending_questions?: unknown[] };
+  user_profiles?: Record<string, {
+    username: string;
+    interaction_count: number;
+    first_seen: string | null;
+    last_seen: string | null;
+    reaction_style?: string;
+    bonding_level?: number;
+    special_moments?: string[];
+    total_sc_amount?: number;
+  }>;
+  promises?: unknown[];
+  story_points?: { mentioned?: string[]; upcoming?: string[]; revealed?: string[] };
+  emotion_track?: unknown[];
+}
+
 interface EchuuState {
   // Connection
   connectionState: EchuuConnectionState;
@@ -50,6 +69,9 @@ interface EchuuState {
   // Chat / danmaku
   chatMessages: ChatMessage[];
   onlineCount: number;
+
+  // Memory（与后端 PerformerMemory 同步，供 Calendar 等展示）
+  memorySnapshot: MemorySnapshot | null;
 
   // Info messages from backend
   infoMessage: string;
@@ -77,6 +99,8 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
 
   chatMessages: [],
   onlineCount: 0,
+
+  memorySnapshot: null,
 
   infoMessage: '',
   errorMessage: '',
@@ -154,6 +178,7 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
       totalSteps: 0,
       scriptPreview: [],
       chatMessages: [],
+      memorySnapshot: null,
       infoMessage: '',
       errorMessage: '',
     });
@@ -238,6 +263,10 @@ function handleMessage(
       });
       break;
     }
+
+    case 'memory':
+      set({ memorySnapshot: msg.memory ?? null });
+      break;
 
     case 'success':
       set({ streamState: 'finished', infoMessage: msg.content ?? '' });

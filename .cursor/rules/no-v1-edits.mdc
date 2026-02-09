@@ -1,0 +1,12 @@
+---
+description: 禁止在 v1 文件夹内做功能修改；主应用以 locale 路由和公共组件为准
+globs: src/app/v1/**/*
+alwaysApply: true
+---
+
+# 不要改 v1 文件夹
+
+- **禁止**在 `src/app/v1/` 下新增或修改功能、UI、业务逻辑。
+- 主应用入口是 **locale 路由**：`src/app/[locale]/page.tsx`（对应 http://localhost:3002/en、/zh 等）。
+- 主应用使用的布局与组件：`VTuberApp` → `VTuberLayout` → `UILayoutRedesign`（含 GoLiveButton、侧栏、聊天等）。
+- 新功能、直播相关 UI、Go Live、字幕、Phase 等一律加在 **主文件**：`src/app/[locale]/page.tsx` 或 `src/components/dressing-room/`（如 `UILayoutRedesign.tsx`、`VTuberLayout.tsx`、`VTuberApp.tsx`），**不要**改 `src/app/v1/` 下的页面或组件。

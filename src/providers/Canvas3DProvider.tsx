@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, Suspense, lazy, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Preload } from '@react-three/drei';
 import { usePathname } from 'next/navigation';
@@ -54,6 +54,19 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setCanvasReady = useSceneStore((state) => state.setCanvasReady);
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
   const pathname = usePathname();
+  const [perfVisible, setPerfVisible] = useState(false);
+
+  // Ctrl+P 切换性能监控面板显示
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.ctrlKey && e.key === 'p') {
+      e.preventDefault();
+      setPerfVisible((v) => !v);
+    }
+  }, []);
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   // 检查是否在测试 Loading 页，如果是则禁用 Canvas 以实现完全隔离
   const isTestingLoading = pathname?.includes('/test-loading');
@@ -119,8 +132,8 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               {/* 场景管理器 - 根据 activeScene 渲染不同场景 */}
               <SceneManager />
 
-              {/* 性能监控（仅开发环境） */}
-              {process.env.NODE_ENV === 'development' && PerfComponent && (
+              {/* 性能监控（仅开发环境，默认隐藏，Ctrl+P 切换显示） */}
+              {process.env.NODE_ENV === 'development' && PerfComponent && perfVisible && (
                 <Suspense fallback={null}>
                   <PerfComponent position="top-left" />
                 </Suspense>

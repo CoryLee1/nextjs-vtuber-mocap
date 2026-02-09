@@ -110,6 +110,9 @@ interface SceneState {
   setEchuuCue: (cue: EchuuCue | null) => void;
   echuuAudioPlaying: boolean;
   setEchuuAudioPlaying: (playing: boolean) => void;
+  /** 当前句音频时长（ms），用于 caption 打字机与声音同步 */
+  echuuSegmentDurationMs: number | null;
+  setEchuuSegmentDurationMs: (v: number | null) => void;
   /** BGM 播放 URL（空则停止） */
   bgmUrl: string | null;
   /** BGM 音量 0–100 */
@@ -331,6 +334,8 @@ export const useSceneStore = create<SceneState>()(
   setEchuuCue: (cue) => set({ echuuCue: cue }),
   echuuAudioPlaying: false,
   setEchuuAudioPlaying: (playing) => set({ echuuAudioPlaying: playing }),
+  echuuSegmentDurationMs: null,
+  setEchuuSegmentDurationMs: (v) => set({ echuuSegmentDurationMs: v }),
   bgmUrl: null,
   bgmVolume: 80,
   setBgmUrl: (url) => set({ bgmUrl: url }),

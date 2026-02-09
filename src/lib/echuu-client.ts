@@ -6,6 +6,8 @@ export interface StartLiveConfig {
   background: string;
   topic: string;
   danmaku?: string[];
+  /** TTS 音色，与侧栏「声音」一致，后端据此设置 TTS_VOICE */
+  voice?: string;
 }
 
 export async function startLive(config: StartLiveConfig) {

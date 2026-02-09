@@ -1279,24 +1279,143 @@ export const StreamRoomChatPanel = memo(() => {
 
 StreamRoomChatPanel.displayName = 'StreamRoomChatPanel';
 
-// 5. Go Live bar (Figma: Frame 1261157366) — centered in 3D canvas area
+/** 按句号、问号、感叹号等拆成句子（中英标点 + 换行） */
+function splitSentences(text: string): string[] {
+  if (!text?.trim()) return [];
+  const parts = text.trim().split(/([。！？；.!?;\n]+)/);
+  const sentences: string[] = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const content = (parts[i] || '').trim();
+    const delim = parts[i + 1] || '';
+    if (content) sentences.push(content + delim);
+  }
+  if (sentences.length === 0 && text.trim()) return [text.trim()];
+  return sentences;
+}
+
+/** 约 4 字/秒，无音频时长时的回退 */
+const CAPTION_FALLBACK_MS_PER_CHAR = 220;
+
+/** 一句一句展示 + 打字机效果，与当前句音频时长同步 */
+const CaptionTypewriter = memo(({ fullText }: { fullText: string }) => {
+  const sentences = useMemo(() => splitSentences(fullText), [fullText]);
+  const [sentenceIndex, setSentenceIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const echuuSegmentDurationMs = useSceneStore((s) => s.echuuSegmentDurationMs);
+
+  useEffect(() => {
+    if (sentences.length === 0) return;
+    setSentenceIndex(0);
+    setCharIndex(0);
+  }, [fullText]);
+
+  const sentence = sentences[sentenceIndex] || '';
+  const totalChars = fullText.length || 1;
+  const charDelayMs =
+    echuuSegmentDurationMs != null && totalChars > 0
+      ? Math.max(30, Math.round(echuuSegmentDurationMs / totalChars))
+      : CAPTION_FALLBACK_MS_PER_CHAR;
+
+  useEffect(() => {
+    if (sentences.length === 0) return;
+    if (charIndex >= sentence.length) {
+      if (sentenceIndex < sentences.length - 1) {
+        const t = setTimeout(() => {
+          setSentenceIndex((i) => i + 1);
+          setCharIndex(0);
+        }, 400);
+        return () => clearTimeout(t);
+      }
+      return;
+    }
+    const t = setTimeout(() => setCharIndex((c) => c + 1), charDelayMs);
+    return () => clearTimeout(t);
+  }, [sentences, sentenceIndex, charIndex, charDelayMs, sentence.length]);
+
+  if (sentences.length === 0) return null;
+  const visible = sentence.slice(0, charIndex);
+  return <span>{visible}</span>;
+});
+CaptionTypewriter.displayName = 'CaptionTypewriter';
+
+// 5. Go Live bar (Figma: Frame 1261157366) — 点击后把侧栏 Character 配置发给后端；上方实时 caption（按句+打字机）+ 可折叠 Phase
 export const GoLiveButton = memo(() => {
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
-  const topic = useSceneStore((state) => state.echuuConfig.topic);
+  const echuuConfig = useSceneStore((state) => state.echuuConfig);
+  const topic = echuuConfig.topic;
+  const { connect, connectionState, currentStep, streamState, infoMessage } = useEchuuWebSocket();
+  const [isStarting, setIsStarting] = useState(false);
+  const [phaseOpen, setPhaseOpen] = useState(false);
+  const [startError, setStartError] = useState('');
+
+  const handleGoLive = async () => {
+    if (isStarting) return;
+    setIsStarting(true);
+    setStartError('');
+    try {
+      if (connectionState !== 'connected') connect();
+      const { startLive } = await import('@/lib/echuu-client');
+      await startLive({
+        character_name: echuuConfig.characterName,
+        persona: echuuConfig.persona,
+        background: echuuConfig.background,
+        topic: echuuConfig.topic,
+        danmaku: [],
+        voice: echuuConfig.voice || 'Cherry',
+      });
+      // 留在主页面，由 EchuuLiveAudio 播放实时语音并驱动嘴型
+    } catch (err: any) {
+      setStartError(err?.message || '启动失败');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const captionFullText = currentStep?.speech
+    ? `${echuuConfig.characterName}：${currentStep.speech}`
+    : '';
+
+  const setEchuuSegmentDurationMs = useSceneStore((s) => s.setEchuuSegmentDurationMs);
+  useEffect(() => {
+    if (captionFullText) setEchuuSegmentDurationMs(null);
+  }, [captionFullText, setEchuuSegmentDurationMs]);
 
   return (
     <div
       className={cn(
-        'fixed bottom-[74px] -translate-x-1/2 z-50 pointer-events-auto transition-[left] duration-300 ease-in-out',
+        'fixed bottom-[74px] -translate-x-1/2 z-50 pointer-events-auto transition-[left] duration-300 ease-in-out flex flex-col items-center',
         streamPanelOpen ? 'left-[calc(560px+(100vw-560px)/2)]' : 'left-1/2'
       )}
     >
+      {/* 上方：实时 caption，一句一句播 + 打字机效果 */}
+      {captionFullText ? (
+        <div className="mb-1.5 px-4 py-2 max-w-[90vw] min-h-[2.5rem] bg-black/70 border border-[#EEFF00]/40 rounded-lg text-sm text-[#EEFF00] text-center shadow-lg">
+          <CaptionTypewriter fullText={captionFullText} />
+        </div>
+      ) : null}
+      <div className="flex flex-col items-center mb-1.5">
+        <button
+          type="button"
+          onClick={() => setPhaseOpen((o) => !o)}
+          className="text-[10px] uppercase tracking-wider text-white/50 hover:text-white/80 transition"
+        >
+          {phaseOpen ? '隐藏 Phase' : 'Phase'}
+        </button>
+        {phaseOpen ? (
+          <div className="mt-1 px-3 py-2 bg-black/60 rounded text-[10px] text-white/80 space-y-0.5">
+            <div><span className="text-white/50">状态</span> {streamState}</div>
+            {infoMessage ? <div className="max-w-[200px] truncate" title={infoMessage}>{infoMessage}</div> : null}
+          </div>
+        ) : null}
+      </div>
+
       {/* Bar: 最小 214×53，随文案宽度自适应 */}
       <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-[#E9E9E9] rounded-[26.5px] flex items-center gap-0">
-        {/* go-btn: 40×40 circle, left 5px top 7px — glass + shadow */}
-        <Link
-          href="/v1/live/1"
-          className="absolute left-[5px] top-[7px] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0"
+        <button
+          type="button"
+          onClick={handleGoLive}
+          disabled={isStarting}
+          className="absolute left-[5px] top-[7px] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             background: 'rgba(255, 255, 255, 0.068)',
             boxShadow:
@@ -1308,8 +1427,8 @@ export const GoLiveButton = memo(() => {
           <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-[#EEFF00] text-[#E9E9E9]">
             <Play className="h-3 w-3" strokeWidth={2} />
           </span>
-        </Link>
-        {/* Stream Topic — 与侧边栏「直播主题」一致，来自 echuuConfig.topic；左侧留出 59px 与 play 对齐 */}
+        </button>
+        {/* Stream Topic — 与侧边栏「直播主题」一致 */}
         <span
           className="pl-[46px] pr-2 text-[15px] leading-[15px] text-black flex items-center max-w-[280px] truncate"
           style={{ fontFamily: "'Subway Ticker', system-ui, sans-serif" }}
@@ -1318,6 +1437,9 @@ export const GoLiveButton = memo(() => {
           {topic?.trim() || 'Stream Topic'}
         </span>
       </div>
+      {startError ? (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 text-[10px] text-red-400">{startError}</div>
+      ) : null}
     </div>
   );
 });

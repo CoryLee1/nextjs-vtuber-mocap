@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { VTuberLayout } from './VTuberLayout';
+import { EchuuLiveAudio } from './EchuuLiveAudio';
 import { CameraWidget } from './CameraWidget';
 import { ModelManager } from '../vtuber/ModelManager';
 import { AnimationLibrary } from '../vtuber/AnimationLibrary';
@@ -193,6 +194,8 @@ export default function VTuberApp() {
 
   return (
     <VTuberLayout statusProps={statusProps} controlProps={controlProps}>
+      {/* 实时播放 WebSocket 返回的语音并同步嘴型 */}
+      <EchuuLiveAudio />
       {/* 注意：3D 场景现在由 Canvas3DProvider 在 layout 层级管理 */}
       {/* 不再需要在这里渲染 VTuberSceneContainer */}
 
