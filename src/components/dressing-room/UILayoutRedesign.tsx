@@ -138,7 +138,7 @@ export const PowerToggle = memo(({
   isActive: boolean, 
   onToggle: () => void 
 }) => {
-  const { onlineCount, connectionState, connect } = useEchuuWebSocket();
+  const { onlineCount, connectionState, connect, roomId } = useEchuuWebSocket();
   const { locale } = useI18n();
   const [viewCount, setViewCount] = useState(() => {
     if (typeof window === 'undefined') return 0;
@@ -147,8 +147,8 @@ export const PowerToggle = memo(({
   const incrementedRef = useRef(false);
 
   useEffect(() => {
-    connect();
-  }, [connect]);
+    if (roomId) connect(roomId);
+  }, [roomId, connect]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || incrementedRef.current) return;
@@ -1343,7 +1343,7 @@ export const GoLiveButton = memo(() => {
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
   const echuuConfig = useSceneStore((state) => state.echuuConfig);
   const topic = echuuConfig.topic;
-  const { connect, connectionState, currentStep, streamState, infoMessage } = useEchuuWebSocket();
+  const { connect, connectionState, currentStep, streamState, infoMessage, roomId, ownerToken, setRoom } = useEchuuWebSocket();
   const [isStarting, setIsStarting] = useState(false);
   const [phaseOpen, setPhaseOpen] = useState(false);
   const [startError, setStartError] = useState('');
@@ -1353,17 +1353,32 @@ export const GoLiveButton = memo(() => {
     setIsStarting(true);
     setStartError('');
     try {
-      if (connectionState !== 'connected') connect();
-      const { startLive } = await import('@/lib/echuu-client');
-      await startLive({
-        character_name: echuuConfig.characterName,
-        persona: echuuConfig.persona,
-        background: echuuConfig.background,
-        topic: echuuConfig.topic,
-        danmaku: [],
-        voice: echuuConfig.voice || 'Cherry',
-      });
-      // 留在主页面，由 EchuuLiveAudio 播放实时语音并驱动嘴型
+      const { createRoom, startLive: doStart } = await import('@/lib/echuu-client');
+      let rid = roomId;
+      let token = ownerToken;
+      if (!rid || !token) {
+        const room = await createRoom();
+        rid = room.room_id;
+        token = room.owner_token;
+        setRoom(rid, token);
+        connect(rid);
+        await new Promise((r) => setTimeout(r, 500));
+      } else if (connectionState !== 'connected') {
+        connect(rid);
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      await doStart(
+        {
+          character_name: echuuConfig.characterName,
+          persona: echuuConfig.persona,
+          background: echuuConfig.background,
+          topic: echuuConfig.topic,
+          danmaku: [],
+          voice: echuuConfig.voice || 'Cherry',
+        },
+        rid!,
+        token!
+      );
     } catch (err: any) {
       setStartError(err?.message || '启动失败');
     } finally {

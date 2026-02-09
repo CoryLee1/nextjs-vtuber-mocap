@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
-import { startLive } from '@/lib/echuu-client';
+import { createRoom, startLive } from '@/lib/echuu-client';
 import { createEchuuAudioQueue } from '@/lib/echuu-audio';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { ChatPanel, LiveHeader } from '../../components/live-ui';
@@ -79,6 +79,9 @@ export default function V1Live1() {
     streamState,
     infoMessage,
     errorMessage,
+    roomId,
+    ownerToken,
+    setRoom,
   } = useEchuuWebSocket();
   const {
     echuuConfig,
@@ -122,7 +125,7 @@ export default function V1Live1() {
 
   useEffect(() => {
     setScene('main');
-    connect();
+    if (roomId) connect(roomId);
     return () => {
       disconnect();
       reset();
@@ -130,7 +133,7 @@ export default function V1Live1() {
       setEchuuAudioPlaying(false);
       audioQueueRef.current.stop();
     };
-  }, [connect, disconnect, reset, setScene, setEchuuCue, setEchuuAudioPlaying]);
+  }, [roomId, connect, disconnect, reset, setScene, setEchuuCue, setEchuuAudioPlaying]);
 
   useEffect(() => {
     if (currentStep?.cue) {
@@ -265,12 +268,30 @@ export default function V1Live1() {
     setIsStarting(true);
     setStartError('');
     try {
-      await startLive({
-        character_name: echuuConfig.characterName,
-        persona: echuuConfig.persona,
-        background: echuuConfig.background,
-        topic: echuuConfig.topic,
-      });
+      let rid = roomId;
+      let token = ownerToken;
+      if (!rid || !token) {
+        const room = await createRoom();
+        rid = room.room_id;
+        token = room.owner_token;
+        setRoom(rid, token);
+        connect(rid);
+        await new Promise((r) => setTimeout(r, 500));
+      } else {
+        connect(rid);
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      await startLive(
+        {
+          character_name: echuuConfig.characterName,
+          persona: echuuConfig.persona,
+          background: echuuConfig.background,
+          topic: echuuConfig.topic,
+          voice: echuuConfig.voice || 'Cherry',
+        },
+        rid,
+        token
+      );
     } catch (error: any) {
       setStartError(error?.message || '启动失败');
     } finally {

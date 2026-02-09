@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 
-const ECHUU_WS_URL = 'ws://localhost:8000/ws';
+function getEchuuWsBase(): string {
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_ECHUU_WS_URL)
+    return process.env.NEXT_PUBLIC_ECHUU_WS_URL;
+  const api = process.env?.NEXT_PUBLIC_ECHUU_API_URL || 'http://localhost:8000';
+  return api.replace(/^http/, 'ws') + '/ws';
+}
 const MAX_RECONNECT_ATTEMPTS = 8;
 const BASE_RECONNECT_DELAY_MS = 800;
 
@@ -52,6 +57,9 @@ export interface MemorySnapshot {
 }
 
 interface EchuuState {
+  // Room（房主开播需 room_id + owner_token）
+  roomId: string | null;
+  ownerToken: string | null;
   // Connection
   connectionState: EchuuConnectionState;
   ws: WebSocket | null;
@@ -78,13 +86,16 @@ interface EchuuState {
   errorMessage: string;
 
   // Actions
-  connect: () => void;
+  setRoom: (roomId: string | null, ownerToken: string | null) => void;
+  connect: (roomId: string) => void;
   disconnect: () => void;
   sendDanmaku: (text: string, user?: string) => void;
   reset: () => void;
 }
 
 export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
+  roomId: null,
+  ownerToken: null,
   connectionState: 'disconnected',
   ws: null,
   reconnectAttempt: 0,
@@ -105,8 +116,13 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
   infoMessage: '',
   errorMessage: '',
 
-  connect: () => {
+  setRoom: (roomId, ownerToken) => {
+    set({ roomId, ownerToken });
+  },
+
+  connect: (roomId: string) => {
     const { ws, connectionState, reconnectTimer } = get();
+    if (!roomId) return;
     if (ws || connectionState === 'connecting') return;
 
     if (reconnectTimer) {
@@ -114,8 +130,9 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
     }
 
     set({ connectionState: 'connecting', manualClose: false });
-
-    const socket = new WebSocket(ECHUU_WS_URL);
+    const wsBase = getEchuuWsBase();
+    const wsUrl = wsBase.includes('?') ? `${wsBase}&room_id=${encodeURIComponent(roomId)}` : `${wsBase}?room_id=${encodeURIComponent(roomId)}`;
+    const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
       set({
@@ -294,10 +311,11 @@ function scheduleReconnect(
   const nextAttempt = reconnectAttempt + 1;
   const jitter = Math.random() * 250;
   const delay = Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempt) + jitter, 15000);
+  const roomId = get().roomId;
 
   const timer = setTimeout(() => {
     set({ reconnectTimer: null });
-    get().connect();
+    if (roomId) get().connect(roomId);
   }, delay);
 
   set({ reconnectAttempt: nextAttempt, reconnectTimer: timer });
