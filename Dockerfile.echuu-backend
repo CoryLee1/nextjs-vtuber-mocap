@@ -2,12 +2,12 @@
 # Railway 不拉子模块，所以用两阶段：先 clone 带 submodule，再构建运行
 # 在 Railway 里 Dockerfile Path 填: Dockerfile.echuu-backend
 
-# Stage 1: 带子模块克隆仓库
-ARG GIT_REPO_URL=https://github.com/CoryLee1/nextjs-vtuber-mocap.git
-ARG GIT_BRANCH=ui
+# Stage 1: 带子模块克隆仓库（仓库/分支写死，Railway 不传 ARG 也能构建）
 FROM alpine/git:latest AS source
 WORKDIR /repo
-RUN git clone --depth 1 --single-branch --branch "${GIT_BRANCH}" --recurse-submodules "${GIT_REPO_URL}" .
+RUN git clone --depth 1 --single-branch --branch "main" \
+    --recurse-submodules \
+    "https://github.com/CoryLee1/nextjs-vtuber-mocap.git" .
 
 # Stage 2: 运行后端
 FROM python:3.11-slim
