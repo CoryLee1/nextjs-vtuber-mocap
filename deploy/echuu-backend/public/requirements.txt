@@ -1,0 +1,28 @@
+# Echuu - AI VTuber Auto-Live System
+# Gemini 3 Hackathon Edition
+
+# Core dependencies
+python-dotenv>=1.0.0
+google-genai>=1.51.0
+
+# Optional: Alternative LLM providers
+anthropic>=0.18.0
+openai>=1.12.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# TTS (Text-to-Speech) - Alibaba Qwen
+dashscope>=1.25.2
+
+# Audio processing
+pydub>=0.25.0
+
+# Async support
+aiohttp>=3.9.0
+asyncio-throttle>=1.0.0
+
+# Development tools
+rich>=13.0.0
+tqdm>=4.65.0

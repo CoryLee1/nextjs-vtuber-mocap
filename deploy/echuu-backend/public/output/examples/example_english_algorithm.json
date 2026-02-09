@@ -1,0 +1,83 @@
+{
+  "character": {
+    "name": "Luna",
+    "persona": "Energetic content creator who loves dancing and sharing stories",
+    "background": "Social media influencer who posts dance videos regularly"
+  },
+  "topic": "My experience with platform algorithms",
+  "language": "en",
+  "script": [
+    {
+      "step": 1,
+      "stage": "Hook",
+      "speech": "I'm so hungry, gonna eat after stream... speaking of food... you know how the algorithm just *knows* what you want to eat? It's like, I look at one picture of ramen and suddenly my whole feed is just... noodles. It actually reminded me of when I first started out, like, three? No, maybe four years ago.",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": []
+    },
+    {
+      "step": 2,
+      "stage": "Build-up",
+      "speech": "Back then, I had this whole plan. I was going to be this 'Mysterious Cool Dancer' Luna. No talking, just sharp moves and edgy outfits. I spent like... I don't know, hundreds of dollars on this stiff leather jacket that smelled like a basement?",
+      "action": "continue",
+      "emotion_break": "nostalgic",
+      "disfluencies": []
+    },
+    {
+      "step": 3,
+      "stage": "Build-up",
+      "speech": "Wait, I just remembered those spicy rice crackers I used to buy from the convenience store around that time. They were in this blue packaging—or was it green? Anyway, they were like 200 yen, and I'd eat them while looking at my analytics.",
+      "action": "continue",
+      "emotion_break": "nostalgic",
+      "disfluencies": ["思路中断", "数字模糊"]
+    },
+    {
+      "step": 4,
+      "stage": "Build-up",
+      "speech": "Right, the algorithm! So, I was doing this cool-girl act for weeks, right? And I decided to check my 'Recommended' feed from a burner account to see how the system saw me. I expected to be next to, like, professional choreographers or cool J-pop idols.",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": ["词语重复"]
+    },
+    {
+      "step": 5,
+      "stage": "Climax",
+      "speech": "The algorithm showed my video, but the category... it didn't say 'Dance.' It said, 'Suggested because you enjoy: Slapstick Comedy and Fails.' I was literally staring at my 'edgy' leather jacket and my 'cool' face, and the AI was basically telling me, 'Luna, you're a clown.'",
+      "action": "continue",
+      "emotion_break": "ironic",
+      "disfluencies": []
+    },
+    {
+      "step": 6,
+      "stage": "Climax",
+      "speech": "Then I watched the clip it recommended. It was from a stream where I tried to do this high-speed spin—very cool, very professional—but I accidentally tripped over my own feet and tried to play it off by doing a weird, awkward worm move on the floor.",
+      "action": "continue",
+      "emotion_break": "embarrassed",
+      "disfluencies": ["词语重复"]
+    },
+    {
+      "step": 7,
+      "stage": "Resolution",
+      "speech": "I was laughing so hard at my own failure that I actually knocked over my water bottle. It spilled all over my keyboard—this was a cheap one, thank god—and I was just scrambling with tissues, laughing and crying at the same time.",
+      "action": "continue",
+      "emotion_break": "warm",
+      "disfluencies": []
+    },
+    {
+      "step": 8,
+      "stage": "Resolution",
+      "speech": "After that, I just stopped with the leather jacket. I mean, I still have it, it's probably in a box somewhere gathering dust. That algorithm was my first honest friend. It told me, 'Hey, you're not cool, but you're funny when you're failing.'",
+      "action": "continue",
+      "emotion_break": "warm",
+      "disfluencies": []
+    },
+    {
+      "step": 9,
+      "stage": "Resolution",
+      "speech": "Anyway, why did I even start talking about this? Oh, right, food. I'm literally starving. I think I'm gonna go find those crackers online or something. Or maybe just get ramen. Actually, the algorithm probably already ordered it for me by now. Okay, let me check the SCs... that's basically it.",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": ["思路中断"]
+    }
+  ]
+}

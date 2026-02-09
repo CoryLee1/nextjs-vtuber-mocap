@@ -1,0 +1,87 @@
+{
+  "character": {
+    "name": "小梅",
+    "persona": "温柔治愈型，喜欢分享生活细节",
+    "background": "大学生，喜欢在食堂吃饭，经常遇到有趣的人和事"
+  },
+  "topic": "食堂打饭遇到的有趣故事",
+  "language": "zh",
+  "script": [
+    {
+      "step": 1,
+      "stage": "Hook",
+      "speech": "诶我突然想起来一个事，刚才看弹幕有人说红烧肉，我就想起大学食堂...我跟你们说，我有个同学啊，她每天中午都要排队二十分钟就为了吃到阿姨打的红烧肉，但是她有个特别奇怪的习惯",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": [
+        "思路中断"
+      ]
+    },
+    {
+      "step": 2,
+      "stage": "Build-up",
+      "speech": "她每次打饭的时候都要跟打饭阿姨说'阿姨辛苦了'，然后鞠躬，每次都这样！我刚开始觉得她就是特别礼貌嘛，挺好的，但是后来我发现不对劲，她每次这么说完，阿姨给她打的肉都特别多",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": null
+    },
+    {
+      "step": 3,
+      "stage": "Build-up",
+      "speech": "我们其他人就正常说谢谢，但是她那个鞠躬啊，九十度那种，特别虔诚的感觉。我当时就想，这阿姨是不是她什么亲戚啊？但是问她她也不说，就说阿姨辛苦了应该的",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": null
+    },
+    {
+      "step": 4,
+      "stage": "Build-up",
+      "speech": "然后有一次我跟她一起排队，我就学她也鞠躬说阿姨辛苦了，结果你知道那个阿姨怎么说吗？阿姨就很奇怪地看着我说，'你们是一个宿舍的吗？'我说是啊，阿姨就笑了，说'那就对了'",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": null
+    },
+    {
+      "step": 5,
+      "stage": "Build-up",
+      "speech": "等等，我刚想说什么...算了，什么叫那就对了啊！我当时一脸懵逼...那是19年吧...还是18年？反正是快毕业的时候，我记得那时候疫情刚开始，天哪那都快十年了...说什么来着？食堂打饭遇到的有趣故事，但是肉确实给我打得挺多的。等等，现在几点了？我好像忘了今天要...算了不重要。然后我回去就问我同学，她才告诉我真相",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": [
+        "思路中断"
+      ]
+    },
+    {
+      "step": 6,
+      "stage": "Climax",
+      "speech": "诶我说到哪了？对，原来啊，她爸爸就是我们学校后勤部门的，负责食堂管理的！阿姨们都认识她爸爸，所以对她特别好。但是她从来没跟我们说过这个事，我们还以为她就是单纯礼貌呢",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": null
+    },
+    {
+      "step": 7,
+      "stage": "Climax",
+      "speech": "刚才说什么来着...对，关键是她还装得特别像，每次都说什么'我们要珍惜阿姨的劳动'，'要对服务人员有礼貌'，搞得我们都觉得自己素质不够高。现在想想，人家就是在给爸爸的同事打招呼啊！",
+      "action": "continue",
+      "emotion_break": "哭笑不得",
+      "disfluencies": null
+    },
+    {
+      "step": 8,
+      "stage": "Resolution",
+      "speech": "后来我们就经常跟她开玩笑，说'千金小姐食堂体验生活'，她就特别不好意思，说她也不想这样的，但是不打招呼的话阿姨会跟她爸爸告状，说她在学校装不认识人",
+      "action": "continue",
+      "emotion_break": null,
+      "disfluencies": null
+    },
+    {
+      "step": 9,
+      "stage": "Resolution",
+      "speech": "哎，想起来那时候真好啊，每天就是排队吃饭这点小事都能让我们八卦这么久。现在点个外卖都懒得跟外卖小哥说话了。行了不说了，有人问别的什么问题吗？我本来还想说什么来着...算了想不起来了",
+      "action": "continue",
+      "emotion_break": "怀念+现实对比",
+      "disfluencies": null
+    }
+  ]
+}

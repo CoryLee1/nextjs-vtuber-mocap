@@ -1,21 +1,12 @@
-# Railway 用：主仓库根目录的 Dockerfile，构建时拉取子模块后部署 Echuu 后端
-# Railway 不拉子模块，所以用两阶段：先 clone 带 submodule，再构建运行
-# 在 Railway 里 Dockerfile Path 填: Dockerfile.echuu-backend
+# Railway 用：从主仓库 deploy/echuu-backend 构建，不依赖子模块
+# 在 Railway 里 Dockerfile Path 填: Dockerfile.echuu-backend，Root Directory 留空
 
-# Stage 1: 带子模块克隆仓库（仓库/分支写死，Railway 不传 ARG 也能构建）
-FROM alpine/git:latest AS source
-WORKDIR /repo
-RUN git clone --depth 1 --single-branch --branch "main" \
-    --recurse-submodules \
-    "https://github.com/CoryLee1/nextjs-vtuber-mocap.git" .
-
-# Stage 2: 运行后端
 FROM python:3.11-slim
 WORKDIR /app
 
-COPY --from=source /repo/echuu-agent/public /app/public
-COPY --from=source /repo/echuu-agent/workflow/backend /app/backend
-COPY --from=source /repo/echuu-agent/requirements.txt /app/requirements.txt
+COPY deploy/echuu-backend/requirements.txt /app/requirements.txt
+COPY deploy/echuu-backend/public /app/public
+COPY deploy/echuu-backend/backend /app/backend
 
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
