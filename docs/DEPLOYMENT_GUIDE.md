@@ -1,5 +1,76 @@
 # 部署指南
 
+## 完整部署（先部署再调）
+
+建议顺序：**先部署后端 → 再部署前端**，然后在前端环境变量里填后端地址。
+
+---
+
+### 一、后端（Echuu workflow，Python FastAPI）
+
+后端需常驻进程、支持 WebSocket，可选用：
+
+| 平台 | 说明 |
+|------|------|
+| **Railway** | 支持 Python、WebSocket，按量计费，适合先上线 |
+| **Render** | 免费/付费 Web Service，支持 Docker 或直接跑 Python |
+| **Fly.io** | 全球节点，支持 WebSocket |
+| **自建 VPS** | 用 systemd + uvicorn 或 Docker |
+
+**环境变量（后端）**：`DASHSCOPE_API_KEY`（TTS）、可选 `TTS_VOICE`、LLM 相关 key（若用 Gemini 等）。
+
+**启动方式**：
+
+- **方式 A：Docker（推荐）**  
+  仓库已提供 `echuu-agent/workflow/backend/Dockerfile`。在**仓库根目录**执行：
+
+  ```bash
+  docker build -f echuu-agent/workflow/backend/Dockerfile -t echuu-backend .
+  docker run -p 8000:8000 -e DASHSCOPE_API_KEY=xxx echuu-backend
+  ```
+
+  Railway/Render 等选「从 Dockerfile 部署」时，构建上下文选仓库根，Dockerfile 路径填 `echuu-agent/workflow/backend/Dockerfile`。
+
+- **方式 B：直接跑 Python**  
+  需设置 `PYTHONPATH` 指向 `echuu-agent/public`：
+
+  ```bash
+  export PYTHONPATH=/path/to/echuu-agent/public
+  cd echuu-agent/workflow/backend
+  uvicorn app:app --host 0.0.0.0 --port 8000
+  ```
+
+部署完成后记下后端地址，例如：`https://your-echuu-backend.railway.app`（**必须是 HTTPS**，否则前端无法在 HTTPS 页里连 WS）。
+
+---
+
+### 二、前端（Next.js，推荐 Vercel）
+
+1. **接好 Git**  
+   在 [vercel.com](https://vercel.com) 里 Import 本仓库（如 `nextjs-vtuber-mocap`），分支选 `main` 或 `ui`。
+
+2. **环境变量**  
+   在 Vercel 项目 **Settings → Environment Variables** 里添加：
+
+   | 变量名 | 说明 | 示例 |
+   |--------|------|------|
+   | `NEXT_PUBLIC_ECHUU_API_URL` | 后端 API 根地址（HTTP/HTTPS） | `https://your-echuu-backend.railway.app` |
+   | `NEXT_PUBLIC_ECHUU_WS_URL` | 可选；不填则用 API 地址自动换成 `wss://.../ws` | `wss://your-echuu-backend.railway.app/ws` |
+
+   其他已有变量（PostHog、S3、Neon 的 `DATABASE_URL` 等）按原样保留。
+
+3. **部署**  
+   保存变量后 Deploy（或推代码触发）。前端会连你填的后端地址，直播/房间/弹幕都会走该后端。
+
+---
+
+### 三、本地/线上联调
+
+- **只上前端、后端仍在本机**：Vercel 环境变量先不填（或填 `http://localhost:8000` 仅本地预览用），本地跑 `npm run dev` 和 workflow 后端即可。
+- **前后端都上线**：先部署后端 → 拿到 HTTPS 地址 → 在前端填 `NEXT_PUBLIC_ECHUU_API_URL`（和可选 `NEXT_PUBLIC_ECHUU_WS_URL`）→ 再部署/重部署前端，然后浏览器访问 Vercel 域名即可“部署上去再调”。
+
+---
+
 ## 问题解决
 
 ### PostHog 初始化错误
