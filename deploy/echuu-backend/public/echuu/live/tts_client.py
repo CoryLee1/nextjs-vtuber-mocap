@@ -122,6 +122,12 @@ class TTSClient:
             alt_root = project_root.parent
             module_path = alt_root / "workflow" / "backend" / "tts_client.py"
 
+        # 部署时 workflow/backend 常被复制为 /app/backend，CWD 即 /app/backend
+        if not module_path.exists():
+            cwd_tts = Path.cwd() / "tts_client.py"
+            if cwd_tts.exists():
+                module_path = cwd_tts
+
         if not module_path.exists():
             print(f"⚠️ 找不到 TTS 模块: {module_path}")
             print(f"   当前工作目录: {Path.cwd()}")
