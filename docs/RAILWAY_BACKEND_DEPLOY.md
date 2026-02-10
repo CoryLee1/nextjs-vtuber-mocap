@@ -15,19 +15,25 @@
 
 ## 第二步：用 Dockerfile 部署（不要用 Nixpacks）
 
-创建完项目后，Railway 可能自动识别成别的运行时，需要改成用我们的 Dockerfile：
+创建完项目后，Railway 可能自动识别成别的运行时，需要改成用我们的 Dockerfile。
+
+**推荐（与主仓库同步、不依赖子模块）：**
 
 1. 在项目里点进 **你的服务**（那一个部署出来的 Service）。
 2. 打开 **「Settings」** 标签。
 3. 找到 **「Build」** 区域：
    - **Builder**：选 **「Dockerfile」**（不要用 Nixpacks）。
-   - **Dockerfile Path**：填  
-     `echuu-agent/workflow/backend/Dockerfile`  
-     （相对于仓库根）
-   - **Root Directory**：留空（表示仓库根就是构建上下文）。
+   - **Root Directory**：填 **`deploy/echuu-backend`**（用主仓库内已同步的副本，含 TTS 等修复）。
+   - **Dockerfile Path**：填 **`Dockerfile`**（或留空，默认即 Root 下的 Dockerfile）。
 4. 找到 **「Deploy」** 区域：
    - **Start Command**：留空即可（镜像里已写死 `uvicorn app:app ...`）。
 5. 点 **「Deploy」** 或等自动重新部署。
+
+**备选（用 echuu-agent 子模块）：**
+
+- **Root Directory**：留空。
+- **Dockerfile Path**：`echuu-agent/workflow/backend/Dockerfile`。  
+  需确保克隆时带子模块（或子模块内含 `public/`），否则构建会缺文件。
 
 ---
 
@@ -73,8 +79,8 @@
 
 ## 常见问题
 
-**Q：构建失败，提示找不到 `echuu-agent/...`？**  
-A：确认 **Root Directory** 为空、**Dockerfile Path** 为 `echuu-agent/workflow/backend/Dockerfile`，且仓库根目录下确实有 `echuu-agent` 文件夹。
+**Q：构建失败，提示找不到 `echuu-agent/...` 或缺少 `public/`？**  
+A：改用 **Root Directory** = `deploy/echuu-backend`、**Dockerfile Path** = `Dockerfile`，这样不依赖子模块，直接用主仓库内已同步的代码。
 
 **Q：运行时报错 `ModuleNotFoundError: No module named 'echuu'`？**  
 A：镜像里已设 `PYTHONPATH=/app/public`，若仍报错，检查 Railway 是否用了我们提供的 Dockerfile 构建（Settings → Build → Builder = Dockerfile）。
