@@ -44,6 +44,7 @@ class LiveRequest(BaseModel):
     topic: str = "关于上司的超劲爆八卦"
     danmaku: List[str] = ["主播快说！", "真的假的？", "这也太离谱了"]
     voice: str = "Cherry"  # TTS 音色，与前端侧栏「声音」一致
+    language: str = ""  # 留空则从 topic/persona 检测；"en"/"zh"/"ja" 则强制该语言
 
 class DanmakuRequest(BaseModel):
     text: str
@@ -245,6 +246,21 @@ async def run_engine_task(room: RoomState, req: StartLiveRequest):
 
         engine = EchuuLiveEngine()
 
+        # 语言：请求里指定 > 从 topic/persona 检测，否则默认 zh
+        from echuu.live.language import detect_language
+        if getattr(req, "language", None) and req.language.strip():
+            lang = req.language.strip().lower()
+            if lang in ("en", "english"):
+                stream_lang = "en"
+            elif lang in ("ja", "japanese", "jp"):
+                stream_lang = "ja"
+            else:
+                stream_lang = "zh"
+        else:
+            profile = detect_language((req.topic or "") + " " + (req.persona or ""))
+            stream_lang = profile.primary.value
+        print(f"[start] stream_lang={stream_lang} (topic/persona used for detection)")
+
         room.info_message = f"正在为【{req.character_name}】生成关于【{req.topic}】的剧本..."
         await room.broadcast({"type": "info", "content": room.info_message})
         room.current_stage = "generating_script"
@@ -254,7 +270,8 @@ async def run_engine_task(room: RoomState, req: StartLiveRequest):
             name=req.character_name,
             persona=req.persona,
             background=req.background,
-            topic=req.topic
+            topic=req.topic,
+            language=stream_lang,
         )
 
         room.total_steps = len(state.script_lines)
@@ -295,6 +312,8 @@ async def run_engine_task(room: RoomState, req: StartLiveRequest):
             audio_b64 = None
             if audio_data and isinstance(audio_data, bytes):
                 audio_b64 = base64.b64encode(audio_data).decode("ascii")
+            elif step_result.get("speech") and not audio_data:
+                print(f"[warn] Step {step_num} has speech but no audio (TTS may have failed)")
 
             cue = step_result.get("cue")
             cue_dict = None

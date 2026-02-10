@@ -23,6 +23,7 @@ export function EchuuLiveAudio() {
       onSegmentDuration: (ms) => setEchuuSegmentDurationMs(ms),
     })
   );
+  const lastEnqueuedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (currentStep?.cue != null) {
@@ -31,10 +32,18 @@ export function EchuuLiveAudio() {
   }, [currentStep?.cue, setEchuuCue]);
 
   useEffect(() => {
-    if (currentStep?.audio_b64) {
-      audioQueueRef.current.enqueue(currentStep.audio_b64);
+    const step = currentStep?.step;
+    const audio = currentStep?.audio_b64;
+    if (step == null) return;
+    const key = `${step}-${audio ? audio.slice(0, 24) : "no-audio"}`;
+    if (lastEnqueuedKeyRef.current === key) return;
+    lastEnqueuedKeyRef.current = key;
+    if (audio) {
+      audioQueueRef.current.enqueue(audio);
+    } else if (currentStep?.speech && process.env.NODE_ENV === 'development') {
+      console.warn('[EchuuLiveAudio] Step has speech but no audio_b64 – backend TTS may have failed');
     }
-  }, [currentStep?.audio_b64]);
+  }, [currentStep?.step, currentStep?.audio_b64, currentStep?.speech]);
 
   useEffect(() => {
     return () => {

@@ -1,6 +1,16 @@
 const ECHUU_API_BASE =
   (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_ECHUU_API_URL) || 'http://localhost:8000';
 
+/** 检查后端是否可达（用于调试/连通性验证） */
+export async function checkBackendHealth(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${ECHUU_API_BASE}/docs`, { method: 'HEAD' });
+    return { ok: res.ok };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Network error' };
+  }
+}
+
 export interface StartLiveConfig {
   character_name: string;
   persona: string;
@@ -8,6 +18,8 @@ export interface StartLiveConfig {
   topic: string;
   danmaku?: string[];
   voice?: string;
+  /** 直播/剧本语言：留空由后端从 topic/persona 检测；"en" 强制英文，"zh" 中文，"ja" 日文 */
+  language?: string;
 }
 
 /** 创建直播间，返回 room_id 与 owner_token，房主需保存 owner_token */

@@ -1343,10 +1343,11 @@ export const GoLiveButton = memo(() => {
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
   const echuuConfig = useSceneStore((state) => state.echuuConfig);
   const topic = echuuConfig.topic;
-  const { connect, connectionState, currentStep, streamState, infoMessage, roomId, ownerToken, setRoom } = useEchuuWebSocket();
+  const { connect, connectionState, currentStep, streamState, infoMessage, roomId, ownerToken, setRoom, lastEventType, lastEventAt } = useEchuuWebSocket();
   const [isStarting, setIsStarting] = useState(false);
   const [phaseOpen, setPhaseOpen] = useState(false);
   const [startError, setStartError] = useState('');
+  const [backendStatus, setBackendStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
 
   const handleGoLive = async () => {
     if (isStarting) return;
@@ -1367,6 +1368,8 @@ export const GoLiveButton = memo(() => {
         connect(rid);
         await new Promise((r) => setTimeout(r, 300));
       }
+      const topicAndPersona = (echuuConfig.topic || '') + ' ' + (echuuConfig.persona || '');
+      const hasCJK = /[\u4e00-\u9fff\u3040-\u30ff]/.test(topicAndPersona);
       await doStart(
         {
           character_name: echuuConfig.characterName,
@@ -1375,6 +1378,7 @@ export const GoLiveButton = memo(() => {
           topic: echuuConfig.topic,
           danmaku: [],
           voice: echuuConfig.voice || 'Cherry',
+          language: hasCJK ? undefined : 'en',
         },
         rid!,
         token!
@@ -1394,6 +1398,17 @@ export const GoLiveButton = memo(() => {
   useEffect(() => {
     if (captionFullText) setEchuuSegmentDurationMs(null);
   }, [captionFullText, setEchuuSegmentDurationMs]);
+
+  useEffect(() => {
+    if (!phaseOpen) {
+      setBackendStatus('idle');
+      return;
+    }
+    setBackendStatus('checking');
+    import('@/lib/echuu-client').then(({ checkBackendHealth }) =>
+      checkBackendHealth().then((r) => setBackendStatus(r.ok ? 'ok' : 'fail'))
+    );
+  }, [phaseOpen]);
 
   return (
     <div
@@ -1418,8 +1433,10 @@ export const GoLiveButton = memo(() => {
         </button>
         {phaseOpen ? (
           <div className="mt-1 px-3 py-2 bg-black/60 rounded text-[10px] text-white/80 space-y-0.5">
+            <div><span className="text-white/50">后端</span> {backendStatus === 'checking' ? '检测中…' : backendStatus === 'ok' ? '正常' : backendStatus === 'fail' ? '不可达' : '—'}</div>
             <div><span className="text-white/50">状态</span> {streamState}</div>
             {infoMessage ? <div className="max-w-[200px] truncate" title={infoMessage}>{infoMessage}</div> : null}
+            {lastEventType ? <div><span className="text-white/50">最后事件</span> {lastEventType}{lastEventAt ? ` @${new Date(lastEventAt).toLocaleTimeString()}` : ''}</div> : null}
           </div>
         ) : null}
       </div>

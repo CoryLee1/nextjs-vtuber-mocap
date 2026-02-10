@@ -85,6 +85,10 @@ interface EchuuState {
   infoMessage: string;
   errorMessage: string;
 
+  /** 最后收到的 WS 事件类型（便于确认前端能收到后端数据） */
+  lastEventType: string | null;
+  lastEventAt: number | null;
+
   // Actions
   setRoom: (roomId: string | null, ownerToken: string | null) => void;
   connect: (roomId: string) => void;
@@ -162,6 +166,7 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+        set({ lastEventType: msg.type ?? null, lastEventAt: Date.now() });
         handleMessage(msg, set, get);
       } catch {
         // ignore non-JSON
