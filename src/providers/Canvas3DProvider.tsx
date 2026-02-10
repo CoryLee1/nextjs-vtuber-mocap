@@ -96,6 +96,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }}
         >
           <Canvas
+            frameloop="always"
             camera={{ position: [0, 1.5, 3], fov: 50 }}
             shadows={settings.shadows}
             gl={{

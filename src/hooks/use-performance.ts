@@ -88,6 +88,8 @@ export const usePerformance = () => {
   const [gpuUsage, setGpuUsage] = useState(0);
   const frameCountRef = useRef(0);
   const lastTimeRef = useRef(0);
+  const pendingQualityRef = useRef<PerformanceSettings['quality'] | null>(null);
+  const pendingCountRef = useRef(0);
 
   // 更新性能设置
   const updateSettings = useCallback((newSettings: Partial<PerformanceSettings>) => {
@@ -101,24 +103,32 @@ export const usePerformance = () => {
     });
   }, []);
 
-  // PERF: 自动性能优化 - 使用预设配置
+  // PERF: 自动性能优化 - 预设 + 滞后（同一档位连续 2 秒才切换），避免 FPS 边界来回跳
   const autoOptimize = useCallback(() => {
-    if (fps < 30) {
-      // 性能较差时使用低质量预设
+    const targetQuality: PerformanceSettings['quality'] =
+      fps < 30 ? 'low' : fps < 45 ? 'medium' : fps > 55 ? 'high' : 'medium';
+
+    if (targetQuality !== pendingQualityRef.current) {
+      pendingQualityRef.current = targetQuality;
+      pendingCountRef.current = 0;
+    }
+    pendingCountRef.current++;
+    if (pendingCountRef.current < 2) return; // 连续 2 次（约 2 秒）同一档位再应用
+
+    if (targetQuality === 'low') {
       setSettings(prev => ({
         ...prev,
         quality: 'low',
         ...PERFORMANCE_PRESETS.low,
+        postProcessing: true, // 保持开启，避免画面突然变糊
       }));
-    } else if (fps < 45) {
-      // 性能中等时使用中等预设
+    } else if (targetQuality === 'medium') {
       setSettings(prev => ({
         ...prev,
         quality: 'medium',
         ...PERFORMANCE_PRESETS.medium,
       }));
-    } else if (fps > 55) {
-      // 性能良好时使用高质量预设
+    } else if (targetQuality === 'high') {
       setSettings(prev => ({
         ...prev,
         quality: 'high',
