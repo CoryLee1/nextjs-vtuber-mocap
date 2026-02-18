@@ -10,6 +10,7 @@ import {
   StreamRoomChatPanel
 } from './UILayoutRedesign';
 import { BGMPlayer } from './BGMPlayer';
+import { StreamEndMVP } from './StreamEndMVP';
 import { PixelTrail } from '@/components/effects/PixelTrail';
 import { useSceneStore } from '@/hooks/use-scene-store';
 
@@ -56,7 +57,7 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
   }, []);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden theme-transition pointer-events-none bg-background/20">
+    <div className="fixed inset-0 z-[2] overflow-hidden theme-transition pointer-events-none">
       {/* 3D 场景容器 (由 layout 层级管理) */}
       <div 
         className={`absolute inset-0 w-full h-full pointer-events-none transition-all duration-300 ease-in-out ${
@@ -88,6 +89,9 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
 
       {/* 5. 底部中间主操作按钮 (Go Live) */}
       <GoLiveButton />
+
+      {/* 5.5 直播结束 MVP 结算页 */}
+      <StreamEndMVP />
 
       {/* 6. 星星光标 + 像素轨迹 */}
       <PixelTrail />

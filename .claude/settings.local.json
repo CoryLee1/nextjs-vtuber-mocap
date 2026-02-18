@@ -10,7 +10,28 @@
       "Bash(where:*)",
       "Bash(ffmpeg:*)",
       "Bash(timeout 45 npm run dev:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep:*)",
+      "Bash(npx next build:*)",
+      "Bash(npm run dev)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L http://localhost:3000)",
+      "mcp__Neon__list_projects",
+      "mcp__Neon__get_connection_string",
+      "mcp__Neon__list_branch_computes",
+      "mcp__Neon__run_sql",
+      "Bash(curl:*)",
+      "Bash(git checkout HEAD -- src/app/v1/auth/login/page.tsx)",
+      "WebFetch(domain:www.reactbits.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(node scripts/analyze-fbx.mjs:*)",
+      "Bash(node scripts/analyze-fbx2.mjs:*)",
+      "Bash(node scripts/analyze-kawaii-fbx.mjs:*)",
+      "Bash(node scripts/analyze-kawaii-threejs.mjs:*)",
+      "Bash(node scripts/fbx-raw-strings.mjs:*)",
+      "Bash(node scripts/validate-kawaii-mapping.mjs:*)"
     ]
   }
 }

@@ -89,6 +89,14 @@ interface EchuuState {
   lastEventType: string | null;
   lastEventAt: number | null;
 
+  // Session stats（用于直播结束 MVP 结算页）
+  /** 开始表演的时间戳（streamState → performing 时记录） */
+  liveStartedAt: number | null;
+  /** 直播结束的时间戳（streamState → finished 时记录） */
+  liveEndedAt: number | null;
+  /** 本场直播最高在线人数 */
+  peakOnlineCount: number;
+
   // Actions
   setRoom: (roomId: string | null, ownerToken: string | null) => void;
   connect: (roomId: string) => void;
@@ -119,6 +127,13 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
 
   infoMessage: '',
   errorMessage: '',
+
+  lastEventType: null,
+  lastEventAt: null,
+
+  liveStartedAt: null,
+  liveEndedAt: null,
+  peakOnlineCount: 0,
 
   setRoom: (roomId, ownerToken) => {
     set({ roomId, ownerToken });
@@ -203,6 +218,9 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
       memorySnapshot: null,
       infoMessage: '',
       errorMessage: '',
+      liveStartedAt: null,
+      liveEndedAt: null,
+      peakOnlineCount: 0,
     });
   },
 }));
@@ -216,9 +234,12 @@ function handleMessage(
     case 'system':
       break;
 
-    case 'user_count':
-      set({ onlineCount: msg.count ?? 0 });
+    case 'user_count': {
+      const count = msg.count ?? 0;
+      const prev = get().peakOnlineCount;
+      set({ onlineCount: count, peakOnlineCount: Math.max(prev, count) });
       break;
+    }
 
     case 'info':
       set({ infoMessage: msg.content ?? '' });
@@ -237,6 +258,7 @@ function handleMessage(
         totalSteps: msg.total_steps ?? 0,
         scriptPreview: msg.script_preview ?? [],
         infoMessage: msg.content ?? '',
+        liveStartedAt: get().liveStartedAt ?? Date.now(),
       });
       break;
 
@@ -291,7 +313,7 @@ function handleMessage(
       break;
 
     case 'success':
-      set({ streamState: 'finished', infoMessage: msg.content ?? '' });
+      set({ streamState: 'finished', infoMessage: msg.content ?? '', liveEndedAt: Date.now() });
       break;
 
     case 'error':

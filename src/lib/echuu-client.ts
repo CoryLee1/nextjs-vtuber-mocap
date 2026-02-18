@@ -75,3 +75,30 @@ export async function getHistory() {
   const res = await fetch(`${ECHUU_API_BASE}/api/history`);
   return res.json();
 }
+
+export interface AiSuggestRequest {
+  field: 'persona' | 'background' | 'topic';
+  context: {
+    characterName?: string;
+    modelName?: string;
+    language?: string;
+  };
+}
+
+/**
+ * Call the backend LLM to generate a suggestion for a character field.
+ * Returns the suggestion text, or throws on error.
+ */
+export async function aiSuggest(request: AiSuggestRequest): Promise<string> {
+  const res = await fetch(`${ECHUU_API_BASE}/api/ai-suggest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'AI suggest failed');
+  }
+  const data = await res.json();
+  return data.suggestion || '';
+}

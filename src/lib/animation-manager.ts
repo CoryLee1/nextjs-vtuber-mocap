@@ -3,197 +3,370 @@ import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { AnimationMixer, LoopRepeat } from 'three';
 import * as THREE from 'three';
 
-// Mixamo到VRM的骨骼映射
-const mixamoVRMRigMap = {
-  mixamorigHips: "hips",
-  mixamorigSpine: "spine",
-  mixamorigSpine1: "chest",
-  mixamorigSpine2: "upperChest",
-  mixamorigNeck: "neck",
-  mixamorigHead: "head",
-  mixamorigLeftShoulder: "leftShoulder",
-  mixamorigLeftArm: "leftUpperArm",
-  mixamorigLeftForeArm: "leftLowerArm",
-  mixamorigLeftHand: "leftHand",
-  mixamorigLeftHandThumb1: "leftThumbMetacarpal",
-  mixamorigLeftHandThumb2: "leftThumbProximal",
-  mixamorigLeftHandThumb3: "leftThumbDistal",
-  mixamorigLeftHandIndex1: "leftIndexProximal",
-  mixamorigLeftHandIndex2: "leftIndexIntermediate",
-  mixamorigLeftHandIndex3: "leftIndexDistal",
-  mixamorigLeftHandMiddle1: "leftMiddleProximal",
-  mixamorigLeftHandMiddle2: "leftMiddleIntermediate",
-  mixamorigLeftHandMiddle3: "leftMiddleDistal",
-  mixamorigLeftHandRing1: "leftRingProximal",
-  mixamorigLeftHandRing2: "leftRingIntermediate",
-  mixamorigLeftHandRing3: "leftRingDistal",
-  mixamorigLeftHandPinky1: "leftLittleProximal",
-  mixamorigLeftHandPinky2: "leftLittleIntermediate",
-  mixamorigLeftHandPinky3: "leftLittleDistal",
-  mixamorigRightShoulder: "rightShoulder",
-  mixamorigRightArm: "rightUpperArm",
-  mixamorigRightForeArm: "rightLowerArm",
-  mixamorigRightHand: "rightHand",
-  mixamorigRightHandPinky1: "rightLittleProximal",
-  mixamorigRightHandPinky2: "rightLittleIntermediate",
-  mixamorigRightHandPinky3: "rightLittleDistal",
-  mixamorigRightHandRing1: "rightRingProximal",
-  mixamorigRightHandRing2: "rightRingIntermediate",
-  mixamorigRightHandRing3: "rightRingDistal",
-  mixamorigRightHandMiddle1: "rightMiddleProximal",
-  mixamorigRightHandMiddle2: "rightMiddleIntermediate",
-  mixamorigRightHandMiddle3: "rightMiddleDistal",
-  mixamorigRightHandIndex1: "rightIndexProximal",
-  mixamorigRightHandIndex2: "rightIndexIntermediate",
-  mixamorigRightHandIndex3: "rightIndexDistal",
-  mixamorigRightHandThumb1: "rightThumbMetacarpal",
-  mixamorigRightHandThumb2: "rightThumbProximal",
-  mixamorigRightHandThumb3: "rightThumbDistal",
-  mixamorigLeftUpLeg: "leftUpperLeg",
-  mixamorigLeftLeg: "leftLowerLeg",
-  mixamorigLeftFoot: "leftFoot",
-  mixamorigLeftToeBase: "leftToes",
-  mixamorigRightUpLeg: "rightUpperLeg",
-  mixamorigRightLeg: "rightLowerLeg",
-  mixamorigRightFoot: "rightFoot",
-  mixamorigRightToeBase: "rightToes",
+// ─── Universal Auto-Mapper: FBX bone name → VRM humanoid bone name ────────
+//
+// Instead of hardcoding maps for every rig format, we normalize any bone name
+// into a canonical key and match against VRM humanoid bone vocabulary.
+// Works for Mixamo, UE4 Mannequin, KAWAII Unity Humanoid, and unknown rigs.
+// ───────────────────────────────────────────────────────────────────────────
+
+/** All VRM humanoid bone names the auto-mapper can target */
+const VRM_BONE_NAMES = [
+  'hips','spine','chest','upperChest','neck','head',
+  'leftShoulder','leftUpperArm','leftLowerArm','leftHand',
+  'rightShoulder','rightUpperArm','rightLowerArm','rightHand',
+  'leftUpperLeg','leftLowerLeg','leftFoot','leftToes',
+  'rightUpperLeg','rightLowerLeg','rightFoot','rightToes',
+  'leftThumbMetacarpal','leftThumbProximal','leftThumbDistal',
+  'leftIndexProximal','leftIndexIntermediate','leftIndexDistal',
+  'leftMiddleProximal','leftMiddleIntermediate','leftMiddleDistal',
+  'leftRingProximal','leftRingIntermediate','leftRingDistal',
+  'leftLittleProximal','leftLittleIntermediate','leftLittleDistal',
+  'rightThumbMetacarpal','rightThumbProximal','rightThumbDistal',
+  'rightIndexProximal','rightIndexIntermediate','rightIndexDistal',
+  'rightMiddleProximal','rightMiddleIntermediate','rightMiddleDistal',
+  'rightRingProximal','rightRingIntermediate','rightRingDistal',
+  'rightLittleProximal','rightLittleIntermediate','rightLittleDistal',
+] as const;
+
+/**
+ * Synonym table: maps every known token variant → canonical VRM token.
+ * Used by the normalizer to collapse e.g. "forearm"→"lowerarm", "calf"→"lowerleg".
+ */
+const SYNONYMS: Record<string, string> = {
+  // torso
+  hips: 'hips', hip: 'hips', pelvis: 'hips',
+  spine: 'spine',
+  chest: 'chest',
+  upperchest: 'upperchest',
+  neck: 'neck',
+  head: 'head',
+  // arms
+  shoulder: 'shoulder', clavicle: 'shoulder',
+  upperarm: 'upperarm', arm: 'upperarm',
+  lowerarm: 'lowerarm', forearm: 'lowerarm',
+  hand: 'hand',
+  // legs
+  upperleg: 'upperleg', upleg: 'upperleg', thigh: 'upperleg',
+  lowerleg: 'lowerleg', leg: 'lowerleg', calf: 'lowerleg', shin: 'lowerleg',
+  foot: 'foot',
+  toes: 'toes', toe: 'toes', toebase: 'toes', ball: 'toes',
+  // fingers
+  thumb: 'thumb',
+  index: 'index',
+  middle: 'middle',
+  ring: 'ring',
+  little: 'little', pinky: 'little',
+  // finger segments
+  metacarpal: 'metacarpal',
+  proximal: 'proximal', '1': 'proximal', '01': 'proximal',
+  intermediate: 'intermediate', '2': 'intermediate', '02': 'intermediate',
+  distal: 'distal', '3': 'distal', '03': 'distal',
+};
+
+/** Side token normalization */
+const SIDE_MAP: Record<string, 'left' | 'right'> = {
+  l: 'left', left: 'left', _l: 'left',
+  r: 'right', right: 'right', _r: 'right',
+};
+
+/** Prefixes to strip */
+const STRIP_PREFIXES = ['mixamorig', 'armature|'];
+
+/** Cache for auto-mapped results (rig bone name → vrm bone name) */
+const _autoMapCache = new Map<string, string | null>();
+
+/**
+ * Universal auto-mapper: given any FBX bone name, returns the matching VRM
+ * humanoid bone name or null. No hardcoded rig-specific tables needed.
+ *
+ * Algorithm:
+ *  1. Strip known prefixes (mixamorig, Armature|)
+ *  2. Tokenize by separators (_, space, camelCase boundaries)
+ *  3. Detect side (L/R, Left/Right, _l/_r)
+ *  4. Map tokens through synonym table
+ *  5. Assemble canonical VRM bone name and validate
+ */
+function autoMapBoneToVrm(rawName: string): string | null {
+  if (_autoMapCache.has(rawName)) return _autoMapCache.get(rawName)!;
+
+  let name = rawName;
+
+  // 1. Strip prefixes
+  for (const prefix of STRIP_PREFIXES) {
+    if (name.toLowerCase().startsWith(prefix)) {
+      name = name.slice(prefix.length);
+    }
+  }
+  // Handle "Armature|BoneName" pipe separator
+  if (name.includes('|')) name = name.split('|').pop()!;
+
+  // Skip root/reference bones
+  const lower = name.toLowerCase();
+  if (lower === 'root' || lower === 'reference' || lower === 'armature') {
+    _autoMapCache.set(rawName, null);
+    return null;
+  }
+
+  // 2. Tokenize: split on _, space, and camelCase boundaries
+  //    "Upper_Arm_L" → ["Upper","Arm","L"]
+  //    "mixamorigLeftForeArm" → ["Left","Fore","Arm"]  (after prefix strip)
+  //    "spine_03" → ["spine","03"]
+  const tokens = name
+    .replace(/([a-z])([A-Z])/g, '$1_$2')  // camelCase → snake
+    .split(/[_\s]+/)
+    .map(t => t.toLowerCase())
+    .filter(t => t.length > 0);
+
+  // 3. Detect side
+  let side: 'left' | 'right' | '' = '';
+  const sideTokenIndices: number[] = [];
+  tokens.forEach((t, i) => {
+    const s = SIDE_MAP[t];
+    if (s) { side = s; sideTokenIndices.push(i); }
+  });
+  // Remove side tokens for body-part matching
+  const bodyTokens = tokens.filter((_, i) => !sideTokenIndices.includes(i));
+
+  // 4. Map tokens through synonyms — try compound pairs first
+  //    "Upper_Arm" → tokens ["upper","arm"] → compound "upperarm" → SYNONYMS → "upperarm"
+  //    Without this, "arm" alone maps to "upperarm" which breaks "Lower_Arm"
+  const mapped: string[] = [];
+  for (let ci = 0; ci < bodyTokens.length; ci++) {
+    if (ci + 1 < bodyTokens.length) {
+      const compound = bodyTokens[ci] + bodyTokens[ci + 1];
+      if (SYNONYMS[compound]) { mapped.push(SYNONYMS[compound]); ci++; continue; }
+    }
+    mapped.push(SYNONYMS[bodyTokens[ci]] || bodyTokens[ci]);
+  }
+
+  // 5. Determine VRM bone name by pattern matching
+  let vrmBone: string | null = null;
+
+  // --- Finger detection: has a finger name + segment ---
+  const fingerNames = ['thumb', 'index', 'middle', 'ring', 'little'];
+  const segmentNames = ['metacarpal', 'proximal', 'intermediate', 'distal'];
+  const finger = mapped.find(t => fingerNames.includes(t));
+  const segment = mapped.find(t => segmentNames.includes(t));
+
+  if (finger && segment && side) {
+    // Thumb uses metacarpal for first joint; others use proximal
+    if (finger === 'thumb' && segment === 'proximal') {
+      // Many rigs call thumb's first joint "Proximal" but VRM calls it "Metacarpal"
+      // Check if there are 3 thumb bones: if this is the first, it's metacarpal
+      // Heuristic: if the original name has "1" or "Proximal" for thumb → metacarpal
+      vrmBone = `${side}ThumbMetacarpal`;
+    } else if (finger === 'thumb' && segment === 'intermediate') {
+      vrmBone = `${side}ThumbProximal`;
+    } else if (finger === 'thumb' && segment === 'distal') {
+      vrmBone = `${side}ThumbDistal`;
+    } else {
+      const capFinger = finger.charAt(0).toUpperCase() + finger.slice(1);
+      const capSegment = segment.charAt(0).toUpperCase() + segment.slice(1);
+      vrmBone = `${side}${capFinger}${capSegment}`;
+    }
+  }
+  // --- Limb detection ---
+  else if (mapped.includes('shoulder') && side) {
+    vrmBone = `${side}Shoulder`;
+  } else if (mapped.includes('upperarm') && side) {
+    vrmBone = `${side}UpperArm`;
+  } else if (mapped.includes('lowerarm') && side) {
+    vrmBone = `${side}LowerArm`;
+  } else if (mapped.includes('hand') && side) {
+    vrmBone = `${side}Hand`;
+  } else if (mapped.includes('upperleg') && side) {
+    vrmBone = `${side}UpperLeg`;
+  } else if (mapped.includes('lowerleg') && side) {
+    vrmBone = `${side}LowerLeg`;
+  } else if (mapped.includes('foot') && side) {
+    vrmBone = `${side}Foot`;
+  } else if (mapped.includes('toes') && side) {
+    vrmBone = `${side}Toes`;
+  }
+  // --- Torso (no side) ---
+  else if (mapped.includes('hips')) {
+    vrmBone = 'hips';
+  } else if (mapped.includes('upperchest')) {
+    vrmBone = 'upperChest';
+  } else if (mapped.includes('chest')) {
+    vrmBone = 'chest';
+  } else if (mapped.includes('spine')) {
+    // Handle numbered spines: spine, spine1/spine_01 → chest, spine2/spine_02 → upperChest
+    const numToken = bodyTokens.find(t => /^\d+$/.test(t));
+    if (numToken) {
+      const num = parseInt(numToken, 10);
+      if (num <= 1) vrmBone = 'spine';       // spine_01
+      else if (num === 2) vrmBone = 'spine';  // spine_02 (Mixamo: spine → spine)
+      else if (num === 3) vrmBone = 'chest';  // spine_03
+      else vrmBone = 'upperChest';            // spine_04+
+    } else {
+      vrmBone = 'spine';
+    }
+    // Special: "Spine1" / "Spine2" (Mixamo no-prefix) — already tokenized as ["spine","1"]
+    const idx = bodyTokens.indexOf('spine');
+    const next = bodyTokens[idx + 1];
+    if (next === '1') vrmBone = 'chest';
+    if (next === '2') vrmBone = 'upperChest';
+  } else if (mapped.includes('neck')) {
+    vrmBone = 'neck';
+  } else if (mapped.includes('head')) {
+    vrmBone = 'head';
+  }
+
+  // Validate against actual VRM bone list
+  if (vrmBone && !(VRM_BONE_NAMES as readonly string[]).includes(vrmBone)) {
+    vrmBone = null;
+  }
+
+  _autoMapCache.set(rawName, vrmBone);
+  return vrmBone;
 }
 
-// 改进的重新映射函数
-function remapMixamoAnimationToVrm(vrm, fbxScene) {
-    if (!vrm || !fbxScene || !fbxScene.animations || fbxScene.animations.length === 0) {
-        console.warn('AnimationManager: 无法重新映射动画 - 缺少必要数据');
+/**
+ * Universal FBX → VRM animation retargeting.
+ *
+ * Key improvements over the old approach:
+ *  1. Auto-maps any rig via token normalization (no hardcoded tables)
+ *  2. Only remaps .quaternion tracks (rotation retargeting)
+ *  3. Only remaps .position for hips (root motion height scaling)
+ *  4. Skips .scale tracks entirely (they corrupt bone proportions)
+ *  5. VRM 0.x mirror is only applied to hips position, not quaternions
+ *     (quaternion rest-pose compensation already handles the mirror)
+ */
+function remapAnimationToVrm(vrm, fbxScene) {
+    if (!vrm?.humanoid || !fbxScene?.animations?.length) {
+        console.warn('AnimationManager: missing vrm.humanoid or fbxScene.animations');
         return null;
     }
 
-    // 查找动画剪辑
-    let mixamoClip = THREE.AnimationClip.findByName(fbxScene.animations, "mixamo.com");
-    if (!mixamoClip) {
-        // 尝试其他可能的名称
-        const possibleNames = ["mixamo.com", "Idle", "idle", "Animation", "Take 001"];
-        for (const name of possibleNames) {
-            mixamoClip = THREE.AnimationClip.findByName(fbxScene.animations, name);
-            if (mixamoClip) {
-                break;
-            }
-        }
-    }
-    
-    if (!mixamoClip) {
-        // 使用第一个动画
-        console.warn('AnimationManager: 未找到标准名称的动画剪辑，使用第一个动画');
-        mixamoClip = fbxScene.animations[0];
-    }
+    // Pick the first clip (works for Mixamo "mixamo.com", UE4 "Unreal Take", or unnamed)
+    const srcClip = fbxScene.animations[0];
+    if (!srcClip) return null;
 
-    if (!mixamoClip) {
-        console.warn('AnimationManager: 没有可用的动画剪辑');
-        return null;
-    }
-
-    const clip = mixamoClip.clone();
-    const tracks = [];
-
-    const restRotationInverse = new THREE.Quaternion();
-    const parentRestWorldRotation = new THREE.Quaternion();
+    const clip = srcClip.clone();
+    const tracks: THREE.KeyframeTrack[] = [];
     const _quatA = new THREE.Quaternion();
     const _vec3 = new THREE.Vector3();
+    const restRotInv = new THREE.Quaternion();
+    const parentRestWorld = new THREE.Quaternion();
 
-    // 调整臀部高度参考
-    const mixamoHipsNode = fbxScene.getObjectByName("mixamorigHips");
-    const motionHipsHeight = mixamoHipsNode?.position?.y || 0;
-    
-    let vrmHipsHeight = 1; // 默认值
-    if (vrm.humanoid) {
-        const vrmHipsNode = vrm.humanoid.getNormalizedBoneNode("hips");
-        if (vrmHipsNode) {
-            const vrmHipsY = vrmHipsNode.getWorldPosition(_vec3).y;
-            const vrmRootY = vrm.scene.getWorldPosition(_vec3).y;
-            vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY) || 1;
-        }
+    // Ensure world matrices are up-to-date before reading positions
+    fbxScene.updateWorldMatrix(true, true);
+    vrm.scene.updateWorldMatrix(true, true);
+
+    // Hips height ratio for position scaling
+    const srcHipsNode = fbxScene.getObjectByName("Hips")
+        ?? fbxScene.getObjectByName("mixamorigHips")
+        ?? fbxScene.getObjectByName("pelvis");
+    const srcHipsY = srcHipsNode ? srcHipsNode.getWorldPosition(_vec3).y : 0;
+    const vrmHipsNode = vrm.humanoid.getNormalizedBoneNode("hips");
+    let vrmHipsY = 1;
+    if (vrmHipsNode) {
+        vrmHipsY = Math.abs(
+            vrmHipsNode.getWorldPosition(_vec3).y -
+            vrm.scene.getWorldPosition(_vec3).y
+        ) || 1;
     }
-    
-    const hipsPositionScale = motionHipsHeight > 0 ? vrmHipsHeight / motionHipsHeight : 1;
+    const hipsScale = srcHipsY > 0 ? vrmHipsY / srcHipsY : 1;
 
-    let mappedTracks = 0;
-    
-    clip.tracks.forEach((track) => {
-        const trackSplitted = track.name.split(".");
-        const mixamoRigName = trackSplitted[0];
-        const vrmBoneName = mixamoVRMRigMap[mixamoRigName];
-        
-        if (!vrmBoneName) {
-            return;
-        }
+    const isVrm0 = vrm.meta?.metaVersion === "0";
+    let mapped = 0;
 
-        const vrmNodeName = vrm.humanoid?.getNormalizedBoneNode(vrmBoneName)?.name;
-        const mixamoRigNode = fbxScene.getObjectByName(mixamoRigName);
+    for (const track of clip.tracks) {
+        // Parse track name: "BoneName.quaternion", "Armature|BoneName.position"
+        const dotIdx = track.name.lastIndexOf('.');
+        if (dotIdx < 0) continue;
+        const propName = track.name.slice(dotIdx + 1);  // quaternion | position | scale
+        let rawBone = track.name.slice(0, dotIdx);
+        if (rawBone.includes('|')) rawBone = rawBone.split('|').pop()!;
 
-        if (vrmNodeName && mixamoRigNode) {
-            const propertyName = trackSplitted[1];
+        // Skip scale tracks — they store bone-length ratios of the source rig,
+        // applying them to VRM would distort the model's proportions
+        if (propName === 'scale') continue;
 
-            try {
-                // 存储rest-pose的旋转
-                mixamoRigNode.getWorldQuaternion(restRotationInverse).invert();
-                if (mixamoRigNode.parent) {
-                    mixamoRigNode.parent.getWorldQuaternion(parentRestWorldRotation);
-                } else {
-                    parentRestWorldRotation.identity();
-                }
+        // Auto-map bone name to VRM
+        const vrmBoneName = autoMapBoneToVrm(rawBone);
+        if (!vrmBoneName) continue;
 
-                if (track instanceof THREE.QuaternionKeyframeTrack) {
-                    // 重新映射mixamoRig到NormalizedBone的旋转
-                    const values = [...track.values];
-                    for (let i = 0; i < values.length; i += 4) {
-                        const flatQuaternion = values.slice(i, i + 4);
-                        _quatA.fromArray(flatQuaternion);
+        // Resolve VRM node
+        const vrmNode = vrm.humanoid.getNormalizedBoneNode(vrmBoneName);
+        if (!vrmNode) continue;
 
-                        // 父级rest世界旋转 * 轨道旋转 * rest世界旋转的逆
-                        _quatA.premultiply(parentRestWorldRotation).multiply(restRotationInverse);
-                        _quatA.toArray(flatQuaternion);
+        // Find source bone in FBX scene graph (needed for rest-pose quaternion)
+        const srcNode = fbxScene.getObjectByName(rawBone);
+        if (!srcNode) continue;
 
-                        flatQuaternion.forEach((v, index) => {
-                            values[index + i] = v;
-                        });
-                    }
-
-                    tracks.push(
-                        new THREE.QuaternionKeyframeTrack(
-                            `${vrmNodeName}.${propertyName}`,
-                            track.times,
-                            values.map((v, i) =>
-                                vrm.meta?.metaVersion === "0" && i % 2 === 0 ? -v : v
-                            )
-                        )
-                    );
-                    mappedTracks++;
-                } else if (track instanceof THREE.VectorKeyframeTrack) {
-                    const value = track.values.map(
-                        (v, i) =>
-                            (vrm.meta?.metaVersion === "0" && i % 3 !== 1 ? -v : v) *
-                            hipsPositionScale
-                    );
-                    tracks.push(
-                        new THREE.VectorKeyframeTrack(
-                            `${vrmNodeName}.${propertyName}`,
-                            track.times,
-                            value
-                        )
-                    );
-                    mappedTracks++;
-                }
-            } catch (error) {
-                console.warn('AnimationManager: 映射轨道时出错', mixamoRigName, error);
+        if (propName === 'quaternion' && track instanceof THREE.QuaternionKeyframeTrack) {
+            // Rest-pose compensation:
+            //   result = parentRestWorld * animQuat * localRestInverse
+            // Uses LOCAL rest quaternion (not world!) per official three-vrm retarget example
+            restRotInv.copy(srcNode.quaternion).invert();
+            if (srcNode.parent) {
+                srcNode.parent.getWorldQuaternion(parentRestWorld);
+            } else {
+                parentRestWorld.identity();
             }
+
+            const values = new Float32Array(track.values.length);
+            for (let i = 0; i < track.values.length; i += 4) {
+                _quatA.set(track.values[i], track.values[i+1], track.values[i+2], track.values[i+3]);
+                _quatA.premultiply(parentRestWorld).multiply(restRotInv);
+
+                // VRM 0.x: the model was rotated 180° by rotateVRM0,
+                // but normalized bones already account for this — no extra flip needed
+                values[i]   = _quatA.x;
+                values[i+1] = _quatA.y;
+                values[i+2] = _quatA.z;
+                values[i+3] = _quatA.w;
+            }
+
+            tracks.push(new THREE.QuaternionKeyframeTrack(
+                `${vrmNode.name}.quaternion`, track.times, values
+            ));
+            mapped++;
         }
-    });
+        else if (propName === 'position' && vrmBoneName === 'hips' && track instanceof THREE.VectorKeyframeTrack) {
+            // Auto-detect axis convention from rest pose values:
+            //   KAWAII/Unity Z-up (cm): track [X, Y, Z] where Z=height (~95)
+            //   Mixamo Y-up: track [X, Y, Z] where Y=height
+            const restVal = [track.values[0], track.values[1], track.values[2]];
+            const absVals = restVal.map(Math.abs);
+            const maxAxis = absVals.indexOf(Math.max(...absVals));
+            const srcHeight = Math.abs(restVal[maxAxis]);
+            const posScale = srcHeight > 0.01 ? vrmHipsY / srcHeight : 1;
+
+            const values = new Float32Array(track.values.length);
+            for (let i = 0; i < track.values.length; i += 3) {
+                const raw = [track.values[i], track.values[i+1], track.values[i+2]];
+                if (maxAxis === 2) {
+                    // Z-up → Y-up conversion: X=X, Y=Z, Z=-Y
+                    values[i]   = raw[0] * posScale * (isVrm0 ? -1 : 1);
+                    values[i+1] = raw[2] * posScale;
+                    values[i+2] = -raw[1] * posScale * (isVrm0 ? -1 : 1);
+                } else {
+                    // Already Y-up
+                    values[i]   = raw[0] * posScale * (isVrm0 ? -1 : 1);
+                    values[i+1] = raw[1] * posScale;
+                    values[i+2] = raw[2] * posScale * (isVrm0 ? -1 : 1);
+                }
+            }
+            tracks.push(new THREE.VectorKeyframeTrack(
+                `${vrmNode.name}.position`, track.times, values
+            ));
+            mapped++;
+        }
+        // All other tracks (non-hips position, scale) are intentionally skipped
+    }
 
     if (tracks.length === 0) {
-        console.warn('AnimationManager: 没有成功映射任何轨道');
+        console.warn('AnimationManager: 0 tracks mapped. Sample track names:',
+            clip.tracks.slice(0, 5).map(t => t.name));
         return null;
     }
 
-    const remappedClip = new THREE.AnimationClip("vrmAnimation", clip.duration, tracks);
-    return remappedClip;
+    console.log(`AnimationManager: retarget OK — ${mapped} tracks from ${clip.tracks.length} (${clip.duration.toFixed(1)}s)`);
+    return new THREE.AnimationClip("vrmAnimation", clip.duration, tracks);
 }
 
 // ✅ 获取 VRM 的唯一标识符（更可靠的检测方式）
@@ -211,16 +384,49 @@ const getVrmId = (vrm: any): string => {
     return `vrm-ref-${String(vrm).slice(0, 20)}`;
 };
 
-// 改进的动画管理器
-export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx') => {
-    // ✅ 确保 animationUrl 始终有效（如果是 null/undefined，使用默认值）
-    const DEFAULT_ANIMATION_URL = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx';
+// 改进的动画管理器：默认 URL 与 vtuber-animations 保持一致，且规范化错误路径（缺少 /animations/）
+const S3_ANIM_BASE = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com';
+const DEFAULT_ANIMATION_URL = `${S3_ANIM_BASE}/animations/Idle.fbx`;
+
+/** 若 URL 是 S3 base 直接加文件名（缺少 /animations/），修正为正确路径，避免 403/404 */
+function normalizeAnimationUrl(url: string): string {
+  if (typeof url !== 'string' || !url.trim()) return DEFAULT_ANIMATION_URL;
+  const u = url.replace(/:$/, '').trim();
+  const base = S3_ANIM_BASE;
+  if (u.startsWith(base + '/') && !u.startsWith(base + '/animations/') && u.endsWith('.fbx')) {
+    const filename = u.slice(base.length).replace(/^\/+/, '');
+    return `${base}/animations/${filename}`;
+  }
+  return u;
+}
+
+/** Unity 风格过渡：idle↔idle / idle↔speaking 的混合时长与是否 warp（旧动作按比例收尾，更丝滑） */
+const TRANSITION = {
+  /** 动画切换混合时长（秒），越大越丝滑、越像 Unity Animator 的 Transition Duration */
+  crossFadeDuration: 0.55,
+  /** true = 旧动作在混合期内按比例“收尾”，避免突兀结束（类似 Unity 的 Exit Time 平滑） */
+  warpOutgoing: true,
+};
+
+/**
+ * 双缓冲：当前播一个 URL，同时预加载 nextAnimationUrl，切换时大概率已进缓存，减少延迟/T-pose。
+ */
+export const useAnimationManager = (
+    vrm,
+    animationUrl = DEFAULT_ANIMATION_URL,
+    nextAnimationUrl?: string
+) => {
     const effectiveAnimationUrl = animationUrl || DEFAULT_ANIMATION_URL;
-    
-    // 修正 animationUrl 末尾多余的冒号
-    const safeAnimationUrl = typeof effectiveAnimationUrl === 'string' 
-        ? effectiveAnimationUrl.replace(/:$/, '').trim() 
+    // 规范化：修正末尾冒号 + 修正缺少 /animations/ 的 S3 路径（避免 403/404）
+    const safeAnimationUrl = typeof effectiveAnimationUrl === 'string'
+        ? normalizeAnimationUrl(effectiveAnimationUrl)
         : DEFAULT_ANIMATION_URL;
+
+    /** 预备下一个：与当前不同则预加载，相同则复用同一 URL（保证 hooks 稳定调用） */
+    const preloadUrl =
+        nextAnimationUrl && nextAnimationUrl !== safeAnimationUrl
+            ? normalizeAnimationUrl(nextAnimationUrl.trim())
+            : safeAnimationUrl;
 
     const mixerRef = useRef<AnimationMixer | null>(null);
     const currentActionRef = useRef<THREE.AnimationAction | null>(null);
@@ -332,28 +538,20 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
         }
     }, [vrm, reinitialize]);
     
-    // ✅ 检测动画 URL 变化
+    // ✅ 仅记录 URL 变化，不停止当前动画；等新 clip 就绪后由下方 init 逻辑做 crossfade，避免切换瞬间 T-pose
     useEffect(() => {
         if (previousAnimationUrlRef.current !== safeAnimationUrl) {
-            console.log('🔄 AnimationManager: 检测到动画URL变化', {
+            console.log('🔄 AnimationManager: 检测到动画URL变化（保持当前播放，等新 clip 就绪后 crossfade）', {
                 old: previousAnimationUrlRef.current,
                 new: safeAnimationUrl
             });
-            
             previousAnimationUrlRef.current = safeAnimationUrl;
-            
-            // 如果已有混合器，清理并等待重新初始化
-            if (mixerRef.current) {
-                mixerRef.current.stopAllAction();
-                idleActionRef.current = null;
-                currentActionRef.current = null;
-            }
         }
     }, [safeAnimationUrl]);
 
-    // 加载FBX动画文件
-    // ✅ useFBX 会在 URL 变化时自动重新加载
+    // 加载FBX：当前播的用 safeAnimationUrl；再拉一个 preloadUrl 进缓存（双缓冲，切换时少等）
     const fbxScene = useFBX(safeAnimationUrl);
+    useFBX(preloadUrl);
 
     // ✅ 创建动画剪辑（当VRM、fbxScene或URL变化时重新创建）
     const idleClip = useMemo(() => {
@@ -382,7 +580,7 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
                 animationsCount: fbxScene.animations?.length || 0
             });
             
-            const remappedClip = remapMixamoAnimationToVrm(vrm, fbxScene);
+            const remappedClip = remapAnimationToVrm(vrm, fbxScene);
             
             if (remappedClip) {
                 console.log('AnimationManager: 动画重新映射成功', {
@@ -398,18 +596,8 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
             console.error('AnimationManager: 重新映射失败', error);
         }
         
-        // 备用方案：使用原始动画
-        if (fbxScene.animations && fbxScene.animations.length > 0) {
-            const clip = fbxScene.animations[0].clone();
-            clip.name = 'Idle';
-            console.log('AnimationManager: 使用原始动画作为备用', {
-                clipName: clip.name,
-                duration: clip.duration
-            });
-            return clip;
-        }
-        
-        console.warn('AnimationManager: 无法创建idle剪辑 - 没有可用的动画');
+        // 不再使用原始 FBX clip 作为备用：其 track 名为 mixamorig*，VRM 场景中无对应节点，会导致 T-pose
+        console.warn('AnimationManager: 无法创建idle剪辑 - 重新映射失败且不能使用原始 clip');
         return null;
     }, [vrm, fbxScene, safeAnimationUrl]);
 
@@ -494,50 +682,61 @@ export const useAnimationManager = (vrm, animationUrl = 'https://nextjs-vtuber-a
                 }
             }
 
-            // ✅ 创建idle动作（必须使用新的clip，因为VRM可能已经变化）
+            // ✅ 创建新 clip 对应的 action
             const idleAction = mixerRef.current.clipAction(idleClip);
             if (!idleAction) {
                 throw new Error('无法创建idle动作：clipAction返回null');
             }
-            
-            // 停止之前的动作（如果有）
-            if (idleActionRef.current && idleActionRef.current !== idleAction) {
-                idleActionRef.current.stop();
-            }
-            
-            idleActionRef.current = idleAction;
-            currentActionRef.current = idleAction;
-
-            // 设置动画参数
-            idleAction.setEffectiveWeight(1.0);
+            idleAction.setEffectiveWeight(1);
             idleAction.timeScale = 1.0;
             idleAction.setLoop(THREE.LoopRepeat, Infinity);
             idleAction.clampWhenFinished = false;
             idleAction.enabled = true;
 
-            // ✅ 重置并播放动画
-            idleAction.reset();
-            idleAction.play();
-            
+            const prevAction = currentActionRef.current;
+            const useCrossFade = prevAction && prevAction.isRunning() && prevAction.getClip() !== idleClip;
+            const duration = TRANSITION.crossFadeDuration;
+            const warp = TRANSITION.warpOutgoing;
+            let crossFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+            if (useCrossFade) {
+                idleAction.reset();
+                idleAction.play();
+                prevAction.crossFadeTo(idleAction, duration, warp);
+                isTransitioningRef.current = true;
+                crossFadeTimeoutId = setTimeout(() => {
+                    isTransitioningRef.current = false;
+                }, duration * 1000);
+            } else {
+                if (idleActionRef.current && idleActionRef.current !== idleAction) {
+                    idleActionRef.current.stop();
+                }
+                idleAction.reset();
+                idleAction.play();
+            }
+
+            idleActionRef.current = idleAction;
+            currentActionRef.current = idleAction;
             animationModeRef.current = 'idle';
-            
+
             setAnimationState({
                 isPlayingIdle: true,
-                isTransitioning: false,
+                isTransitioning: useCrossFade,
                 hasMixer: true,
                 currentMode: 'idle',
                 isLoading: false,
                 error: null
             });
-            
-            console.log('✅ AnimationManager: 动画混合器初始化完成，开始播放动画', {
-                vrmId: getVrmId(vrm),
-                actionName: idleAction.getClip().name,
-                isRunning: idleAction.isRunning(),
-                weight: idleAction.getEffectiveWeight(),
-                duration: idleAction.getClip().duration
-            });
 
+            if (useCrossFade) {
+                console.log('✅ AnimationManager: 交叉淡入', { to: idleAction.getClip().name, duration, warp });
+            } else {
+                console.log('✅ AnimationManager: 动画混合器初始化/切换', { actionName: idleAction.getClip().name });
+            }
+
+            return () => {
+                if (crossFadeTimeoutId != null) clearTimeout(crossFadeTimeoutId);
+            };
         } catch (error) {
             console.error('AnimationManager: 初始化失败', error);
             setAnimationState(prev => ({

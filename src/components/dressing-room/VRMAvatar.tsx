@@ -8,7 +8,7 @@ import { lerp } from 'three/src/math/MathUtils.js';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { useSensitivitySettings } from '@/hooks/use-sensitivity-settings';
 import { useSceneStore, useMediaPipeCallback } from '@/hooks/use-scene-store';
-import { createVRMLookAtUpdater } from '@/hooks/use-vrm-lookat';
+// createVRMLookAtUpdater removed — VRMController handles head+eye tracking
 import { useAnimationManager } from '@/lib/animation-manager';
 import { ANIMATION_CONFIG } from '@/lib/constants';
 import { CoordinateAxes, ArmDirectionDebugger, SimpleArmAxes } from './DebugHelpers';
@@ -41,6 +41,8 @@ import { BoneVisualizer } from '@/components/vrm/BoneVisualizer';
 interface VRMAvatarProps {
     modelUrl?: string;
     animationUrl?: string;
+    /** 下一个可能切换到的动画 URL，用于双缓冲预加载 */
+    nextAnimationUrl?: string | null;
     scale?: number;
     position?: [number, number, number];
     showBones?: boolean;
@@ -63,7 +65,8 @@ interface VRMAvatarProps {
 }
 export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     modelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
-    animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
+    animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
+    nextAnimationUrl = null,
     scale = 1,
     position = [0, 0, 0],
     showBones = false,
@@ -85,7 +88,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     ...props
 }, ref) => {
     const { camera } = useThree();
-    const lookAtUpdaterRef = useRef<ReturnType<typeof createVRMLookAtUpdater> | null>(null);
+    // lookAtUpdaterRef removed — VRMController handles head+eye tracking
     // 获取灵敏度设置
     const { settings } = useSensitivitySettings();
 
@@ -178,7 +181,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         switchToMocapMode, // 新增：切换到动捕模式
         switchToIdleMode, // 新增：切换到idle模式
         forceIdleRestart // 新增：强制重启idle
-    } = useAnimationManager(vrm, animationUrl);
+    } = useAnimationManager(vrm, animationUrl, nextAnimationUrl ?? undefined);
 
     // 用 useRef 存储 animationManager，避免无限循环
     const animationManagerObjRef = useRef<any>(null);
@@ -661,38 +664,13 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         bone.quaternion.slerp(tmpQuat, slerpFactor);
     }, [vrm]);
 
-    // **视线追踪：使用手动调用的 LookAt 更新器**
-    // 关键：在动画更新之后调用，确保 LookAt 覆盖动画的头部旋转
-    // ✅ 初始化 LookAt 更新器
+    // Disable VRM's built-in autoUpdate LookAt — VRMController handles it
     useEffect(() => {
-        if (!vrm || !camera) {
-            lookAtUpdaterRef.current = null;
-            return;
-        }
-        
-        console.log('🎯 初始化 LookAt 更新器');
-        
-        // 禁用 VRM 自动 LookAt
+        if (!vrm) return;
         if (vrm.lookAt && typeof (vrm.lookAt as any).autoUpdate !== 'undefined') {
             (vrm.lookAt as any).autoUpdate = false;
         }
-        
-        // 创建更新器
-        lookAtUpdaterRef.current = createVRMLookAtUpdater(vrm, camera, camera, {
-            enabled: true,
-            smoothness: 0.15,
-            maxYaw: Math.PI / 2,
-            maxPitch: Math.PI / 6,
-            maxRoll: 0,
-            additive: false,
-        });
-        
-        console.log('✅ LookAt 更新器已创建');
-        
-        return () => {
-            lookAtUpdaterRef.current = null;
-        };
-    }, [vrm, camera]);
+    }, [vrm]);
 
     // 动画循环 - 简化模式切换逻辑
     useFrame((state, delta) => {
@@ -891,13 +869,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         // **最后统一更新VRM（必须在 LookAt 之前更新）**
         vrm.update(delta);
 
-        // **✅ 关键：在 vrm.update() 之后应用 LookAt**
-        // 这样可以确保 LookAt 的头部旋转覆盖动画的头部旋转
-        if (lookAtUpdaterRef.current) {
-            // ✅ 确保相机矩阵已更新
-            camera.updateMatrixWorld(true);
-            lookAtUpdaterRef.current.update();
-        }
+        // Head + eye tracking handled by VRMController (runs after this useFrame)
         
         // 更新调试面板数据
         if (onRiggedPoseUpdate && riggedPose.current) {
@@ -992,16 +964,15 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     </>
                 )}
                 
-                {/* VRM 控制器：自动眨眼、头部追踪、视线追踪 */}
-                {/* 注意：headTracking 已禁用，因为 VRMAvatar 中已有 useVRMLookAt hook */}
+                {/* VRM Controller: auto-blink, head faces camera, eyes follow mouse */}
                 {vrm && (
                     <VRMController
                         vrm={vrm}
                         enabled={true}
                         autoBlink={true}
-                        headTracking={false} // 禁用，使用 useVRMLookAt 替代
-                        lookAt={false} // 禁用，使用 useVRMLookAt 替代
-                        cameraFollow={false} // 相机控制由 CameraController 处理
+                        headTracking={true}
+                        eyeTracking={true}
+                        cameraFollow={false}
                     />
                 )}
                 

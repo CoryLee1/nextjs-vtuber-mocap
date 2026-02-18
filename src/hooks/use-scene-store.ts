@@ -46,12 +46,16 @@ interface SceneState {
   vrmModelUrl: string | null;
   /** 当前动画 URL */
   animationUrl: string | null;
+  /** 下一个可能切换到的动画 URL（双缓冲预加载用） */
+  nextAnimationUrl: string | null;
   /** 设置 VRM 模型（缓存模型实例和 URL） */
   setVRMModel: (model: VRM, url: string) => void;
   /** 设置模型 URL（不改变模型实例，用于预加载） */
   setVRMModelUrl: (url: string) => void;
   /** 设置动画 URL */
   setAnimationUrl: (url: string) => void;
+  /** 设置下一个预加载动画 URL */
+  setNextAnimationUrl: (url: string | null) => void;
   /** 清除当前 VRM 模型（正确释放资源） */
   disposeCurrentVRM: () => void;
 
@@ -113,6 +117,9 @@ interface SceneState {
   /** 当前句音频时长（ms），用于 caption 打字机与声音同步 */
   echuuSegmentDurationMs: number | null;
   setEchuuSegmentDurationMs: (v: number | null) => void;
+  /** 与音频同步的 caption 文本 — 仅在音频开始播放时设置，确保打字机与声音对齐 */
+  echuuCaptionText: string;
+  setEchuuCaptionText: (v: string) => void;
   /** BGM 播放 URL（空则停止） */
   bgmUrl: string | null;
   /** BGM 音量 0–100 */
@@ -181,7 +188,8 @@ export const useSceneStore = create<SceneState>()(
   vrmModel: null,
   vrmModelUrl: null,
   animationUrl: null,
-  
+  nextAnimationUrl: null,
+
   setVRMModel: (model: VRM, url: string) => {
     // 如果已有模型，先释放旧模型
     const currentModel = get().vrmModel;
@@ -201,6 +209,10 @@ export const useSceneStore = create<SceneState>()(
 
   setAnimationUrl: (url: string) => {
     set({ animationUrl: url });
+  },
+
+  setNextAnimationUrl: (url: string | null) => {
+    set({ nextAnimationUrl: url });
   },
 
   disposeCurrentVRM: () => {
@@ -336,6 +348,8 @@ export const useSceneStore = create<SceneState>()(
   setEchuuAudioPlaying: (playing) => set({ echuuAudioPlaying: playing }),
   echuuSegmentDurationMs: null,
   setEchuuSegmentDurationMs: (v) => set({ echuuSegmentDurationMs: v }),
+  echuuCaptionText: '',
+  setEchuuCaptionText: (v) => set({ echuuCaptionText: v }),
   bgmUrl: null,
   bgmVolume: 80,
   setBgmUrl: (url) => set({ bgmUrl: url }),

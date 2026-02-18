@@ -2,17 +2,34 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getProviders, signIn } from 'next-auth/react';
 import { AuthButton, AuthInput, SocialButton } from '../../components/auth-ui';
 
 export default function V1Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [waking, setWaking] = useState(false);
+
+  // 检测 OAuth 回调错误（通常是 Neon 冷启动导致 DB 连接失败）
+  const urlError = searchParams?.get('error');
+  const callbackUrl = searchParams?.get('callbackUrl') || '/zh';
+  React.useEffect(() => {
+    if (urlError === 'Callback' || urlError === 'OAuthCallback') {
+      // 服务器可能在唤醒，自动重试一次
+      setWaking(true);
+      const timer = setTimeout(() => {
+        // 清掉 error 参数重新跳转，给后端重试的机会
+        window.location.href = callbackUrl;
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [urlError, callbackUrl]);
 
   React.useEffect(() => {
     getProviders()
@@ -39,6 +56,13 @@ export default function V1Login() {
             <h1 className="text-4xl font-black text-[#EEFF00] tracking-tighter uppercase italic">Welcome Back</h1>
             <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">Accessing ECHUU Mainframe</p>
           </div>
+
+          {waking && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#EEFF00]/10 border border-[#EEFF00]/20 text-[#EEFF00] text-xs font-bold animate-pulse">
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              Server waking up… Retrying automatically
+            </div>
+          )}
 
           <div className="space-y-6">
             <AuthInput

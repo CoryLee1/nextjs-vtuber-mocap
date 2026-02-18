@@ -84,8 +84,8 @@ class EchuuAudioQueue {
     const audio = new Audio(normalizeAudioSource(next));
     this.audio = audio;
     this.isPlaying = true;
-    this.callbacks.onStart?.();
 
+    // 元数据加载 → 先发送 duration（在 play 之前就绪）
     audio.onloadedmetadata = () => {
       const durationMs = Number.isFinite(audio.duration) ? audio.duration * 1000 : 0;
       if (durationMs > 0) this.callbacks.onSegmentDuration?.(durationMs);
@@ -102,7 +102,11 @@ class EchuuAudioQueue {
       this.playNext();
     };
 
-    audio.play().catch((error) => {
+    // play() 返回 Promise — resolve 时音频真正开始播放，此时 metadata 已就绪
+    audio.play().then(() => {
+      // 音频真正开始播放 → 通知上层
+      this.callbacks.onStart?.();
+    }).catch((error) => {
       this.isPlaying = false;
       this.callbacks.onError?.(error);
       this.playNext();

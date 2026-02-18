@@ -1,4 +1,4 @@
-import type { NextAuthOptions } from 'next-auth';
+import type { NextAuthOptions, Adapter } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
@@ -8,8 +8,44 @@ import { prisma } from '@/lib/prisma';
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+/**
+ * 为 Neon Serverless 冷启动添加重试包装。
+ * 第一次连接可能因 compute 挂起而失败，重试 1 次通常就够（唤醒约 1-3 秒）。
+ */
+function withRetry<T extends Record<string, any>>(adapter: T, maxRetries = 2, delayMs = 2000): T {
+  const wrapped = {} as T;
+  for (const key of Object.keys(adapter) as (keyof T)[]) {
+    const original = adapter[key];
+    if (typeof original !== 'function') {
+      wrapped[key] = original;
+      continue;
+    }
+    (wrapped as any)[key] = async (...args: any[]) => {
+      let lastError: unknown;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await (original as Function).apply(adapter, args);
+        } catch (err: any) {
+          lastError = err;
+          const isConnectionError =
+            err?.name === 'PrismaClientInitializationError' ||
+            err?.message?.includes("Can't reach database server");
+          if (!isConnectionError || attempt === maxRetries) throw err;
+          console.warn(`[auth] DB connection failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delayMs}ms…`);
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      }
+      throw lastError;
+    };
+  }
+  return wrapped;
+}
+
+const baseAdapter = PrismaAdapter(prisma);
+const adapter = withRetry(baseAdapter) as Adapter;
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter,
   session: { strategy: 'jwt' },
   providers: [
     ...(googleClientId && googleClientSecret
@@ -32,7 +68,17 @@ export const authOptions: NextAuthOptions = {
         const password = credentials?.password ?? '';
         if (!email || !password) return null;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        let user;
+        // authorize 也需要重试（credentials 登录走的不是 adapter）
+        for (let i = 0; i < 3; i++) {
+          try {
+            user = await prisma.user.findUnique({ where: { email } });
+            break;
+          } catch (err: any) {
+            if (i === 2 || !err?.message?.includes("Can't reach database server")) throw err;
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
         if (!user?.passwordHash) return null;
 
         const ok = await bcrypt.compare(password, user.passwordHash);
@@ -89,4 +135,3 @@ export const authOptions: NextAuthOptions = {
     signIn: '/v1/auth/login',
   },
 };
-

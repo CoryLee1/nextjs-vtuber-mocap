@@ -62,7 +62,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'idle',
         name: 'Idle Animation',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
         thumbnail: '/images/thumbnails/idle.gif',
         category: 'idle',
         tags: ['basic', 'loop'],
@@ -71,7 +71,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'dance',
         name: 'Breakdance 1990',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Breakdance%201990.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Breakdance%201990.fbx',
         thumbnail: '/images/thumbnails/dance.gif',
         category: 'dance',
         tags: ['energetic', 'hip-hop'],
@@ -80,7 +80,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'combat',
         name: 'Mma Kick',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Mma%20Kick.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Mma%20Kick.fbx',
         thumbnail: '/images/thumbnails/combat.gif',
         category: 'combat',
         tags: ['action', 'fighting'],
@@ -89,7 +89,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'breakdance-uprock',
         name: 'Breakdance Uprock Var 2',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Breakdance%20Uprock%20Var%202.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Breakdance%20Uprock%20Var%202.fbx',
         thumbnail: '/images/thumbnails/breakdance-uprock.gif',
         category: 'dance',
         tags: ['energetic', 'hip-hop'],
@@ -98,7 +98,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'twist-dance',
         name: 'Twist Dance',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Twist%20Dance.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Twist%20Dance.fbx',
         thumbnail: '/images/thumbnails/twist-dance.gif',
         category: 'dance',
         tags: ['energetic', 'fun'],
@@ -107,7 +107,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'sitting-laughing',
         name: 'Sitting Laughing',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Sitting%20Laughing.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Sitting%20Laughing.fbx',
         thumbnail: '/images/thumbnails/sitting-laughing.gif',
         category: 'idle',
         tags: ['casual', 'fun'],
@@ -116,7 +116,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'taunt',
         name: 'Taunt',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Taunt.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Taunt.fbx',
         thumbnail: '/images/thumbnails/taunt.gif',
         category: 'gesture',
         tags: ['casual', 'fun'],
@@ -125,7 +125,7 @@ const RESOURCE_CONFIG = {
       {
         id: 'capoeira',
         name: 'Capoeira',
-        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Capoeira.fbx',
+        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Capoeira.fbx',
         thumbnail: '/images/thumbnails/capoeira.gif',
         category: 'combat',
         tags: ['action', 'martial-arts'],

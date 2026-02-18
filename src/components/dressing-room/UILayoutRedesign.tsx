@@ -1390,14 +1390,8 @@ export const GoLiveButton = memo(() => {
     }
   };
 
-  const captionFullText = currentStep?.speech
-    ? `${echuuConfig.characterName}：${currentStep.speech}`
-    : '';
-
-  const setEchuuSegmentDurationMs = useSceneStore((s) => s.setEchuuSegmentDurationMs);
-  useEffect(() => {
-    if (captionFullText) setEchuuSegmentDurationMs(null);
-  }, [captionFullText, setEchuuSegmentDurationMs]);
+  // 字幕由 EchuuLiveAudio 在音频真正开始播放时同步写入 echuuCaptionText
+  const captionFullText = useSceneStore((s) => s.echuuCaptionText);
 
   useEffect(() => {
     if (!phaseOpen) {

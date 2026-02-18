@@ -28,7 +28,7 @@ export const useAnimationLibrary = () => {
                         id: 'local-idle',
                         name: '待机动画',
                         description: '默认的待机动画',
-                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
+                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
                         type: 'fbx',
                         isDefault: true,
                         category: 'idle',
@@ -48,18 +48,13 @@ export const useAnimationLibrary = () => {
                 ];
                 
                 setAnimations(allAnimations);
-                
-                // 设置默认选中的动画
-                if (!selectedAnimation && allAnimations.length > 0) {
-                    setSelectedAnimation(allAnimations[0]);
-                }
+                // 不默认选中任何动画，由状态机驱动 idle 轮播（Idle/Disappointed/Bashful/Listening To Music）；用户点击后再同步到 store
                 
                 console.log('AnimationLibrary: 加载完成', {
                     defaultAnimations: defaultAnimations.length,
                     userAnimations: userAnimations.length,
                     cloudAnimations: cloudAnimations.length,
                     totalAnimations: allAnimations.length,
-                    selectedAnimation: allAnimations[0]
                 });
                 
             } catch (error) {
@@ -73,7 +68,7 @@ export const useAnimationLibrary = () => {
                         id: 'local-idle',
                         name: '待机动画',
                         description: '默认的待机动画',
-                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx',
+                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
                         type: 'fbx',
                         isDefault: true,
                         category: 'idle',
@@ -86,9 +81,7 @@ export const useAnimationLibrary = () => {
                     ...userAnimations
                 ];
                 setAnimations(fallbackAnimations);
-                if (!selectedAnimation && fallbackAnimations.length > 0) {
-                    setSelectedAnimation(fallbackAnimations[0]);
-                }
+                // 错误时也不默认选中，保持由状态机驱动
             } finally {
                 setLoading(false);
             }

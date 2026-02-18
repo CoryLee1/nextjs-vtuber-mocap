@@ -1,10 +1,16 @@
 'use client';
 
 import React, { useEffect, useRef, Suspense, memo } from 'react';
-import { Grid, Environment, Sparkles } from '@react-three/drei';
+import { Grid, Environment, Sparkles, useFBX } from '@react-three/drei';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
-import { PostEffectsWithAutofocus } from '@/components/post-processing/PostEffectsWithAutofocus';
-import { usePostProcessingSettings } from '@/hooks/use-post-processing-settings';
+import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
+
+/** 预加载单个 FBX，填满 useLoader 缓存，切换动画时无需再等 */
+const PreloadFbx = memo(({ url }: { url: string }) => {
+  useFBX(url);
+  return null;
+});
+PreloadFbx.displayName = 'PreloadFbx';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
 import { CameraController } from '@/components/dressing-room/CameraController';
@@ -109,7 +115,6 @@ export const MainScene: React.FC = () => {
   // PERF: 使用 useRef 替代 useState，避免每帧触发重渲染
   const headPositionRef = useRef<[number, number, number]>([0, 1.2, 0]);
   const headPositionVec3Ref = useRef(new Vector3(0, 1.2, 0));
-  const { settings: postProcessingSettings } = usePostProcessingSettings();
   // PERF: 获取性能设置
   const { settings: perfSettings } = usePerformance();
   
@@ -117,6 +122,7 @@ export const MainScene: React.FC = () => {
   const {
     vrmModelUrl,
     animationUrl,
+    nextAnimationUrl,
     cameraSettings,
     debugSettings,
     vrmModel,
@@ -169,7 +175,7 @@ export const MainScene: React.FC = () => {
 
   // 默认模型 URL
   const defaultModelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm';
-  const defaultAnimationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx';
+  const defaultAnimationUrl = DEFAULT_IDLE_URL;
 
   return (
     <>
@@ -199,6 +205,13 @@ export const MainScene: React.FC = () => {
       {/* 场景 FBX 道具（可选，带 Gizmo 控制） */}
       <SceneFbxWithGizmo />
 
+      {/* 预加载状态机用到的动画，切换时直接走缓存，减少消失/卡顿 */}
+      <Suspense fallback={null}>
+        {PRELOAD_ANIMATION_URLS.map((url) => (
+          <PreloadFbx key={url} url={url} />
+        ))}
+      </Suspense>
+
       {/* VRM 角色 */}
       <group position-y={0}>
         <Suspense fallback={<LoadingIndicator />}>
@@ -206,6 +219,7 @@ export const MainScene: React.FC = () => {
             ref={vrmRef}
             modelUrl={vrmModelUrl || defaultModelUrl}
             animationUrl={animationUrl || defaultAnimationUrl}
+            nextAnimationUrl={nextAnimationUrl}
             scale={1}
             position={[0, 0, 0]}
             showBones={debugSettings.showBones}
@@ -254,13 +268,7 @@ export const MainScene: React.FC = () => {
         />
       )}
       
-      {/* PERF: 后期处理 - 根据性能模式控制 */}
-      {perfSettings.postProcessing && (
-        <PostEffectsWithAutofocus
-          autofocusTarget={headPositionRef.current}
-          settings={postProcessingSettings}
-        />
-      )}
+      {/* 后期处理已暂时禁用，避免 postprocessing addPass 时 alpha 为 null 报错 */}
     </>
   );
 };

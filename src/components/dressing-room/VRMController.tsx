@@ -1,307 +1,335 @@
 /**
- * VRM 控制器组件
- * 
- * 功能：
- * - 自动眨眼
- * - 头部追踪（平滑跟随相机）
- * - 视线追踪（LookAt）
- * - 相机行为（自动对焦角色）
- * 
+ * VRM Controller
+ *
+ * - Auto-blink (sine wave)
+ * - Head tracking: face toward camera, slight mouse bias (ergonomic)
+ * - Eye tracking: follow mouse cursor via eye bones or lookAt expressions
+ *
+ * IMPORTANT: This component's useFrame runs AFTER VRMAvatar's useFrame
+ * (child mounts after parent), so bone overrides happen after vrm.update().
+ * Do NOT call vrm.update() here — VRMAvatar handles it.
+ *
  * @file src/components/dressing-room/VRMController.tsx
  */
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { VRM } from '@pixiv/three-vrm';
-import { Vector3, Euler, Quaternion } from 'three';
-import { lerp } from 'three/src/math/MathUtils.js';
+import { Vector2, Vector3, Euler, Quaternion, Raycaster, Matrix4, Object3D } from 'three';
 import { VRMExpressionAdapter } from '@/lib/vrm/capabilities';
-import { Sparkles } from '@react-three/drei';
 
 interface VRMControllerProps {
   vrm: VRM | null;
   enabled?: boolean;
   autoBlink?: boolean;
   headTracking?: boolean;
-  lookAt?: boolean;
+  eyeTracking?: boolean;
   cameraFollow?: boolean;
+  onHeadPositionUpdate?: (pos: Vector3) => void;
 }
 
-// 临时变量（避免每帧创建新对象）
-const tmpVec3 = new Vector3();
-const tmpEuler = new Euler();
-const tmpQuat = new Quaternion();
+/* ─── Module-level object pool (NEVER allocate in useFrame) ─── */
 
-/**
- * VRM 控制器组件
- * 
- * 集成自动眨眼、头部追踪、视线追踪和相机行为
- */
+// Mouse NDC (-1…1), updated via document listener
+const _mouseNDC = new Vector2(0, 0);
+
+// Raycaster for mouse→3D
+const _raycaster = new Raycaster();
+
+// Temp vectors
+const _v3_camPos = new Vector3();
+const _v3_headWorld = new Vector3();
+const _v3_mouseWorld = new Vector3();
+const _v3_headTarget = new Vector3();
+const _v3_direction = new Vector3();
+const _v3_localDir = new Vector3();
+const _v3_toMouse = new Vector3();
+const _v3_cameraTarget = new Vector3();
+
+// Temp quaternions
+const _q_parent = new Quaternion();
+const _q_parentInv = new Quaternion();
+const _q_worldTarget = new Quaternion();
+const _q_localTarget = new Quaternion();
+const _q_eye = new Quaternion();
+
+// Temp euler / matrix
+const _euler = new Euler();
+const _mat4 = new Matrix4();
+const _v3_up = new Vector3(0, 1, 0);
+
+// Eye tracking temps
+const _v3_headFwd = new Vector3();
+const _v3_headRight = new Vector3();
+const _v3_headUp = new Vector3();
+const _q_headWorld = new Quaternion();
+const _euler_eye = new Euler();
+
+/* ─── Ergonomic constants ─── */
+const HEAD_SMOOTHNESS = 0.06;       // Head lerp per frame (~3.6 at 60fps → smooth, no jitter)
+const HEAD_MOUSE_WEIGHT = 0.15;     // How much mouse affects head direction (15%)
+const HEAD_MAX_YAW = 0.35;          // ±20° head yaw
+const HEAD_MAX_PITCH = 0.26;        // ±15° head pitch
+
+const EYE_SMOOTHNESS = 0.18;        // Eyes respond faster than head
+const EYE_MAX_YAW_RAD = 0.44;       // ±25° eye horizontal
+const EYE_MAX_PITCH_RAD = 0.26;     // ±15° eye vertical
+
+const MOUSE_WORLD_DISTANCE = 5;     // How far along the ray to place the mouse target
+
 export function VRMController({
   vrm,
   enabled = true,
   autoBlink = true,
   headTracking = true,
-  lookAt = true,
-  cameraFollow = true,
+  eyeTracking = true,
+  cameraFollow = false,
   onHeadPositionUpdate,
 }: VRMControllerProps) {
   const { camera } = useThree();
-  
-  // 眨眼相关
-  const blinkTimerRef = useRef<number>(0);
-  const nextBlinkTimeRef = useRef<number>(0);
-  const isBlinkingRef = useRef<boolean>(false);
-  const blinkProgressRef = useRef<number>(0);
+
+  // ─── Refs ───
   const expressionAdapterRef = useRef<VRMExpressionAdapter | null>(null);
-  
-  // 头部追踪相关
-  const headBoneRef = useRef<any>(null);
-  const headRotationRef = useRef<Vector3>(new Vector3());
-  const targetHeadRotationRef = useRef<Vector3>(new Vector3());
-  
-  // 视线追踪相关
-  const lookAtTargetRef = useRef<Vector3>(new Vector3());
-  
-  // 相机追踪相关
-  const cameraTargetRef = useRef<Vector3>(new Vector3(0, 1.2, 0));
-  
-  // 初始化：检测 VRM 版本并创建表情适配器
+  const headBoneRef = useRef<Object3D | null>(null);
+  const leftEyeBoneRef = useRef<Object3D | null>(null);
+  const rightEyeBoneRef = useRef<Object3D | null>(null);
+
+  // Blink state
+  const blinkTimerRef = useRef(0);
+  const nextBlinkTimeRef = useRef(Math.random() * 4 + 2);
+  const isBlinkingRef = useRef(false);
+  const blinkProgressRef = useRef(0);
+
+  // Accumulated head rotation (survives across frames, not reset by animation)
+  const headQuatAccum = useRef(new Quaternion());
+  const headInitialized = useRef(false);
+
+  // Smooth eye values (for lerping)
+  const eyeYawRef = useRef(0);
+  const eyePitchRef = useRef(0);
+
+  // Camera follow
+  const cameraTargetRef = useRef(new Vector3(0, 1.2, 0));
+
+  /* ─── Mouse tracking via document ─── */
+  useEffect(() => {
+    const handler = (e: PointerEvent) => {
+      _mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      _mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    document.addEventListener('pointermove', handler);
+    return () => document.removeEventListener('pointermove', handler);
+  }, []);
+
+  /* ─── Init bones & adapter when VRM changes ─── */
   useEffect(() => {
     if (!vrm) {
       expressionAdapterRef.current = null;
       headBoneRef.current = null;
+      leftEyeBoneRef.current = null;
+      rightEyeBoneRef.current = null;
+      headInitialized.current = false;
       return;
     }
-    
-    // 创建表情适配器（兼容 VRM 0.x 和 1.0）
+
     expressionAdapterRef.current = new VRMExpressionAdapter(vrm);
-    
-    // 获取头部骨骼节点
-    // ✅ 修复：getBoneNode() 已被弃用，优先使用 humanBones[].node，降级使用 getNormalizedBoneNode()
-    if (vrm.humanoid) {
-      if (vrm.humanoid.humanBones?.['head']?.node) {
-        headBoneRef.current = vrm.humanoid.humanBones['head'].node;
-      } else if (typeof vrm.humanoid.getNormalizedBoneNode === 'function') {
-        headBoneRef.current = vrm.humanoid.getNormalizedBoneNode('head');
-      }
-    }
-    
-    // 初始化眨眼时间
-    nextBlinkTimeRef.current = Math.random() * 4 + 2; // 2-6秒随机间隔
+
+    // Head bone
+    const hb = vrm.humanoid?.humanBones?.['head']?.node
+      ?? (vrm.humanoid?.getNormalizedBoneNode?.('head') || null);
+    headBoneRef.current = hb;
+
+    // Eye bones (may not exist on all models)
+    const le = vrm.humanoid?.humanBones?.['leftEye']?.node
+      ?? (vrm.humanoid?.getNormalizedBoneNode?.('leftEye') || null);
+    const re = vrm.humanoid?.humanBones?.['rightEye']?.node
+      ?? (vrm.humanoid?.getNormalizedBoneNode?.('rightEye') || null);
+    leftEyeBoneRef.current = le;
+    rightEyeBoneRef.current = re;
+
+    // Reset accumulated state
+    headInitialized.current = false;
+    eyeYawRef.current = 0;
+    eyePitchRef.current = 0;
+    nextBlinkTimeRef.current = Math.random() * 4 + 2;
   }, [vrm]);
-  
-  // 主循环：处理所有动画和追踪
-  useFrame((state, delta) => {
+
+  /* ─── Main animation loop ─── */
+  useFrame((_state, delta) => {
     if (!enabled || !vrm) return;
-    
-    const deltaTime = delta;
-    
-    // ========== 1. 自动眨眼 ==========
+
+    // ════════════════════════════════════════
+    // 1. AUTO-BLINK
+    // ════════════════════════════════════════
     if (autoBlink && expressionAdapterRef.current) {
-      blinkTimerRef.current += deltaTime;
-      
+      blinkTimerRef.current += delta;
+
       if (isBlinkingRef.current) {
-        // 正在眨眼：使用正弦函数实现平滑开合
-        blinkProgressRef.current += deltaTime * 8; // 眨眼速度
+        blinkProgressRef.current += delta * 8;
         if (blinkProgressRef.current >= Math.PI) {
-          // 眨眼完成
           isBlinkingRef.current = false;
           blinkProgressRef.current = 0;
-          nextBlinkTimeRef.current = Math.random() * 4 + 2; // 设置下次眨眼时间
+          nextBlinkTimeRef.current = Math.random() * 4 + 2;
           blinkTimerRef.current = 0;
-          // 重置眨眼值
           expressionAdapterRef.current.setValue('blink', 0);
         } else {
-          // 使用正弦函数：0 -> 1 -> 0
-          const blinkValue = Math.sin(blinkProgressRef.current);
-          expressionAdapterRef.current.setValue('blink', blinkValue);
+          expressionAdapterRef.current.setValue('blink', Math.sin(blinkProgressRef.current));
         }
       } else if (blinkTimerRef.current >= nextBlinkTimeRef.current) {
-        // 触发眨眼
         isBlinkingRef.current = true;
         blinkProgressRef.current = 0;
       }
     }
-    
-    // ========== 2. 头部追踪 ==========
-    // 注意：如果启用了 useVRMLookAt（在 VRMAvatar 中），头部追踪可能会冲突
-    // 建议：headTracking 和 useVRMLookAt 只启用一个
-    if (headTracking && headBoneRef.current) {
-      // 获取相机位置（世界坐标）
-      camera.getWorldPosition(tmpVec3);
-      
-      // 获取头部骨骼位置（世界坐标）
-      const headWorldPos = new Vector3();
-      headBoneRef.current.getWorldPosition(headWorldPos);
-      
-      // 计算从头部指向相机的方向向量
-      const direction = tmpVec3.clone().sub(headWorldPos);
-      const distance = direction.length();
-      
-      // 如果距离太近，跳过更新
-      if (distance < 0.01) return;
-      
-      direction.normalize();
-      
-      // 将世界方向转换到头部骨骼的本地空间
-      const parentBone = headBoneRef.current.parent;
-      if (parentBone) {
-        // 获取父节点的世界旋转
-        const parentWorldQuat = new Quaternion();
-        parentBone.getWorldQuaternion(parentWorldQuat);
-        
-        // 将方向向量转换到父节点的本地空间
-        const localDirection = direction.clone().applyQuaternion(parentWorldQuat.invert());
-        
-        // 计算目标旋转（Euler 角度）
-        // 头部默认朝向 +Z（VRM 标准）
-        const defaultForward = new Vector3(0, 0, 1);
-        const targetQuat = new Quaternion().setFromUnitVectors(
-          defaultForward,
-          localDirection.normalize()
-        );
-        
-        tmpEuler.setFromQuaternion(targetQuat);
-        
-        // 限制旋转范围：±45度（约 0.78 弧度）
-        const maxAngle = 0.78; // 45度
-        tmpEuler.x = Math.max(-maxAngle, Math.min(maxAngle, tmpEuler.x));
-        tmpEuler.y = Math.max(-maxAngle, Math.min(maxAngle, tmpEuler.y));
-        tmpEuler.z = 0; // 不倾斜
-        
-        // 更新目标旋转
-        targetHeadRotationRef.current.set(tmpEuler.x, tmpEuler.y, tmpEuler.z);
+
+    // ════════════════════════════════════════
+    // 2. COMPUTE MOUSE WORLD POSITION
+    //    (shared by head + eye tracking)
+    // ════════════════════════════════════════
+    camera.getWorldPosition(_v3_camPos);
+    _raycaster.setFromCamera(_mouseNDC, camera);
+    _raycaster.ray.at(MOUSE_WORLD_DISTANCE, _v3_mouseWorld);
+
+    // ════════════════════════════════════════
+    // 3. HEAD TRACKING — face camera, slight mouse bias
+    // ════════════════════════════════════════
+    const headBone = headBoneRef.current;
+    if (headTracking && headBone) {
+      // Seed accumulated quaternion from bone on first frame
+      if (!headInitialized.current) {
+        headQuatAccum.current.copy(headBone.quaternion);
+        headInitialized.current = true;
       }
-      
-      // 平滑插值到目标旋转（使用 lerp 因子）
-      const lerpFactor = Math.min(1, deltaTime * 5); // 限制最大插值速度
-      headRotationRef.current.lerp(targetHeadRotationRef.current, lerpFactor);
-      
-      // 应用旋转到头部骨骼（叠加到当前旋转，而不是替换）
-      const currentQuat = headBoneRef.current.quaternion.clone();
-      tmpEuler.set(
-        headRotationRef.current.x,
-        headRotationRef.current.y,
-        headRotationRef.current.z
+
+      // Head target = blend camera position with mouse world position
+      _v3_headTarget.copy(_v3_camPos).lerp(_v3_mouseWorld, HEAD_MOUSE_WEIGHT);
+
+      // Direction from head to target (world space)
+      headBone.getWorldPosition(_v3_headWorld);
+      _v3_direction.subVectors(_v3_headTarget, _v3_headWorld);
+      if (_v3_direction.lengthSq() < 0.0001) {
+        // Too close, skip
+      } else {
+        _v3_direction.normalize();
+
+        // World target quaternion via lookAt matrix
+        _mat4.lookAt(_v3_headWorld, _v3_headTarget, _v3_up);
+        _q_worldTarget.setFromRotationMatrix(_mat4);
+
+        // Convert to local space
+        const parentBone = headBone.parent;
+        if (parentBone) {
+          parentBone.getWorldQuaternion(_q_parent);
+          _q_parentInv.copy(_q_parent).invert();
+          _q_localTarget.copy(_q_parentInv).multiply(_q_worldTarget);
+        } else {
+          _q_localTarget.copy(_q_worldTarget);
+        }
+
+        // Clamp euler angles
+        _euler.setFromQuaternion(_q_localTarget, 'YXZ');
+        _euler.y = Math.max(-HEAD_MAX_YAW, Math.min(HEAD_MAX_YAW, _euler.y));
+        _euler.x = Math.max(-HEAD_MAX_PITCH, Math.min(HEAD_MAX_PITCH, _euler.x));
+        _euler.z = 0;
+        _q_localTarget.setFromEuler(_euler);
+
+        // Smooth accumulate (never reads from bone — immune to animation reset)
+        headQuatAccum.current.slerp(_q_localTarget, HEAD_SMOOTHNESS);
+      }
+
+      // Apply to bone (overrides animation)
+      headBone.quaternion.copy(headQuatAccum.current);
+    }
+
+    // ════════════════════════════════════════
+    // 4. EYE TRACKING — follow mouse cursor
+    // ════════════════════════════════════════
+    if (eyeTracking && headBone) {
+      // Get head world orientation (after our override)
+      headBone.updateMatrixWorld(true);
+      headBone.getWorldQuaternion(_q_headWorld);
+      headBone.getWorldPosition(_v3_headWorld);
+
+      // Direction from head to mouse (world space)
+      _v3_toMouse.subVectors(_v3_mouseWorld, _v3_headWorld).normalize();
+
+      // Head's local axes in world space
+      _v3_headFwd.set(0, 0, 1).applyQuaternion(_q_headWorld);
+      _v3_headRight.set(1, 0, 0).applyQuaternion(_q_headWorld);
+      _v3_headUp.set(0, 1, 0).applyQuaternion(_q_headWorld);
+
+      // Project mouse direction onto head's axes to get yaw/pitch
+      const rawYaw = Math.atan2(
+        _v3_toMouse.dot(_v3_headRight),
+        _v3_toMouse.dot(_v3_headFwd)
       );
-      const targetQuat = new Quaternion().setFromEuler(tmpEuler);
-      
-      // 使用 slerp 平滑混合（叠加模式）
-      currentQuat.slerp(targetQuat, lerpFactor * 0.3); // 减小权重，避免覆盖动画
-      headBoneRef.current.quaternion.copy(currentQuat);
-    }
-    
-    // ========== 3. 视线追踪 (LookAt) ==========
-    if (lookAt && vrm.lookAt) {
-      // 检测 LookAt 类型
-      const lookAtType = (vrm.lookAt as any).type || 'bone';
-      
-      if (lookAtType === 'bone') {
-        // VRoid 默认：使用 bone 类型，直接调用 lookAt
-        // 获取相机位置
-        camera.getWorldPosition(lookAtTargetRef.current);
-        
-        // 调用 VRM 的 lookAt 方法（会自动处理眼球骨骼）
-        try {
-          vrm.lookAt.lookAt(lookAtTargetRef.current);
-        } catch (error) {
-          // 如果 lookAt 方法不存在或出错，尝试使用表达式
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('VRMController: lookAt.lookAt() 失败，尝试使用表达式', error);
-          }
-          
-          // 降级方案：使用表达式驱动视线（如果可用）
-          if (expressionAdapterRef.current) {
-            // 计算视线方向
-            const headWorldPos = new Vector3();
-            if (headBoneRef.current) {
-              headBoneRef.current.getWorldPosition(headWorldPos);
-            } else {
-              vrm.scene.getWorldPosition(headWorldPos);
-            }
-            
-            const direction = lookAtTargetRef.current.clone().sub(headWorldPos).normalize();
-            
-            // 简单的视线表达式驱动（如果模型支持）
-            // 注意：这需要模型有 lookUp/Down/Left/Right 表达式
-            const lookUp = Math.max(0, direction.y * 0.5);
-            const lookDown = Math.max(0, -direction.y * 0.5);
-            const lookLeft = Math.max(0, -direction.x * 0.5);
-            const lookRight = Math.max(0, direction.x * 0.5);
-            
-            expressionAdapterRef.current.setValue('lookUp', lookUp);
-            expressionAdapterRef.current.setValue('lookDown', lookDown);
-            expressionAdapterRef.current.setValue('lookLeft', lookLeft);
-            expressionAdapterRef.current.setValue('lookRight', lookRight);
-          }
-        }
-      } else {
-        // 其他类型（expression）：使用表达式驱动
-        if (expressionAdapterRef.current) {
-          camera.getWorldPosition(lookAtTargetRef.current);
-          
-          const headWorldPos = new Vector3();
-          if (headBoneRef.current) {
-            headBoneRef.current.getWorldPosition(headWorldPos);
-          } else {
-            vrm.scene.getWorldPosition(headWorldPos);
-          }
-          
-          const direction = lookAtTargetRef.current.clone().sub(headWorldPos).normalize();
-          
-          const lookUp = Math.max(0, direction.y * 0.5);
-          const lookDown = Math.max(0, -direction.y * 0.5);
-          const lookLeft = Math.max(0, -direction.x * 0.5);
-          const lookRight = Math.max(0, direction.x * 0.5);
-          
-          expressionAdapterRef.current.setValue('lookUp', lookUp);
-          expressionAdapterRef.current.setValue('lookDown', lookDown);
-          expressionAdapterRef.current.setValue('lookLeft', lookLeft);
-          expressionAdapterRef.current.setValue('lookRight', lookRight);
-        }
+      const rawPitch = Math.asin(
+        Math.max(-1, Math.min(1, _v3_toMouse.dot(_v3_headUp)))
+      );
+
+      // Clamp to max eye range
+      const clampedYaw = Math.max(-EYE_MAX_YAW_RAD, Math.min(EYE_MAX_YAW_RAD, rawYaw));
+      const clampedPitch = Math.max(-EYE_MAX_PITCH_RAD, Math.min(EYE_MAX_PITCH_RAD, rawPitch));
+
+      // Smooth lerp
+      eyeYawRef.current += (clampedYaw - eyeYawRef.current) * EYE_SMOOTHNESS;
+      eyePitchRef.current += (clampedPitch - eyePitchRef.current) * EYE_SMOOTHNESS;
+
+      const yaw = eyeYawRef.current;
+      const pitch = eyePitchRef.current;
+
+      // Try bone-based eye control first (most VRoid models)
+      const leftEye = leftEyeBoneRef.current;
+      const rightEye = rightEyeBoneRef.current;
+
+      if (leftEye && rightEye) {
+        _euler_eye.set(-pitch, yaw, 0, 'YXZ');
+        _q_eye.setFromEuler(_euler_eye);
+        leftEye.quaternion.copy(_q_eye);
+        rightEye.quaternion.copy(_q_eye);
+      } else if (expressionAdapterRef.current) {
+        // Expression-based fallback (lookLeft/Right/Up/Down)
+        const normYaw = yaw / EYE_MAX_YAW_RAD;     // -1…1
+        const normPitch = pitch / EYE_MAX_PITCH_RAD; // -1…1
+
+        expressionAdapterRef.current.setValue('lookRight', Math.max(0, normYaw));
+        expressionAdapterRef.current.setValue('lookLeft', Math.max(0, -normYaw));
+        expressionAdapterRef.current.setValue('lookUp', Math.max(0, normPitch));
+        expressionAdapterRef.current.setValue('lookDown', Math.max(0, -normPitch));
       }
     }
-    
-    // ========== 4. 相机行为 ==========
+
+    // ════════════════════════════════════════
+    // 5. CAMERA FOLLOW (optional)
+    // ════════════════════════════════════════
     if (cameraFollow && vrm.scene) {
-      // 计算角色头部或 Hips 偏移位置
-      const targetPosition = new Vector3(0, 1.2, 0);
-      
-      // 如果头部骨骼存在，使用头部位置
-      if (headBoneRef.current) {
-        headBoneRef.current.getWorldPosition(targetPosition);
-        targetPosition.y += 0.2; // 稍微向上偏移
+      if (headBone) {
+        headBone.getWorldPosition(_v3_cameraTarget);
+        _v3_cameraTarget.y += 0.2;
       } else {
-        // 否则使用场景根位置 + 偏移
-        vrm.scene.getWorldPosition(targetPosition);
-        targetPosition.y = 1.2;
+        vrm.scene.getWorldPosition(_v3_cameraTarget);
+        _v3_cameraTarget.y = 1.2;
       }
-      
-      // 更新相机目标位置
-      cameraTargetRef.current.lerp(targetPosition, lerp(0, 1, deltaTime * 2));
-      
-      // 让相机看向目标位置
+      cameraTargetRef.current.lerp(_v3_cameraTarget, delta * 2);
       camera.lookAt(cameraTargetRef.current);
     }
-    
-    // ========== 5. 更新头部位置（用于 Autofocus） ==========
+
+    // ════════════════════════════════════════
+    // 6. HEAD POSITION CALLBACK (for autofocus)
+    // ════════════════════════════════════════
     if (onHeadPositionUpdate) {
-      const headWorldPos = new Vector3();
-      if (headBoneRef.current) {
-        headBoneRef.current.getWorldPosition(headWorldPos);
+      if (headBone) {
+        headBone.getWorldPosition(_v3_headWorld);
       } else if (vrm.scene) {
-        vrm.scene.getWorldPosition(headWorldPos);
-        headWorldPos.y = 1.2; // 默认头部高度
+        vrm.scene.getWorldPosition(_v3_headWorld);
+        _v3_headWorld.y = 1.2;
       }
-      onHeadPositionUpdate(headWorldPos);
+      onHeadPositionUpdate(_v3_headWorld);
     }
-    
-    // 更新 VRM（必须在所有骨骼操作之后）
-    vrm.update(deltaTime);
+
+    // NOTE: Do NOT call vrm.update() here — VRMAvatar handles it.
+    // Bone overrides take effect immediately. Expression changes (blink)
+    // flush on the next frame's vrm.update(), which is imperceptible.
   });
-  
-  // 组件不渲染任何内容，只负责逻辑控制
+
   return null;
 }
-

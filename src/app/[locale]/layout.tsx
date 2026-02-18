@@ -55,7 +55,7 @@ export default async function RootLayout({
     });
 
     return (
-      <html lang={locale}>
+      <html lang={locale} suppressHydrationWarning>
         <body className={inter.className}>
           <NextIntlClientProvider messages={messages}>
             <PostHogProvider>
@@ -77,7 +77,7 @@ export default async function RootLayout({
     console.error('Error in RootLayout:', error)
     // 返回一个基本的错误页面
     return (
-      <html lang="zh">
+      <html lang="zh" suppressHydrationWarning>
         <body className={inter.className}>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">

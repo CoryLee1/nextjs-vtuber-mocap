@@ -63,6 +63,7 @@ export function createVRMLookAtUpdater(
   const parentInverseQuaternion = new Quaternion();
   const lookAtMatrix = new Matrix4();
   const defaultUp = new Vector3(0, 1, 0);
+  const tmpEuler_lookat = new Euler();
 
   return {
     update: () => {
@@ -128,11 +129,11 @@ export function createVRMLookAtUpdater(
         }
         
         // ✅ 应用旋转限制（在局部空间中限制欧拉角）
-        const euler = new Euler().setFromQuaternion(targetQuaternion, 'YXZ');
-        euler.y = Math.max(-maxYaw, Math.min(maxYaw, euler.y));
-        euler.x = Math.max(-maxPitch, Math.min(maxPitch, euler.x));
-        euler.z = maxRoll;
-        targetQuaternion.setFromEuler(euler);
+        tmpEuler_lookat.setFromQuaternion(targetQuaternion, 'YXZ');
+        tmpEuler_lookat.y = Math.max(-maxYaw, Math.min(maxYaw, tmpEuler_lookat.y));
+        tmpEuler_lookat.x = Math.max(-maxPitch, Math.min(maxPitch, tmpEuler_lookat.x));
+        tmpEuler_lookat.z = maxRoll;
+        targetQuaternion.setFromEuler(tmpEuler_lookat);
 
         // ✅ 强制覆盖模式：直接使用 slerp，不使用叠加
         // 获取当前头部骨骼的局部旋转（动画更新后的旋转）
@@ -195,6 +196,7 @@ export function useVRMLookAt(
   const parentQuaternionRef = useRef(new Quaternion());
   const worldTargetQuaternionRef = useRef(new Quaternion());
   const defaultForwardRef = useRef(new Vector3(0, 0, 1));
+  const additiveQuaternionRef = useRef(new Quaternion());
 
   useEffect(() => {
     // 重置计数器
@@ -289,31 +291,25 @@ export function useVRMLookAt(
       targetQuaternionRef.current.setFromEuler(eulerRef.current);
 
       // 获取当前头部骨骼的局部旋转（可能是动画设置的旋转）
-      const currentRotation = headBone.quaternion.clone();
+      currentQuaternionRef.current.copy(headBone.quaternion);
 
       if (additive) {
         // 叠加模式：将 LookAt 旋转叠加到当前旋转（动画）上
-        // 计算 LookAt 相对于中性方向（identity）的增量旋转
-        // 然后使用较小的权重叠加到当前旋转上
-        // 
-        // 方法：计算目标旋转相对于 identity 的增量，然后以较小权重叠加
         // final = slerp(current, current * target, weight)
         // 这样可以保留动画的基础旋转，LookAt 只作为微调
-        
+
         // 计算叠加旋转：当前旋转 * LookAt 旋转增量
-        const additiveRotation = currentRotation.clone().multiply(targetQuaternionRef.current);
-        
+        additiveQuaternionRef.current.copy(currentQuaternionRef.current).multiply(targetQuaternionRef.current);
+
         // 使用较小的 smoothness（如 0.1-0.2）进行混合
-        // 这样 LookAt 只影响约 10-20% 的旋转，保留动画的大部分旋转
-        currentRotation.slerp(additiveRotation, smoothness * 0.5); // 进一步减小权重，确保不覆盖动画
-        
-        headBone.quaternion.copy(currentRotation);
+        currentQuaternionRef.current.slerp(additiveQuaternionRef.current, smoothness * 0.5);
+
+        headBone.quaternion.copy(currentQuaternionRef.current);
       } else {
         // 非叠加模式：直接替换旋转（完全覆盖动画）
         // 使用 slerp 平滑插值（球形线性插值）
-        currentQuaternionRef.current.copy(currentRotation);
         currentQuaternionRef.current.slerp(targetQuaternionRef.current, smoothness);
-        
+
         // 应用旋转到头部骨骼（局部旋转）
         headBone.quaternion.copy(currentQuaternionRef.current);
       }

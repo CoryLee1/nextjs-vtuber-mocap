@@ -12,6 +12,8 @@ import { useVTuberControls } from './VTuberControls';
 import { useI18n } from '@/hooks/use-i18n';
 import { useTracking } from '@/hooks/use-tracking';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useVTuberAnimationState } from '@/hooks/use-vtuber-animation-state';
+import { DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
 export default function VTuberApp() {
   const { t } = useI18n();
@@ -23,6 +25,7 @@ export default function VTuberApp() {
     setScene,
     setVRMModelUrl,
     setAnimationUrl,
+    setNextAnimationUrl,
     updateCameraSettings,
     updateDebugSettings,
     setAnimationManagerRef,
@@ -43,26 +46,29 @@ export default function VTuberApp() {
     setScene('main');
   }, [setScene]);
 
-  // ✅ 初始化默认动画URL（如果没有选择动画）
+  // 状态机驱动：idle 随机轮播 / speaking 时用 talking 动画；双缓冲预加载 next
+  const { animationUrl: stateMachineUrl, nextAnimationUrl: stateMachineNextUrl } = useVTuberAnimationState();
   useEffect(() => {
-    const DEFAULT_ANIMATION_URL = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/Idle.fbx';
+    setAnimationUrl(stateMachineUrl);
+    setNextAnimationUrl(stateMachineNextUrl);
+  }, [stateMachineUrl, stateMachineNextUrl, setAnimationUrl, setNextAnimationUrl]);
+
+  // 初始化：若 store 尚无动画 URL，用配置默认
+  useEffect(() => {
     const currentAnimationUrl = useSceneStore.getState().animationUrl;
-    
-    // 如果 store 中的 animationUrl 是 null，设置默认值
     if (!currentAnimationUrl) {
-      console.log('VTuberApp: 初始化默认动画URL', DEFAULT_ANIMATION_URL);
-      setAnimationUrl(DEFAULT_ANIMATION_URL);
+      setAnimationUrl(DEFAULT_IDLE_URL);
     }
   }, [setAnimationUrl]);
 
-  // 同步模型和动画到场景 store
-  // 注意：只依赖 url 而不是整个对象，避免对象引用变化导致的无限更新
+  // 同步模型到场景 store
   useEffect(() => {
     if (state.selectedModel?.url) {
       setVRMModelUrl(state.selectedModel.url);
     }
   }, [state.selectedModel?.url, setVRMModelUrl]);
 
+  // 动画库选择可覆盖（之后状态机更新会再切回 idle/speaking）
   useEffect(() => {
     if (state.selectedAnimation?.url) {
       setAnimationUrl(state.selectedAnimation.url);

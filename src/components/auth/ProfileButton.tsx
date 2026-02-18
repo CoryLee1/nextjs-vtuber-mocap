@@ -56,7 +56,17 @@ export function ProfileButton() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const avatarSrc = !imgError && (image || initialImage) ? (image || initialImage) : '/images/CoryProfile.png';
+  // 外部头像（如 Google OAuth）在同源代理下请求，避免 COEP 拦截
+  const rawAvatar = !imgError && (image || initialImage) ? (image || initialImage) : '';
+  const isExternalAvatar =
+    typeof rawAvatar === 'string' &&
+    rawAvatar.startsWith('http') &&
+    !rawAvatar.startsWith(typeof window !== 'undefined' ? window.location.origin : '');
+  const avatarSrc = rawAvatar
+    ? isExternalAvatar
+      ? `/api/avatar-proxy?url=${encodeURIComponent(rawAvatar)}`
+      : rawAvatar
+    : '/images/CoryProfile.png';
 
   useEffect(() => {
     if (status !== 'authenticated') return;

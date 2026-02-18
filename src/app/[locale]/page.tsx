@@ -53,7 +53,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="relative w-full h-screen bg-black overflow-hidden">
+    <main className="relative w-full h-screen overflow-hidden">
       {/* 1. 开屏加载页 */}
       {isLoading && (
         <LoadingPage onComplete={handleLoadingComplete} duration={3000} />

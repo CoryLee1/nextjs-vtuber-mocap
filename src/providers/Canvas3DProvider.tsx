@@ -8,6 +8,37 @@ import { useSceneStore } from '@/hooks/use-scene-store';
 import { usePerformance } from '@/hooks/use-performance';
 import { SceneManager } from '@/components/canvas/SceneManager';
 
+/** 捕获 Canvas/WebGL 创建错误，避免白屏 */
+class CanvasErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean; message?: string }
+> {
+  state = { hasError: false, message: undefined as string | undefined };
+
+  static getDerivedStateFromError(error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    const isWebGLError = /WebGL|creating.*context/i.test(msg);
+    return { hasError: true, message: isWebGLError ? msg : undefined };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+      return (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/80 text-white p-4 text-center">
+          <div>
+            <p className="font-medium">WebGL 无法初始化</p>
+            <p className="text-sm mt-2 text-gray-300">
+              {this.state.message || '请尝试刷新页面，或使用 Chrome/Edge 并确保未禁用硬件加速。'}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // 性能监控组件（仅开发环境，使用 lazy 加载）
 const PerfComponent = process.env.NODE_ENV === 'development'
   ? lazy(() =>
@@ -55,6 +86,11 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
   const pathname = usePathname();
   const [perfVisible, setPerfVisible] = useState(false);
+  /** 延迟挂载 Canvas，避免在 DOM/WebGL 未就绪时创建上下文导致 "Error creating WebGL context" */
+  const [canvasMounted, setCanvasMounted] = useState(false);
+  useEffect(() => {
+    setCanvasMounted(true);
+  }, []);
 
   // Ctrl+P 切换性能监控面板显示
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -81,20 +117,22 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {/* 页面内容 - 覆盖在 Canvas 上方，但容器允许事件穿透 */}
       {children}
 
-      {/* 持久化 Canvas - 固定定位，覆盖整个视口，接收鼠标事件 */}
-      {!isTestingLoading && (
-        <div 
-          className="fixed top-0 right-0 bottom-0"
-          style={{ 
-            zIndex: 0, 
+      {/* 持久化 Canvas - 固定定位，覆盖整个视口，接收鼠标事件；延迟挂载 + 错误边界避免 WebGL 创建失败白屏 */}
+      {!isTestingLoading && canvasMounted && (
+        <div
+          className="fixed inset-0"
+          style={{
+            zIndex: 1,
             pointerEvents: 'auto',
             overscrollBehavior: 'contain',
             touchAction: 'none',
             left: streamPanelOpen ? 560 : 0,
-            width: streamPanelOpen ? 'calc(100% - 560px)' : '100%',
+            width: streamPanelOpen ? 'calc(100vw - 560px)' : '100vw',
+            height: '100vh',
             transition: 'left 0.3s ease-in-out, width 0.3s ease-in-out',
           }}
         >
+          <CanvasErrorBoundary>
           <Canvas
             frameloop="always"
             camera={{ position: [0, 1.5, 3], fov: 50 }}
@@ -144,6 +182,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               <Preload all />
             </Suspense>
           </Canvas>
+          </CanvasErrorBoundary>
         </div>
       )}
     </>
