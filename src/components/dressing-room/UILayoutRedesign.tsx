@@ -2,7 +2,7 @@
 
 import React, { memo, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { 
   Settings, 
   Users, 
@@ -14,7 +14,8 @@ import {
   Monitor,
   Layout,
   Camera,
-  Languages
+  Languages,
+  Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -128,8 +129,6 @@ export const BrandOverlay = memo(() => {
 
 BrandOverlay.displayName = 'BrandOverlay';
 
-const ECHUU_VIEW_COUNT_KEY = 'echuu_view_count';
-
 // 2. Top Right Power Toggle
 export const PowerToggle = memo(({ 
   isActive, 
@@ -140,37 +139,55 @@ export const PowerToggle = memo(({
 }) => {
   const { onlineCount, connectionState, connect, roomId } = useEchuuWebSocket();
   const { locale } = useI18n();
-  const [viewCount, setViewCount] = useState(() => {
-    if (typeof window === 'undefined') return 0;
-    return parseInt(window.localStorage.getItem(ECHUU_VIEW_COUNT_KEY) || '0', 10);
-  });
-  const incrementedRef = useRef(false);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const [angelCount, setAngelCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (roomId) connect(roomId);
   }, [roomId, connect]);
 
+  // 全站访问次数：请求服务端（Echuu 网站被访问的次数）
   useEffect(() => {
-    if (typeof window === 'undefined' || incrementedRef.current) return;
-    incrementedRef.current = true;
-    const prev = parseInt(window.localStorage.getItem(ECHUU_VIEW_COUNT_KEY) || '0', 10);
-    const next = prev + 1;
-    window.localStorage.setItem(ECHUU_VIEW_COUNT_KEY, String(next));
-    setViewCount(next);
+    let cancelled = false;
+    fetch('/api/view-count')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && typeof data?.count === 'number') setViewCount(data.count);
+      })
+      .catch(() => {
+        if (!cancelled) setViewCount(0);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // 已加入 Echuu 的天使（已注册用户）数量
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/angel-count')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && typeof data?.count === 'number') setAngelCount(data.count);
+      })
+      .catch(() => {
+        if (!cancelled) setAngelCount(0);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
       <div className="flex items-center gap-4">
-        {/* 访问次数 + 在线人数 合并为一个胶囊 */}
+        {/* 全站访问 + 在线人数 + 天使数 */}
         <div
           className="flex items-center gap-3 px-5 py-2.5 rounded-full border-2 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900 border-blue-500 text-blue-500 scale-105"
-          title={locale === 'zh' ? '本站访问次数（本机）· 当前在线人数' : 'Page views (this device) · Online now'}
+          title={locale === 'zh' ? '本站访问 · 当前在线 · 已加入天使数' : 'Views · Online · Angels joined'}
         >
           <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
             {locale === 'zh' ? '访问' : 'VIEWS'}
           </span>
-          <span className="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">{viewCount}</span>
+          <span className="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">
+            {viewCount === null ? '—' : viewCount.toLocaleString()}
+          </span>
           <span className="w-px h-4 bg-slate-300 dark:bg-slate-600" aria-hidden />
           <div
             className={cn(
@@ -180,6 +197,11 @@ export const PowerToggle = memo(({
           />
           <span className="text-xs font-black uppercase tracking-widest">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
           <span className="text-xs font-black tabular-nums">{onlineCount}</span>
+          <span className="w-px h-4 bg-slate-300 dark:bg-slate-600" aria-hidden />
+          <span className="text-xs font-black uppercase tracking-widest">{locale === 'zh' ? '天使' : 'ANGELS'}</span>
+          <span className="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">
+            {angelCount === null ? '—' : angelCount.toLocaleString()}
+          </span>
         </div>
 
         {/* Profile button (only shows when logged-in) */}
@@ -296,6 +318,22 @@ export const ActionButtonStack = memo(({
 
 ActionButtonStack.displayName = 'ActionButtonStack';
 
+// 4.4 打开分享链接时：URL 带 room_id 则自动进入该直播间（观众）
+function useRoomIdFromUrl() {
+  const searchParams = useSearchParams();
+  const { setRoom, connect, ownerToken } = useEchuuWebSocket();
+  const appliedRef = useRef(false);
+  useEffect(() => {
+    if (appliedRef.current) return;
+    const urlRoomId = searchParams?.get('room_id')?.trim();
+    if (!urlRoomId) return;
+    if (ownerToken) return;
+    appliedRef.current = true;
+    setRoom(urlRoomId, null);
+    connect(urlRoomId);
+  }, [searchParams, setRoom, connect, ownerToken]);
+}
+
 // 4.5 左侧 StreamRoom 控制 + 面板
 export const StreamRoomSidebar = memo(({
   onPanelOpenChange,
@@ -305,6 +343,7 @@ export const StreamRoomSidebar = memo(({
   /** 开启/关闭摄像头动捕（与右上角电源一致，驱动 3D 模型 puppetry） */
   onCameraToggle?: () => void;
 }) => {
+  useRoomIdFromUrl();
   const { echuuConfig, setEchuuConfig, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
@@ -1338,6 +1377,48 @@ const CaptionTypewriter = memo(({ fullText }: { fullText: string }) => {
 });
 CaptionTypewriter.displayName = 'CaptionTypewriter';
 
+/** 分享直播间：复制链接；支持 navigator.share 时优先调起系统分享 */
+const ShareRoomButton = memo(({ roomId }: { roomId: string }) => {
+  const pathname = usePathname();
+  const { locale } = useI18n();
+  const handleShare = async () => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const path = pathname || '/zh';
+    const sep = path.includes('?') ? '&' : '?';
+    const shareUrl = `${base}${path}${sep}room_id=${encodeURIComponent(roomId)}`;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({
+          title: 'Echuu 直播间',
+          text: locale === 'zh' ? '来看我的 Echuu 直播吧' : 'Join my Echuu live room',
+          url: shareUrl,
+        });
+        toast({ title: locale === 'zh' ? '已分享' : 'Shared', description: shareUrl });
+      } else {
+        await navigator.clipboard?.writeText(shareUrl);
+        toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        await navigator.clipboard?.writeText(shareUrl).catch(() => {});
+        toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
+      }
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      className="absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-slate-600 hover:text-black hover:bg-black/10 transition-colors"
+      title={locale === 'zh' ? '分享直播间' : 'Share live room'}
+      aria-label={locale === 'zh' ? '分享直播间' : 'Share live room'}
+    >
+      <Share2 className="w-4 h-4" />
+    </button>
+  );
+});
+ShareRoomButton.displayName = 'ShareRoomButton';
+
 // 5. Go Live bar (Figma: Frame 1261157366) — 点击后把侧栏 Character 配置发给后端；上方实时 caption（按句+打字机）+ 可折叠 Phase
 export const GoLiveButton = memo(() => {
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
@@ -1454,6 +1535,8 @@ export const GoLiveButton = memo(() => {
             <Play className="h-3 w-3" strokeWidth={2} />
           </span>
         </button>
+        {/* 分享直播间：有 roomId 时显示，复制链接 + 支持 Web Share */}
+        {roomId ? <ShareRoomButton roomId={roomId} /> : null}
         {/* Stream Topic — 与侧边栏「直播主题」一致 */}
         <span
           className="pl-[46px] pr-2 text-[15px] leading-[15px] text-black flex items-center max-w-[280px] truncate"

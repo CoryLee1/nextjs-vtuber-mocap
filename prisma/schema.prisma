@@ -59,3 +59,9 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// 全站访问次数（单行，用于主界面 VIEWS 展示）
+model SiteViewCounter {
+  id    String @id @default("default")
+  count Int    @default(0)
+}
+

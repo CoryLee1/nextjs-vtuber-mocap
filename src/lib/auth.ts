@@ -66,7 +66,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         const email = credentials?.email?.toLowerCase().trim();
         const password = credentials?.password ?? '';
-        if (!email || !password) return null;
+        if (!email) return null;
 
         let user;
         // authorize 也需要重试（credentials 登录走的不是 adapter）
@@ -79,7 +79,15 @@ export const authOptions: NextAuthOptions = {
             await new Promise((r) => setTimeout(r, 2000));
           }
         }
-        if (!user?.passwordHash) return null;
+        if (!user) return null;
+
+        // 导入的天使：无密码，仅输入邮箱即可登录
+        if (!user.passwordHash) {
+          if (password === '') {
+            return { id: user.id, email: user.email, name: user.name, image: user.image };
+          }
+          return null;
+        }
 
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
