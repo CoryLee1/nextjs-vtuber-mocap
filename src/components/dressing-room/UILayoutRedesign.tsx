@@ -151,9 +151,10 @@ export const PowerToggle = memo(({
   useEffect(() => {
     let cancelled = false;
     fetch('/api/view-count')
-      .then((res) => res.json())
+      .then((res) => (!res.ok ? { count: 0 } : res.json()))
       .then((data) => {
         if (!cancelled && typeof data?.count === 'number') setViewCount(data.count);
+        else if (!cancelled) setViewCount(0);
       })
       .catch(() => {
         if (!cancelled) setViewCount(0);
@@ -165,9 +166,10 @@ export const PowerToggle = memo(({
   useEffect(() => {
     let cancelled = false;
     fetch('/api/angel-count')
-      .then((res) => res.json())
+      .then((res) => (!res.ok ? { count: 0 } : res.json()))
       .then((data) => {
         if (!cancelled && typeof data?.count === 'number') setAngelCount(data.count);
+        else if (!cancelled) setAngelCount(0);
       })
       .catch(() => {
         if (!cancelled) setAngelCount(0);
@@ -1440,22 +1442,23 @@ const CaptionTypewriter = memo(({ fullText }: { fullText: string }) => {
 });
 CaptionTypewriter.displayName = 'CaptionTypewriter';
 
-/** 分享直播间：复制链接；支持 navigator.share 时优先调起系统分享 */
-const ShareRoomButton = memo(({ roomId }: { roomId: string }) => {
+/** 分享：随时可用。有 roomId 时分享直播间链接，无 roomId 时分享当前页（主应用）链接 */
+const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const pathname = usePathname();
   const { locale } = useI18n();
   const handleShare = async () => {
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     const path = pathname || '/zh';
-    const sep = path.includes('?') ? '&' : '?';
-    const shareUrl = `${base}${path}${sep}room_id=${encodeURIComponent(roomId)}`;
+    const shareUrl = roomId
+      ? `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`
+      : `${base}${path}`;
+    const title = roomId ? 'Echuu 直播间' : 'Echuu';
+    const text = roomId
+      ? (locale === 'zh' ? '来看我的 Echuu 直播吧' : 'Join my Echuu live room')
+      : (locale === 'zh' ? '来 Echuu 看看' : 'Check out Echuu');
     try {
       if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({
-          title: 'Echuu 直播间',
-          text: locale === 'zh' ? '来看我的 Echuu 直播吧' : 'Join my Echuu live room',
-          url: shareUrl,
-        });
+        await navigator.share({ title, text, url: shareUrl });
         toast({ title: locale === 'zh' ? '已分享' : 'Shared', description: shareUrl });
       } else {
         await navigator.clipboard?.writeText(shareUrl);
@@ -1468,13 +1471,14 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string }) => {
       }
     }
   };
+  const title = locale === 'zh' ? '分享' : 'Share';
   return (
     <button
       type="button"
       onClick={handleShare}
       className="absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-slate-600 hover:text-black hover:bg-black/10 transition-colors"
-      title={locale === 'zh' ? '分享直播间' : 'Share live room'}
-      aria-label={locale === 'zh' ? '分享直播间' : 'Share live room'}
+      title={title}
+      aria-label={title}
     >
       <Share2 className="w-4 h-4" />
     </button>
@@ -1602,8 +1606,8 @@ export const GoLiveButton = memo(() => {
             <Play className="h-3 w-3" strokeWidth={2} />
           </span>
         </button>
-        {/* 分享直播间：有 roomId 时显示，复制链接 + 支持 Web Share */}
-        {roomId ? <ShareRoomButton roomId={roomId} /> : null}
+        {/* 分享直播间：始终显示，有 roomId 可点击复制/分享链接，无则禁用并提示开播后可用 */}
+        <ShareRoomButton roomId={roomId} />
         {/* Stream Topic — 与侧边栏「直播主题」一致 */}
         <span
           className="pl-[46px] pr-2 text-[15px] leading-[15px] text-black flex items-center max-w-[280px] truncate"

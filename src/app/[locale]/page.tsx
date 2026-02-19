@@ -6,6 +6,7 @@ import { getProviders, signIn, useSession } from 'next-auth/react';
 import LoadingPage from '@/components/ui/LoadingPage';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui';
+import { useSceneStore } from '@/hooks/use-scene-store';
 
 // 动态导入 VTuber 组件（避免 SSR 问题）
 const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), {
@@ -15,6 +16,7 @@ const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const canvasReady = useSceneStore((s) => s.canvasReady);
   const { status } = useSession();
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -188,8 +190,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 3. 新手引导 */}
-      {showOnboarding && !isLoading && (
+      {/* 3. 新手引导：等 3D 画布和 UI 就绪后再显示，避免人物/界面未加载完就出现步骤 */}
+      {showOnboarding && !isLoading && canvasReady && (
         <OnboardingGuide 
           onComplete={() => setShowOnboarding(false)} 
           onSkip={() => setShowOnboarding(false)} 
