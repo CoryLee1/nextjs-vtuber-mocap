@@ -19,7 +19,8 @@ export async function GET() {
     const count = result[0]?.count ?? 0;
     return NextResponse.json({ count });
   } catch (e) {
-    console.error('[view-count]', e);
+    // 生产环境若未配置 DATABASE_URL 或未执行迁移，会走这里，VIEWS 会一直为 0
+    console.error('[view-count]', e instanceof Error ? e.message : e);
     return NextResponse.json({ count: 0 }, { status: 200 });
   }
 }

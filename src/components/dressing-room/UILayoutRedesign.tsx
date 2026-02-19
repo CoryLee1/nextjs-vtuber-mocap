@@ -147,35 +147,29 @@ export const PowerToggle = memo(({
     if (roomId) connect(roomId);
   }, [roomId, connect]);
 
-  // 全站访问次数：请求服务端（Echuu 网站被访问的次数）
-  useEffect(() => {
-    let cancelled = false;
+  // VIEWS / ANGELS 同步：首次加载 + 定时轮询，使各端数字一致；ONLINE 由 WebSocket user_count 实时更新
+  const syncStats = React.useCallback(() => {
     fetch('/api/view-count')
       .then((res) => (!res.ok ? { count: 0 } : res.json()))
       .then((data) => {
-        if (!cancelled && typeof data?.count === 'number') setViewCount(data.count);
-        else if (!cancelled) setViewCount(0);
+        if (typeof data?.count === 'number') setViewCount(data.count);
+        else setViewCount(0);
       })
-      .catch(() => {
-        if (!cancelled) setViewCount(0);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  // 已加入 Echuu 的天使（已注册用户）数量
-  useEffect(() => {
-    let cancelled = false;
+      .catch(() => setViewCount(0));
     fetch('/api/angel-count')
       .then((res) => (!res.ok ? { count: 0 } : res.json()))
       .then((data) => {
-        if (!cancelled && typeof data?.count === 'number') setAngelCount(data.count);
-        else if (!cancelled) setAngelCount(0);
+        if (typeof data?.count === 'number') setAngelCount(data.count);
+        else setAngelCount(0);
       })
-      .catch(() => {
-        if (!cancelled) setAngelCount(0);
-      });
-    return () => { cancelled = true; };
+      .catch(() => setAngelCount(0));
   }, []);
+
+  useEffect(() => {
+    syncStats();
+    const t = setInterval(syncStats, 30_000); // 每 30 秒同步一次
+    return () => clearInterval(t);
+  }, [syncStats]);
 
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
@@ -1502,23 +1496,12 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
     const shareUrl = roomId
       ? `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`
       : `${base}${path}`;
-    const title = roomId ? 'Echuu 直播间' : 'Echuu';
-    const text = roomId
-      ? (locale === 'zh' ? '来看我的 Echuu 直播吧' : 'Join my Echuu live room')
-      : (locale === 'zh' ? '来 Echuu 看看' : 'Check out Echuu');
+    // 不调用 navigator.share，避免桌面端弹出 "We couldn't show you all the ways you could share"
     try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({ title, text, url: shareUrl });
-        toast({ title: locale === 'zh' ? '已分享' : 'Shared', description: shareUrl });
-      } else {
-        await navigator.clipboard?.writeText(shareUrl);
-        toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
-      }
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') {
-        await navigator.clipboard?.writeText(shareUrl).catch(() => {});
-        toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
-      }
+      await navigator.clipboard?.writeText(shareUrl);
+      toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
+    } catch {
+      toast({ title: locale === 'zh' ? '复制失败' : 'Copy failed', description: shareUrl, variant: 'destructive' });
     }
   };
   const title = locale === 'zh' ? '分享' : 'Share';
