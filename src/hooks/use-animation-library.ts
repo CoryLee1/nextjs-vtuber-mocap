@@ -37,6 +37,20 @@ export const useAnimationLibrary = () => {
                         tags: ['default', 'idle'],
                         duration: 0,
                         thumbnail: null
+                    },
+                    {
+                        id: 'kawaii-standing-talk',
+                        name: 'KAWAII StandingTalk',
+                        description: 'KAWAII 测试动画 (StandingTalk1_1)',
+                        url: '/models/animations/kawaii-test/@KA_Idle50_StandingTalk1_1.FBX',
+                        type: 'fbx',
+                        isDefault: false,
+                        category: 'idle',
+                        size: 0,
+                        mimeType: 'application/octet-stream',
+                        tags: ['kawaii', 'test'],
+                        duration: 0,
+                        thumbnail: null
                     }
                 ];
                 
@@ -75,6 +89,20 @@ export const useAnimationLibrary = () => {
                         size: 28000000,
                         mimeType: 'application/octet-stream',
                         tags: ['default', 'idle'],
+                        duration: 0,
+                        thumbnail: null
+                    },
+                    {
+                        id: 'kawaii-standing-talk',
+                        name: 'KAWAII StandingTalk',
+                        description: 'KAWAII 测试动画',
+                        url: '/models/animations/kawaii-test/@KA_Idle50_StandingTalk1_1.FBX',
+                        type: 'fbx',
+                        isDefault: false,
+                        category: 'idle',
+                        size: 0,
+                        mimeType: 'application/octet-stream',
+                        tags: ['kawaii', 'test'],
                         duration: 0,
                         thumbnail: null
                     },

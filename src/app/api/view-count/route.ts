@@ -19,6 +19,6 @@ export async function GET() {
     return NextResponse.json({ count });
   } catch (e) {
     console.error('[view-count]', e);
-    return NextResponse.json({ count: 0, error: 'Failed to update view count' }, { status: 500 });
+    return NextResponse.json({ count: 0 });
   }
 }

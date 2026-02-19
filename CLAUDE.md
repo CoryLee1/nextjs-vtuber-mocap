@@ -31,6 +31,7 @@ Camera Input -> MediaPipe Holistic -> Kalidokit -> VRM Bone Mapping -> Three.js 
 - `src/components/dressing-room/VRMAvatar.tsx` - VRM rendering and motion capture application
 - `src/hooks/use-scene-store.ts` - Zustand store for global scene state (VRM model cache, camera settings, debug settings, MediaPipe callbacks)
 - `src/lib/mocap/vrm-adapter.ts` - Kalidokit-to-VRM bone mapping
+- `src/lib/animation-manager.ts` - FBX/Mixamo → VRM animation retargeting (see `docs/mixamo-vrm-retargeting.md`)
 
 ### Routing
 - **Next.js App Router** with `next-intl` for i18n
@@ -111,6 +112,11 @@ Mocap data requires coordinate transformation for VRM bones:
 - Feature flag names: store in enums/const objects with `UPPERCASE_WITH_UNDERSCORE`
 - Custom property names: use enums if referenced in 2+ places
 - Consult existing naming conventions before creating new event/property names
+
+## Documentation
+- **Mixamo → VRM retargeting**: `docs/mixamo-vrm-retargeting.md` — 参考依据、实现要点、经验总结；修改重定向逻辑时需遵守该文档与 `.cursor/rules/mixamo-vrm-retarget.mdc`。
+- **多源 Rig → VRM（KAWAII / UE4 等）**: `docs/animation-retargeting-multi-rig.md` — 通用经验、新增 rig 的标准流程、KAWAII 的骨骼与 Z-up 处理；避免每种动画都重新研究 mapping。
+- **对不齐/扭曲原因与工作流**: `docs/retargeting-why-and-workflow.md` — 三类原因（坐标系、映射、per-bone 符号）、所需数据、推荐排查与修正流程。
 
 ## Known Issues
 - Finger joint mapping needs per-finger debugging for correct bending direction

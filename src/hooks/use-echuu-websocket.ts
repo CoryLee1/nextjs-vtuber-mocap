@@ -97,11 +97,16 @@ interface EchuuState {
   /** 本场直播最高在线人数 */
   peakOnlineCount: number;
 
+  /** 其他观众的光标位置（viewer_id -> { x, y } 归一化 0–1，用于直播间内互相看见对方光标） */
+  otherCursors: Record<string, { x: number; y: number; updatedAt: number }>;
+
   // Actions
   setRoom: (roomId: string | null, ownerToken: string | null) => void;
   connect: (roomId: string) => void;
   disconnect: () => void;
   sendDanmaku: (text: string, user?: string) => void;
+  /** 发送本机光标位置（归一化 0–1）；后端需广播为 type: 'cursor', viewer_id, x, y */
+  sendCursor: (x: number, y: number) => void;
   reset: () => void;
 }
 
@@ -134,6 +139,8 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
   liveStartedAt: null,
   liveEndedAt: null,
   peakOnlineCount: 0,
+
+  otherCursors: {},
 
   setRoom: (roomId, ownerToken) => {
     set({ roomId, ownerToken });
@@ -207,6 +214,13 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
     }
   },
 
+  sendCursor: (x: number, y: number) => {
+    const { ws } = get();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'cursor', x, y }));
+    }
+  },
+
   reset: () => {
     set({
       streamState: 'idle',
@@ -221,6 +235,7 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
       liveStartedAt: null,
       liveEndedAt: null,
       peakOnlineCount: 0,
+      otherCursors: {},
     });
   },
 }));
@@ -322,6 +337,21 @@ function handleMessage(
         errorMessage: msg.content ?? 'Unknown error',
       });
       break;
+
+    case 'cursor': {
+      const viewerId = msg.viewer_id ?? msg.client_id;
+      const x = typeof msg.x === 'number' ? msg.x : 0;
+      const y = typeof msg.y === 'number' ? msg.y : 0;
+      if (viewerId == null) break;
+      const prev = get().otherCursors;
+      set({
+        otherCursors: {
+          ...prev,
+          [viewerId]: { x, y, updatedAt: Date.now() },
+        },
+      });
+      break;
+    }
   }
 }
 

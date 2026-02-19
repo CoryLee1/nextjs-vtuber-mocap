@@ -15,7 +15,8 @@ import {
   Layout,
   Camera,
   Languages,
-  Share2
+  Share2,
+  Film
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -338,13 +339,16 @@ function useRoomIdFromUrl() {
 export const StreamRoomSidebar = memo(({
   onPanelOpenChange,
   onCameraToggle,
+  onOpenAnimationLibrary,
 }: {
   onPanelOpenChange?: (isOpen: boolean) => void;
   /** 开启/关闭摄像头动捕（与右上角电源一致，驱动 3D 模型 puppetry） */
   onCameraToggle?: () => void;
+  /** 打开动画库弹窗（选择 idle/KAWAII 等动画） */
+  onOpenAnimationLibrary?: () => void;
 }) => {
   useRoomIdFromUrl();
-  const { echuuConfig, setEchuuConfig, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -360,6 +364,7 @@ export const StreamRoomSidebar = memo(({
   });
   const [vrmModels, setVrmModels] = useState<VRMModel[]>([]);
   const [uploadingVrm, setUploadingVrm] = useState(false);
+  const [downloadingVrm, setDownloadingVrm] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [livePlatform, setLivePlatform] = useState('');
   const [liveKey, setLiveKey] = useState('');
@@ -693,6 +698,31 @@ export const StreamRoomSidebar = memo(({
     }
   };
 
+  const handleDownloadCurrentVrm = async () => {
+    const url = vrmModelUrl || characterDraft.modelUrl || '';
+    if (!url) {
+      toast({ title: locale === 'zh' ? '请先选择或上传模型' : 'Select or upload a model first', variant: 'destructive' });
+      return;
+    }
+    setDownloadingVrm(true);
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(res.statusText);
+      const blob = await res.blob();
+      const name = (url.split('/').pop()?.split('?')[0]) || 'current-model.vrm';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name.endsWith('.vrm') ? name : `${name}.vrm`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast({ title: locale === 'zh' ? '已开始下载' : 'Download started' });
+    } catch (err) {
+      toast({ title: locale === 'zh' ? '下载失败' : 'Download failed', description: String(err), variant: 'destructive' });
+    } finally {
+      setDownloadingVrm(false);
+    }
+  };
+
   return (
     <>
       <div 
@@ -878,6 +908,39 @@ export const StreamRoomSidebar = memo(({
               >
                 {uploadingVrm ? (locale === 'zh' ? '上传中…' : 'Uploading…') : (locale === 'zh' ? '上传 .vrm 模型' : 'Upload .vrm model')}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={downloadingVrm}
+                onClick={handleDownloadCurrentVrm}
+              >
+                {downloadingVrm ? (locale === 'zh' ? '下载中…' : 'Downloading…') : (locale === 'zh' ? '下载当前 VRM (导入 Blender 用)' : 'Download current VRM (for Blender)')}
+              </Button>
+              {onOpenAnimationLibrary && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => { setPanelOpen(false); onOpenAnimationLibrary(); }}
+                  >
+                    <Film className="h-4 w-4" />
+                    {locale === 'zh' ? '动画库' : 'Animation Library'}
+                  </Button>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={!!animationStateMachinePaused}
+                      onChange={(e) => setAnimationStateMachinePaused(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    {locale === 'zh' ? '暂停状态机（仅播当前选的动画，便于试 KAWAII 等）' : 'Pause state machine (play only selected animation, e.g. KAWAII)'}
+                  </label>
+                </>
+              )}
               <label className="text-[12px] text-slate-500">{t('vtuber.character.background')}</label>
               <p className="text-[11px] text-slate-400 -mt-1">{t('vtuber.character.backgroundHint')}</p>
               <input
@@ -1419,19 +1482,22 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string }) => {
 });
 ShareRoomButton.displayName = 'ShareRoomButton';
 
-// 5. Go Live bar (Figma: Frame 1261157366) — 点击后把侧栏 Character 配置发给后端；上方实时 caption（按句+打字机）+ 可折叠 Phase
+// 5. Go Live bar (Figma: Frame 1261157366) — 仅房主可开播；观众只能看+发弹幕
 export const GoLiveButton = memo(() => {
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
   const echuuConfig = useSceneStore((state) => state.echuuConfig);
   const topic = echuuConfig.topic;
   const { connect, connectionState, currentStep, streamState, infoMessage, roomId, ownerToken, setRoom, lastEventType, lastEventAt } = useEchuuWebSocket();
+  const { locale } = useI18n();
   const [isStarting, setIsStarting] = useState(false);
   const [phaseOpen, setPhaseOpen] = useState(false);
   const [startError, setStartError] = useState('');
   const [backendStatus, setBackendStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
 
+  const isAudience = Boolean(roomId && !ownerToken);
+
   const handleGoLive = async () => {
-    if (isStarting) return;
+    if (isStarting || isAudience) return;
     setIsStarting(true);
     setStartError('');
     try {
@@ -1521,7 +1587,8 @@ export const GoLiveButton = memo(() => {
         <button
           type="button"
           onClick={handleGoLive}
-          disabled={isStarting}
+          disabled={isStarting || isAudience}
+          title={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : undefined}
           className="absolute left-[5px] top-[7px] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             background: 'rgba(255, 255, 255, 0.068)',
@@ -1529,7 +1596,7 @@ export const GoLiveButton = memo(() => {
               '-11.15px -10.39px 48px -12px rgba(0, 0, 0, 0.15), inset 2.15px 2px 9.24px rgba(255, 255, 255, 0.126), inset 1.22px 1.13px 4.62px rgba(255, 255, 255, 0.126)',
             backdropFilter: 'blur(7.58px)',
           }}
-          aria-label="Go Live"
+          aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
         >
           <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-[#EEFF00] text-[#E9E9E9]">
             <Play className="h-3 w-3" strokeWidth={2} />

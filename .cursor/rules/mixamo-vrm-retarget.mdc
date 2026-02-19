@@ -1,0 +1,37 @@
+---
+description: Mixamo→VRM 动画重定向已与参考实现对齐，修改时勿破坏旋转/位移/骨骼表约定
+globs: src/lib/animation-manager.ts, src/lib/constants.ts
+alwaysApply: false
+---
+
+# Mixamo → VRM 重定向（Retarget）约定
+
+当前 **FBX/Mixamo 动画重定向到 VRM** 已与社区参考（`remapMixamoAnimationToVrm` + `mixamoVRMRigMap`）对齐，动画表现正确。修改以下文件时请保持约定，避免重定向再次错乱。
+
+## 涉及文件
+
+- `src/lib/animation-manager.ts` — `remapAnimationToVrm`、additive 用同一套 remap
+- `src/lib/constants.ts` — `MIXAMO_VRM_RIG_MAP`（身体 + 手指）
+
+## 必须保持的约定
+
+1. **旋转重定向**
+   - 使用 **世界四元数** 做 rest-pose 补偿：`srcNode.getWorldQuaternion(restRotationInverse).invert()`，`srcNode.parent.getWorldQuaternion(parentRestWorldRotation)`。
+   - 公式：`parentRestWorld × trackQuat × restRotationInverse`。
+   - VRM 0.x：四元数 x/z 分量取反（`i % 2 === 0 ? -v : v`）。
+   - 不要对左臂单独再做四元数翻转。
+
+2. **臀部位移**
+   - 高度比：`hipsPositionScale = vrmHipsHeight / motionHipsHeight`，其中 `motionHipsHeight` 使用 Mixamo hips 的 **local `position.y`**，`vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY)`。
+   - VRM 0.x：position 的 x/z 取反（`i % 3 !== 1 ? -v : v`），再乘 `hipsPositionScale`。
+
+3. **骨骼映射**
+   - 以 `MIXAMO_VRM_RIG_MAP` 为准；查表前将 `mixamorig1` 归一化为 `mixamorig`；映射表需包含身体与手指（与参考 mixamoVRMRigMap 一致）。
+
+4. **Clip 与 scale**
+   - 优先 clip 名 `"mixamo.com"`，否则用第一个 clip。
+   - 不重定向 `.scale` track。
+
+- **新增 rig（如 KAWAII、UE4）**：只加该 rig 的骨骼映射表（或扩展 auto-mapper 前缀/同义词）和 hips 节点名；旋转/位移公式不改。流程见 `docs/animation-retargeting-multi-rig.md`。
+
+详细说明与经验总结见：`docs/mixamo-vrm-retargeting.md`。

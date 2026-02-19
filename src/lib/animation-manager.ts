@@ -1,7 +1,11 @@
 import { useFBX } from '@react-three/drei';
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
-import { AnimationMixer, LoopRepeat } from 'three';
+import { AnimationMixer, LoopRepeat, AnimationUtils } from 'three';
 import * as THREE from 'three';
+import { MIXAMO_VRM_RIG_MAP, KAWAII_VRM_RIG_MAP, KAWAII_QUAT_SIGN_FLIPS, KAWAII_YUP_QUAT_SIGN_FLIPS, KAWAII_YUP_LOWERLEG_BONES } from '@/lib/constants';
+import { detectFbxSceneZUp, convertPositionZUpToYUp, convertQuaternionTrackZUpToYUp, convertQuaternionZUpToYUp } from '@/lib/coordinate-axes';
+
+const KAWAII_LOWERLEG_BONES = new Set(KAWAII_YUP_LOWERLEG_BONES);
 
 // ─── Universal Auto-Mapper: FBX bone name → VRM humanoid bone name ────────
 //
@@ -71,7 +75,7 @@ const SIDE_MAP: Record<string, 'left' | 'right'> = {
 };
 
 /** Prefixes to strip */
-const STRIP_PREFIXES = ['mixamorig', 'armature|'];
+const STRIP_PREFIXES = ['mixamorig1', 'mixamorig', 'armature|'];
 
 /** Cache for auto-mapped results (rig bone name → vrm bone name) */
 const _autoMapCache = new Map<string, string | null>();
@@ -226,13 +230,11 @@ function autoMapBoneToVrm(rawName: string): string | null {
 /**
  * Universal FBX → VRM animation retargeting.
  *
- * Key improvements over the old approach:
- *  1. Auto-maps any rig via token normalization (no hardcoded tables)
- *  2. Only remaps .quaternion tracks (rotation retargeting)
- *  3. Only remaps .position for hips (root motion height scaling)
- *  4. Skips .scale tracks entirely (they corrupt bone proportions)
- *  5. VRM 0.x mirror is only applied to hips position, not quaternions
- *     (quaternion rest-pose compensation already handles the mirror)
+ * 与 remapMixamoAnimationToVrm + mixamoVRMRigMap 参考实现对齐：
+ *  1. 优先 clip 名 "mixamo.com"，骨骼表用 MIXAMO_VRM_RIG_MAP（含手指）
+ *  2. 旋转：世界四元数 rest-pose 补偿；VRM 0.x 时四元数 x/z 取反
+ *  3. 臀部位移：motionHipsHeight = Mixamo hips.position.y，缩放 vrmHipsHeight/motionHipsHeight；VRM 0.x 时 position x/z 取反
+ *  4. 跳过 .scale，避免比例错乱
  */
 function remapAnimationToVrm(vrm, fbxScene) {
     if (!vrm?.humanoid || !fbxScene?.animations?.length) {
@@ -240,38 +242,53 @@ function remapAnimationToVrm(vrm, fbxScene) {
         return null;
     }
 
-    // Pick the first clip (works for Mixamo "mixamo.com", UE4 "Unreal Take", or unnamed)
-    const srcClip = fbxScene.animations[0];
+    // 与参考实现一致：优先使用 Mixamo 导出的 clip 名 "mixamo.com"，否则用第一个
+    const srcClip = THREE.AnimationClip.findByName(fbxScene.animations, 'mixamo.com')
+        ?? fbxScene.animations[0];
     if (!srcClip) return null;
 
     const clip = srcClip.clone();
     const tracks: THREE.KeyframeTrack[] = [];
     const _quatA = new THREE.Quaternion();
     const _vec3 = new THREE.Vector3();
-    const restRotInv = new THREE.Quaternion();
-    const parentRestWorld = new THREE.Quaternion();
+    const restRotationInverse = new THREE.Quaternion();
+    const parentRestWorldRotation = new THREE.Quaternion();
 
-    // Ensure world matrices are up-to-date before reading positions
+    // Rig 检测：存在 KAWAII 表内骨骼名且无 mixamorig 则视为 KAWAII
+    const hasMixamo = clip.tracks.some((t) => t.name.includes('mixamorig'));
+    const hasKawaiiBone = clip.tracks.some((t) => {
+      const b = t.name.split('.')[0];
+      const bone = b.includes('|') ? b.split('|').pop()! : b;
+      return !!KAWAII_VRM_RIG_MAP[bone];
+    });
+    const isKawaii = !hasMixamo && hasKawaiiBone;
+    const boneMap: Record<string, string> = isKawaii ? KAWAII_VRM_RIG_MAP : (MIXAMO_VRM_RIG_MAP as Record<string, string>);
+    const isZUp = detectFbxSceneZUp(fbxScene);
+
+    // Ensure world matrices are up-to-date before reading rest pose
     fbxScene.updateWorldMatrix(true, true);
     vrm.scene.updateWorldMatrix(true, true);
 
-    // Hips height ratio for position scaling
-    const srcHipsNode = fbxScene.getObjectByName("Hips")
-        ?? fbxScene.getObjectByName("mixamorigHips")
-        ?? fbxScene.getObjectByName("pelvis");
-    const srcHipsY = srcHipsNode ? srcHipsNode.getWorldPosition(_vec3).y : 0;
-    const vrmHipsNode = vrm.humanoid.getNormalizedBoneNode("hips");
-    let vrmHipsY = 1;
+    // Hips 节点与 motion 高度：Mixamo 用 local position.y，KAWAII(Z-up) 用 position.z
+    const srcHipsNode = isKawaii
+        ? (fbxScene.getObjectByName('Hips') ?? fbxScene.getObjectByName('pelvis'))
+        : (fbxScene.getObjectByName('mixamorigHips') ?? fbxScene.getObjectByName('mixamorig1Hips') ?? fbxScene.getObjectByName('Hips') ?? fbxScene.getObjectByName('pelvis'));
+    const motionHipsHeight = isKawaii && isZUp && srcHipsNode
+        ? Math.abs(srcHipsNode.position.z) || srcHipsNode.getWorldPosition(_vec3).y
+        : (srcHipsNode?.position?.y ?? (srcHipsNode ? srcHipsNode.getWorldPosition(_vec3).y : 1));
+    const vrmHipsNode = vrm.humanoid.getNormalizedBoneNode('hips');
+    let vrmHipsHeight = 1;
     if (vrmHipsNode) {
-        vrmHipsY = Math.abs(
-            vrmHipsNode.getWorldPosition(_vec3).y -
-            vrm.scene.getWorldPosition(_vec3).y
-        ) || 1;
+        const vrmHipsY = vrmHipsNode.getWorldPosition(_vec3).y;
+        const vrmRootY = vrm.scene.getWorldPosition(_vec3).y;
+        vrmHipsHeight = Math.abs(vrmHipsY - vrmRootY) || 1;
     }
-    const hipsScale = srcHipsY > 0 ? vrmHipsY / srcHipsY : 1;
+    const hipsPositionScale = motionHipsHeight > 0 ? vrmHipsHeight / motionHipsHeight : 1;
 
-    const isVrm0 = vrm.meta?.metaVersion === "0";
+    const isVrm0 = vrm.meta?.metaVersion === '0';
     let mapped = 0;
+    /** KAWAII 诊断：rest、原始第一帧、管线输出第一帧，便于分析扭曲并自动导出 JSON */
+    const kawaiiDiagnostic: { vrmBoneName: string; restLocal: [number, number, number, number]; firstFrame: [number, number, number, number]; firstFrameOut: [number, number, number, number] }[] = [];
 
     for (const track of clip.tracks) {
         // Parse track name: "BoneName.quaternion", "Armature|BoneName.position"
@@ -285,88 +302,189 @@ function remapAnimationToVrm(vrm, fbxScene) {
         // applying them to VRM would distort the model's proportions
         if (propName === 'scale') continue;
 
-        // Auto-map bone name to VRM
-        const vrmBoneName = autoMapBoneToVrm(rawBone);
+        // 骨骼映射：KAWAII 用 KAWAII_VRM_RIG_MAP，Mixamo 用 MIXAMO_VRM_RIG_MAP + mixamorig1 归一化，否则 auto-mapper
+        const rawBoneForMap = rawBone.replace(/^mixamorig1/, 'mixamorig');
+        const vrmBoneName = boneMap[rawBone] ?? boneMap[rawBoneForMap] ?? (!isKawaii ? autoMapBoneToVrm(rawBone) : null);
         if (!vrmBoneName) continue;
 
         // Resolve VRM node
         const vrmNode = vrm.humanoid.getNormalizedBoneNode(vrmBoneName);
         if (!vrmNode) continue;
 
-        // Find source bone in FBX scene graph (needed for rest-pose quaternion)
-        const srcNode = fbxScene.getObjectByName(rawBone);
+        // Find source bone in FBX: KAWAII 用精确名，Mixamo 用多种前缀尝试
+        const srcNode = isKawaii
+            ? fbxScene.getObjectByName(rawBone)
+            : (fbxScene.getObjectByName(rawBone) ||
+               fbxScene.getObjectByName(rawBone.replace(/^mixamorig1?/, '')) ||
+               fbxScene.getObjectByName(rawBone.startsWith('mixamorig') ? rawBone : 'mixamorig' + (rawBone.charAt(0).toUpperCase() + rawBone.slice(1))) ||
+               fbxScene.getObjectByName(rawBone.startsWith('mixamorig1') ? rawBone : 'mixamorig1' + (rawBone.charAt(0).toUpperCase() + rawBone.slice(1))));
         if (!srcNode) continue;
 
         if (propName === 'quaternion' && track instanceof THREE.QuaternionKeyframeTrack) {
-            // Rest-pose compensation:
-            //   result = parentRestWorld * animQuat * localRestInverse
-            // Uses LOCAL rest quaternion (not world!) per official three-vrm retarget example
-            restRotInv.copy(srcNode.quaternion).invert();
-            if (srcNode.parent) {
-                srcNode.parent.getWorldQuaternion(parentRestWorld);
+            // KAWAII(Z-up)：仅在场景为 Z-up 时在 Z-up 空间做 rest 补偿再转 Y-up；否则与 rest 同空间处理避免全身扭曲
+            // Mixamo(Y-up)：世界四元数 rest，track 不需轴转换
+            const useKawaiiZUpPipeline = isKawaii && isZUp;
+            const rawValues = useKawaiiZUpPipeline
+                ? track.values
+                : (isZUp ? convertQuaternionTrackZUpToYUp(new Float32Array(track.values)) : track.values);
+
+            if (useKawaiiZUpPipeline) {
+                restRotationInverse.copy(srcNode.quaternion).invert();
+                parentRestWorldRotation.identity();
+            } else if (isKawaii) {
+                // Y-up: 用世界空间（和 Mixamo 一样）
+                srcNode.getWorldQuaternion(restRotationInverse).invert();
+                if (srcNode.parent) {
+                    srcNode.parent.getWorldQuaternion(parentRestWorldRotation);
+                } else {
+                    parentRestWorldRotation.identity();
+                }
+                // KAWAII Hips 嵌入了 Z-up→Y-up 的旋转，需在 worldRest 里消除；Hips 单独用 local restInv × track
+                if (isKawaii && !isZUp && vrmBoneName === 'hips') {
+                    restRotationInverse.copy(srcNode.quaternion).invert();
+                    parentRestWorldRotation.identity();
+                }
             } else {
-                parentRestWorld.identity();
+                srcNode.getWorldQuaternion(restRotationInverse).invert();
+                if (srcNode.parent) {
+                    srcNode.parent.getWorldQuaternion(parentRestWorldRotation);
+                } else {
+                    parentRestWorldRotation.identity();
+                }
             }
 
-            const values = new Float32Array(track.values.length);
-            for (let i = 0; i < track.values.length; i += 4) {
-                _quatA.set(track.values[i], track.values[i+1], track.values[i+2], track.values[i+3]);
-                _quatA.premultiply(parentRestWorld).multiply(restRotInv);
-
-                // VRM 0.x: the model was rotated 180° by rotateVRM0,
-                // but normalized bones already account for this — no extra flip needed
+            const values = new Float32Array(rawValues.length);
+            for (let i = 0; i < rawValues.length; i += 4) {
+                _quatA.set(rawValues[i], rawValues[i+1], rawValues[i+2], rawValues[i+3]);
+                _quatA.premultiply(parentRestWorldRotation).multiply(restRotationInverse);  // output = parentWorldRest × worldTrack × worldRestInv
+                if (useKawaiiZUpPipeline) convertQuaternionZUpToYUp(_quatA);
+                // KAWAII Y-up LowerLeg：FBX 膝盖为 Z 轴旋转，VRM 期望 Y 轴；R*q*R^-1 (+X90°) 转换
+                if (isKawaii && !isZUp && KAWAII_LOWERLEG_BONES.has(vrmBoneName)) {
+                    const s = Math.SQRT1_2;
+                    const R = new THREE.Quaternion(s, 0, 0, s);
+                    _quatA.premultiply(R).multiply(R.clone().invert());
+                }
                 values[i]   = _quatA.x;
                 values[i+1] = _quatA.y;
                 values[i+2] = _quatA.z;
                 values[i+3] = _quatA.w;
             }
+            // KAWAII per-bone 符号修正：Z-up 用 KAWAII_QUAT_SIGN_FLIPS；Y-up（如 Unreal Take）用 Blender 对比得出的 KAWAII_YUP_QUAT_SIGN_FLIPS
+            const signFlip = useKawaiiZUpPipeline
+                ? KAWAII_QUAT_SIGN_FLIPS[vrmBoneName]
+                : (isKawaii && !isZUp ? KAWAII_YUP_QUAT_SIGN_FLIPS[vrmBoneName] : undefined);
+            if (signFlip) {
+                for (let i = 0; i < values.length; i += 4) {
+                    values[i] *= signFlip[0];
+                    values[i+1] *= signFlip[1];
+                    values[i+2] *= signFlip[2];
+                    values[i+3] *= signFlip[3];
+                }
+            }
+            // 半球规范化：确保 w >= 0，避免四元数对踵导致插值走 360° 长弧
+            // 对 isKawaii && !isZUp 路径全局生效（Unreal Take FBX 有此问题）
+            if (isKawaii && !isZUp) {
+                for (let i = 0; i < values.length; i += 4) {
+                    if (values[i + 3] < 0) {
+                        values[i]     = -values[i];
+                        values[i + 1] = -values[i + 1];
+                        values[i + 2] = -values[i + 2];
+                        values[i + 3] = -values[i + 3];
+                    }
+                }
+            }
+            // KAWAII 诊断：收集 rest、原始第一帧、管线输出第一帧（便于分析扭曲来源）
+            if (isKawaii && rawValues.length >= 4) {
+                const rest = srcNode.quaternion;
+                kawaiiDiagnostic.push({
+                    vrmBoneName,
+                    restLocal: [rest.x, rest.y, rest.z, rest.w],
+                    firstFrame: [rawValues[0], rawValues[1], rawValues[2], rawValues[3]],
+                    firstFrameOut: [values[0], values[1], values[2], values[3]],
+                });
+            }
+            // VRM 0.x：四元数 x/z 分量取反（与参考一致）
+            const outValues = isVrm0
+                ? Array.from(values).map((v, i) => (i % 2 === 0 ? -v : v))
+                : Array.from(values);
 
             tracks.push(new THREE.QuaternionKeyframeTrack(
-                `${vrmNode.name}.quaternion`, track.times, values
+                `${vrmNode.name}.quaternion`, track.times, outValues
             ));
             mapped++;
         }
         else if (propName === 'position' && vrmBoneName === 'hips' && track instanceof THREE.VectorKeyframeTrack) {
-            // Auto-detect axis convention from rest pose values:
-            //   KAWAII/Unity Z-up (cm): track [X, Y, Z] where Z=height (~95)
-            //   Mixamo Y-up: track [X, Y, Z] where Y=height
-            const restVal = [track.values[0], track.values[1], track.values[2]];
-            const absVals = restVal.map(Math.abs);
-            const maxAxis = absVals.indexOf(Math.max(...absVals));
-            const srcHeight = Math.abs(restVal[maxAxis]);
-            const posScale = srcHeight > 0.01 ? vrmHipsY / srcHeight : 1;
-
-            const values = new Float32Array(track.values.length);
-            for (let i = 0; i < track.values.length; i += 3) {
-                const raw = [track.values[i], track.values[i+1], track.values[i+2]];
-                if (maxAxis === 2) {
-                    // Z-up → Y-up conversion: X=X, Y=Z, Z=-Y
-                    values[i]   = raw[0] * posScale * (isVrm0 ? -1 : 1);
-                    values[i+1] = raw[2] * posScale;
-                    values[i+2] = -raw[1] * posScale * (isVrm0 ? -1 : 1);
-                } else {
-                    // Already Y-up
-                    values[i]   = raw[0] * posScale * (isVrm0 ? -1 : 1);
-                    values[i+1] = raw[1] * posScale;
-                    values[i+2] = raw[2] * posScale * (isVrm0 ? -1 : 1);
-                }
+            // KAWAII：不输出 hips position，保持角色在原点，避免切回其他动画时 origin 被带走
+            if (isKawaii) continue;
+            // 臀部位移：Z-up 时先转 Y-up，再按高度缩放 + VRM 0.x 取反
+            let value = Array.from(track.values);
+            if (isZUp) {
+                const arr = new Float32Array(value.length);
+                arr.set(value);
+                convertPositionZUpToYUp(arr, 3, true);
+                value = Array.from(arr);
             }
+            const scaled = value.map((v, i) =>
+                (isVrm0 && i % 3 !== 1 ? -v : v) * hipsPositionScale
+            );
             tracks.push(new THREE.VectorKeyframeTrack(
-                `${vrmNode.name}.position`, track.times, values
+                `${vrmNode.name}.position`, track.times, scaled
             ));
             mapped++;
         }
         // All other tracks (non-hips position, scale) are intentionally skipped
     }
 
+    if (isKawaii && kawaiiDiagnostic.length > 0 && typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+        console.groupCollapsed('[AnimationManager] KAWAII 诊断：rest / firstFrame(原始) / firstFrameOut(管线输出)');
+        console.log(JSON.stringify(kawaiiDiagnostic, null, 2));
+        console.groupEnd();
+        // 自动导出调试用 JSON，便于分析扭曲原因（rest vs 原始第一帧 vs 管线输出）
+        try {
+            const safeName = (clip.name || 'clip').replace(/[^\w\-.]/g, '_').slice(0, 60);
+            const payload = {
+                meta: { clipName: clip.name, duration: clip.duration, isZUp, isVrm0, exportedAt: new Date().toISOString() },
+                diagnostic: kawaiiDiagnostic,
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kawaii-retarget-diagnostic-${safeName}-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.warn('[AnimationManager] KAWAII 诊断 JSON 导出失败', e);
+        }
+    }
+
     if (tracks.length === 0) {
-        console.warn('AnimationManager: 0 tracks mapped. Sample track names:',
-            clip.tracks.slice(0, 5).map(t => t.name));
+        const allNames = clip.tracks.map(t => t.name);
+        console.warn('AnimationManager: 0 tracks mapped，请检查 FBX 骨骼名是否与 Mixamo/VRM 一致。Track 列表:', allNames);
         return null;
     }
 
+    const outClip = new THREE.AnimationClip("vrmAnimation", clip.duration, tracks);
+    if (process.env.NODE_ENV === 'development') {
+        const rawList = clip.tracks.map(t => ({ name: t.name, type: t.type || (t as any).constructor?.name }));
+        const mappedList = tracks.map((t: THREE.KeyframeTrack) => {
+            const name = t.name;
+            const isQuat = t instanceof THREE.QuaternionKeyframeTrack;
+            const first = isQuat && t.values.length >= 4
+                ? { x: t.values[0], y: t.values[1], z: t.values[2], w: t.values[3] }
+                : !isQuat && t.values.length >= 3
+                    ? { x: t.values[0], y: t.values[1], z: t.values[2] }
+                    : null;
+            return { trackName: name, keyframes: t.times.length, firstValue: first };
+        });
+        console.groupCollapsed('[AnimationManager] 动画重定向调试');
+        console.log('原始 FBX tracks:', rawList);
+        console.log('重定向后 VRM tracks:', mappedList);
+        console.log('统计:', { rawCount: clip.tracks.length, mappedCount: mapped, duration: clip.duration.toFixed(2) + 's' });
+        console.groupEnd();
+    }
     console.log(`AnimationManager: retarget OK — ${mapped} tracks from ${clip.tracks.length} (${clip.duration.toFixed(1)}s)`);
-    return new THREE.AnimationClip("vrmAnimation", clip.duration, tracks);
+    return outClip;
 }
 
 // ✅ 获取 VRM 的唯一标识符（更可靠的检测方式）
@@ -410,11 +528,15 @@ const TRANSITION = {
 
 /**
  * 双缓冲：当前播一个 URL，同时预加载 nextAnimationUrl，切换时大概率已进缓存，减少延迟/T-pose。
+ * additiveAnimationUrl：可选，叠加层动画（如表情/姿态），会 makeClipAdditive 后与 base 混合。
+ * additiveWeight：叠加层权重 0–1，默认 0 表示不显示叠加层。
  */
 export const useAnimationManager = (
     vrm,
     animationUrl = DEFAULT_ANIMATION_URL,
-    nextAnimationUrl?: string
+    nextAnimationUrl?: string,
+    additiveAnimationUrl?: string,
+    additiveWeight: number = 0
 ) => {
     const effectiveAnimationUrl = animationUrl || DEFAULT_ANIMATION_URL;
     // 规范化：修正末尾冒号 + 修正缺少 /animations/ 的 S3 路径（避免 403/404）
@@ -428,9 +550,16 @@ export const useAnimationManager = (
             ? normalizeAnimationUrl(nextAnimationUrl.trim())
             : safeAnimationUrl;
 
+    const _additiveTrimmed = additiveAnimationUrl && additiveAnimationUrl.trim();
+    const safeAdditiveUrl =
+        (_additiveTrimmed && _additiveTrimmed !== '#')
+            ? normalizeAnimationUrl(_additiveTrimmed)
+            : '';
+
     const mixerRef = useRef<AnimationMixer | null>(null);
     const currentActionRef = useRef<THREE.AnimationAction | null>(null);
     const idleActionRef = useRef<THREE.AnimationAction | null>(null);
+    const additiveActionRef = useRef<THREE.AnimationAction | null>(null);
     const isTransitioningRef = useRef(false);
     const transitionTimeRef = useRef(0);
     const hasMixerRef = useRef(false);
@@ -439,7 +568,9 @@ export const useAnimationManager = (
     // ✅ 使用 VRM UUID 追踪模型变化（更可靠）
     const vrmIdRef = useRef<string>('');
     const previousAnimationUrlRef = useRef(safeAnimationUrl);
-    
+    /** 用于上报：idleClip 为 null 时的具体原因，便于排查「动画文件加载失败」 */
+    const idleClipFailureReasonRef = useRef<string | null>(null);
+
     // 状态管理
     const [animationState, setAnimationState] = useState({
         isPlayingIdle: false,
@@ -552,36 +683,53 @@ export const useAnimationManager = (
     // 加载FBX：当前播的用 safeAnimationUrl；再拉一个 preloadUrl 进缓存（双缓冲，切换时少等）
     const fbxScene = useFBX(safeAnimationUrl);
     useFBX(preloadUrl);
+    // 无 additive 时传主 URL，复用缓存且不触发无效请求（idleAdditiveClip 里 safeAdditiveUrl 为空会 return null）
+    const fbxSceneAdditive = useFBX(safeAdditiveUrl || safeAnimationUrl);
 
     // ✅ 创建动画剪辑（当VRM、fbxScene或URL变化时重新创建）
     const idleClip = useMemo(() => {
+        idleClipFailureReasonRef.current = null;
         if (!vrm || !fbxScene) {
+            idleClipFailureReasonRef.current = !fbxScene
+                ? 'FBX未加载（请检查网络、CORS或URL是否正确）'
+                : 'VRM模型未就绪';
             console.warn('AnimationManager: 缺少必要参数，无法创建动画剪辑', {
                 hasVRM: !!vrm,
                 hasFbxScene: !!fbxScene,
+                animationUrl: safeAnimationUrl,
                 vrmScene: !!vrm?.scene,
                 vrmHumanoid: !!vrm?.humanoid
             });
             return null;
         }
-        
+
         // ✅ 确保 VRM 完全加载
         if (!vrm.scene || !vrm.humanoid) {
+            idleClipFailureReasonRef.current = 'VRM未完全加载（缺少 scene 或 humanoid）';
             console.warn('AnimationManager: VRM未完全加载', {
                 hasScene: !!vrm.scene,
                 hasHumanoid: !!vrm.humanoid
             });
             return null;
         }
-        
+
+        if (!fbxScene.animations?.length) {
+            idleClipFailureReasonRef.current = 'FBX 无动画数据（animations 为空）';
+            console.warn('AnimationManager: FBX 场景无动画', {
+                animationUrl: safeAnimationUrl,
+                animationsLength: fbxScene.animations?.length ?? 0
+            });
+            return null;
+        }
+
         try {
             console.log('AnimationManager: 开始重新映射动画', {
                 animationUrl: safeAnimationUrl,
                 animationsCount: fbxScene.animations?.length || 0
             });
-            
+
             const remappedClip = remapAnimationToVrm(vrm, fbxScene);
-            
+
             if (remappedClip) {
                 console.log('AnimationManager: 动画重新映射成功', {
                     clipName: remappedClip.name,
@@ -589,34 +737,56 @@ export const useAnimationManager = (
                     tracksCount: remappedClip.tracks.length
                 });
                 return remappedClip;
-            } else {
-                console.warn('AnimationManager: 重新映射返回null');
             }
+            idleClipFailureReasonRef.current = '重定向为 0 条（FBX 骨骼名与 VRM 不匹配，请查看上方 track 列表）';
+            console.warn('AnimationManager: 重新映射返回null');
         } catch (error) {
+            idleClipFailureReasonRef.current = `重定向异常: ${error instanceof Error ? error.message : String(error)}`;
             console.error('AnimationManager: 重新映射失败', error);
         }
-        
-        // 不再使用原始 FBX clip 作为备用：其 track 名为 mixamorig*，VRM 场景中无对应节点，会导致 T-pose
+
         console.warn('AnimationManager: 无法创建idle剪辑 - 重新映射失败且不能使用原始 clip');
         return null;
     }, [vrm, fbxScene, safeAnimationUrl]);
 
+    // 叠加层剪辑：仅当 safeAdditiveUrl 有值且与 base 不同时创建；makeClipAdditive 转为相对参考帧，可与 base 叠加
+    const idleAdditiveClip = useMemo(() => {
+        if (!safeAdditiveUrl || !vrm?.scene || !vrm?.humanoid || !fbxSceneAdditive?.animations?.length) return null;
+        if (safeAdditiveUrl === safeAnimationUrl) return null;
+        try {
+            const remapped = remapAnimationToVrm(vrm, fbxSceneAdditive);
+            if (!remapped) return null;
+            const additiveClip = remapped.clone();
+            AnimationUtils.makeClipAdditive(additiveClip);
+            return additiveClip;
+        } catch (e) {
+            console.warn('AnimationManager: additive 剪辑创建失败', e);
+            return null;
+        }
+    }, [vrm, fbxSceneAdditive, safeAdditiveUrl, safeAnimationUrl]);
+
     // 初始化动画混合器（当vrm、idleClip或animationUrl变化时重新初始化）
     useEffect(() => {
         if (!vrm || !idleClip) {
-            // 清理之前的混合器
+            additiveActionRef.current = null;
             if (mixerRef.current) {
                 mixerRef.current.stopAllAction();
                 mixerRef.current = null;
                 hasMixerRef.current = false;
             }
-            
+            const errMsg = !vrm
+                ? 'VRM模型未加载'
+                : !idleClip
+                    ? (idleClipFailureReasonRef.current
+                        ? `动画文件加载失败：${idleClipFailureReasonRef.current}`
+                        : '动画文件加载失败')
+                    : null;
             setAnimationState(prev => ({
                 ...prev,
                 hasMixer: false,
                 isPlayingIdle: false,
                 isLoading: false,
-                error: !vrm ? 'VRM模型未加载' : !idleClip ? '动画文件加载失败' : null
+                error: errMsg
             }));
             return;
         }
@@ -688,7 +858,7 @@ export const useAnimationManager = (
                 throw new Error('无法创建idle动作：clipAction返回null');
             }
             idleAction.setEffectiveWeight(1);
-            idleAction.timeScale = 1.0;
+            idleAction.setEffectiveTimeScale(1);
             idleAction.setLoop(THREE.LoopRepeat, Infinity);
             idleAction.clampWhenFinished = false;
             idleAction.enabled = true;
@@ -700,7 +870,11 @@ export const useAnimationManager = (
             let crossFadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
             if (useCrossFade) {
-                idleAction.reset();
+                // 与 three.js additive animation 示例一致：endAction 必须先 weight=1、time=0 再 crossFadeTo
+                idleAction.enabled = true;
+                idleAction.setEffectiveTimeScale(1);
+                idleAction.setEffectiveWeight(1);
+                idleAction.time = 0;
                 idleAction.play();
                 prevAction.crossFadeTo(idleAction, duration, warp);
                 isTransitioningRef.current = true;
@@ -719,6 +893,20 @@ export const useAnimationManager = (
             currentActionRef.current = idleAction;
             animationModeRef.current = 'idle';
 
+            if (additiveActionRef.current) {
+                additiveActionRef.current.stop();
+                additiveActionRef.current = null;
+            }
+            if (idleAdditiveClip && mixerRef.current) {
+                const additiveAction = mixerRef.current.clipAction(idleAdditiveClip);
+                additiveAction.enabled = true;
+                additiveAction.setEffectiveTimeScale(1);
+                additiveAction.setEffectiveWeight(additiveWeight);
+                additiveAction.setLoop(THREE.LoopRepeat, Infinity);
+                additiveAction.play();
+                additiveActionRef.current = additiveAction;
+            }
+
             setAnimationState({
                 isPlayingIdle: true,
                 isTransitioning: useCrossFade,
@@ -733,9 +921,16 @@ export const useAnimationManager = (
             } else {
                 console.log('✅ AnimationManager: 动画混合器初始化/切换', { actionName: idleAction.getClip().name });
             }
+            if (idleAdditiveClip) {
+                console.log('✅ AnimationManager: additive 层已启用', { clipName: idleAdditiveClip.name, weight: additiveWeight });
+            }
 
             return () => {
                 if (crossFadeTimeoutId != null) clearTimeout(crossFadeTimeoutId);
+                if (additiveActionRef.current) {
+                    additiveActionRef.current.stop();
+                    additiveActionRef.current = null;
+                }
             };
         } catch (error) {
             console.error('AnimationManager: 初始化失败', error);
@@ -747,7 +942,14 @@ export const useAnimationManager = (
                 error: error instanceof Error ? error.message : String(error)
             }));
         }
-    }, [vrm, idleClip, safeAnimationUrl]); // ✅ 添加safeAnimationUrl到依赖，确保URL变化时重新初始化
+    }, [vrm, idleClip, safeAnimationUrl, idleAdditiveClip, additiveWeight]);
+
+    useEffect(() => {
+        const action = additiveActionRef.current;
+        if (action) {
+            action.setEffectiveWeight(additiveWeight);
+        }
+    }, [additiveWeight]);
 
     // 切换到动捕模式
     const switchToMocapMode = () => {
@@ -826,20 +1028,18 @@ export const useAnimationManager = (
         if (animationModeRef.current !== 'idle') {
             return; // 动捕模式下不更新动画
         }
-        
-        if (!mixerRef.current) return;
-        
+        const mixer = mixerRef.current;
+        if (!mixer) return;
+        const idleAction = idleActionRef.current;
         try {
-            // 只在idle模式下更新动画混合器
-            mixerRef.current.update(delta);
-            
-            // 更新状态
+            mixer.update(delta);
+            const currentTime = mixer.time;
+            const isRunning = idleAction?.isRunning?.() ?? false;
             setAnimationState(prev => ({
                 ...prev,
-                currentTime: mixerRef.current.time,
-                isPlayingIdle: idleActionRef.current?.isRunning() || false
+                currentTime,
+                isPlayingIdle: isRunning
             }));
-            
         } catch (error) {
             console.warn('AnimationManager: 动画更新错误', error);
         }
@@ -853,7 +1053,7 @@ export const useAnimationManager = (
     // 状态缓存，避免频繁切换
     const lastModeSwitchTime = useRef(0);
     const lastShouldUseMocap = useRef(false);
-    const MODE_SWITCH_DEBOUNCE = 500; // 500ms防抖时间
+    const MODE_SWITCH_DEBOUNCE = 1000; // 1s 防抖，减少手部检测闪烁导致的 idle↔mocap 频繁切换（一阵一阵）
 
     // 优化的模式切换处理
     const handleModeSwitch = (shouldUseMocap) => {

@@ -48,6 +48,9 @@ interface SceneState {
   animationUrl: string | null;
   /** 下一个可能切换到的动画 URL（双缓冲预加载用） */
   nextAnimationUrl: string | null;
+  /** 暂停动画状态机：为 true 时不再用状态机覆盖 animationUrl，便于单独试播当前选的动画（如 KAWAII） */
+  animationStateMachinePaused: boolean;
+  setAnimationStateMachinePaused: (paused: boolean) => void;
   /** 设置 VRM 模型（缓存模型实例和 URL） */
   setVRMModel: (model: VRM, url: string) => void;
   /** 设置模型 URL（不改变模型实例，用于预加载） */
@@ -189,6 +192,8 @@ export const useSceneStore = create<SceneState>()(
   vrmModelUrl: null,
   animationUrl: null,
   nextAnimationUrl: null,
+  animationStateMachinePaused: false,
+  setAnimationStateMachinePaused: (paused: boolean) => set({ animationStateMachinePaused: paused }),
 
   setVRMModel: (model: VRM, url: string) => {
     // 如果已有模型，先释放旧模型

@@ -43,6 +43,10 @@ interface VRMAvatarProps {
     animationUrl?: string;
     /** 下一个可能切换到的动画 URL，用于双缓冲预加载 */
     nextAnimationUrl?: string | null;
+    /** 叠加层动画 URL（makeClipAdditive 后与 base 混合，如表情/姿态） */
+    additiveAnimationUrl?: string | null;
+    /** 叠加层权重 0–1，默认 0 */
+    additiveWeight?: number;
     scale?: number;
     position?: [number, number, number];
     showBones?: boolean;
@@ -67,6 +71,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     modelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
     animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
     nextAnimationUrl = null,
+    additiveAnimationUrl = null,
+    additiveWeight = 0,
     scale = 1,
     position = [0, 0, 0],
     showBones = false,
@@ -181,7 +187,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         switchToMocapMode, // 新增：切换到动捕模式
         switchToIdleMode, // 新增：切换到idle模式
         forceIdleRestart // 新增：强制重启idle
-    } = useAnimationManager(vrm, animationUrl, nextAnimationUrl ?? undefined);
+    } = useAnimationManager(vrm, animationUrl, nextAnimationUrl ?? undefined, additiveAnimationUrl ?? undefined, additiveWeight);
 
     // 用 useRef 存储 animationManager，避免无限循环
     const animationManagerObjRef = useRef<any>(null);
@@ -217,14 +223,16 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
     // ✅ 获取摄像头状态（需要在使用前定义）
     const isCameraActive = useVideoRecognition((state) => state.isCameraActive);
 
+    // 避免同一错误重复刷屏：只对新的 (vrmId, error) 打印一次
+    const lastLoggedAnimationErrorRef = useRef<{ vrmId: string; error: string | null }>({ vrmId: '', error: null });
+
     // ✅ 新模型加载完成后，自动切换到idle模式并应用动画
     useEffect(() => {
         if (vrm && vrm.scene && vrm.humanoid && !isCameraActive) {
-            // ✅ 使用多次检查，确保动画加载完成
             const checkAndPlayAnimation = (attempt = 1, maxAttempts = 5) => {
                 const animationState = getAnimationState();
                 const vrmId = vrm.scene?.uuid || 'unknown';
-                
+
                 if (process.env.NODE_ENV === 'development') {
                     console.log(`VRMAvatar: 检查动画状态 (尝试 ${attempt}/${maxAttempts})`, {
                         vrmId,
@@ -235,8 +243,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                         animationUrl
                     });
                 }
-                
-                // 如果混合器已创建，尝试播放动画
+
                 if (animationState.hasMixer) {
                     if (animationState.currentMode !== 'idle' || !animationState.isPlayingIdle) {
                         if (process.env.NODE_ENV === 'development') {
@@ -256,14 +263,16 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                         }
                     }
                 } else if (animationState.error) {
-                    if (process.env.NODE_ENV === 'development') {
+                    const last = lastLoggedAnimationErrorRef.current;
+                    if (last.vrmId !== vrmId || last.error !== animationState.error) {
+                        lastLoggedAnimationErrorRef.current = { vrmId, error: animationState.error };
                         console.error('❌ VRMAvatar: 动画管理器初始化失败', {
                             vrmId,
-                            error: animationState.error
+                            error: animationState.error,
+                            animationUrl
                         });
                     }
                 } else if (attempt < maxAttempts) {
-                    // 如果还没有混合器，继续等待（可能是动画还在加载）
                     if (process.env.NODE_ENV === 'development') {
                         console.log(`⏳ VRMAvatar: 等待动画混合器初始化... (${attempt}/${maxAttempts})`);
                     }
@@ -277,12 +286,8 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     }
                 }
             };
-            
-            // 首次检查延迟稍长，确保模型和动画都加载完成
-            const timer = setTimeout(() => {
-                checkAndPlayAnimation();
-            }, 300);
-            
+
+            const timer = setTimeout(() => checkAndPlayAnimation(), 300);
             return () => clearTimeout(timer);
         }
     }, [vrm, isCameraActive, getAnimationState, switchToIdleMode, animationUrl]);
@@ -407,26 +412,25 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
             obj.frustumCulled = false;
         });
 
-        // 打印 VRM 模型骨骼结构（仅开发环境）
-        if (process.env.NODE_ENV === 'development') {
-            console.log('=== VRM 模型骨骼结构 ===');
-            if (vrm.humanoid && vrm.humanoid.humanBones) {
-                const humanBones = vrm.humanoid.humanBones;
-                const boneNames = Object.keys(humanBones);
-                console.log('VRM 可用骨骼列表:', boneNames);
-                
-                // 打印详细的骨骼信息
-                boneNames.forEach(boneName => {
-                    const bone = humanBones[boneName];
-                    if (bone && bone.node) {
-                        console.log(`骨骼: ${boneName}`, {
-                            hasNode: !!bone.node,
-                            nodeName: bone.node.name,
-                            parentName: bone.node.parent?.name || '无父节点'
-                        });
-                    }
-                });
-            }
+        // 打印 VRM 模型骨骼结构（仅开发环境），便于与动画 track 名对照
+        if (process.env.NODE_ENV === 'development' && vrm.humanoid?.humanBones) {
+            const humanBones = vrm.humanoid.humanBones;
+            const boneNames = Object.keys(humanBones);
+            const skeletonDebug: Record<string, { nodeName: string; parentName: string }> = {};
+            boneNames.forEach(boneName => {
+                const bone = humanBones[boneName];
+                if (bone?.node) {
+                    skeletonDebug[boneName] = {
+                        nodeName: bone.node.name,
+                        parentName: bone.node.parent?.name ?? '无',
+                    };
+                }
+            });
+            console.groupCollapsed('[VRMAvatar] VRM 骨骼结构（动画 track 需使用 nodeName）');
+            console.log('骨骼数量:', boneNames.length);
+            console.log('humanoid 骨骼 → 节点名（.quaternion / .position 的 track 前缀）:', skeletonDebug);
+            console.log('骨骼列表:', boneNames);
+            console.groupEnd();
         }
 
         // 注意：视线追踪现在由 useVRMLookAt hook 处理（见下方 804 行）

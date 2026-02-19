@@ -46,12 +46,14 @@ export default function VTuberApp() {
     setScene('main');
   }, [setScene]);
 
-  // 状态机驱动：idle 随机轮播 / speaking 时用 talking 动画；双缓冲预加载 next
+  // 状态机驱动：idle 随机轮播 / speaking 时用 talking 动画；双缓冲预加载 next（可暂停以便单独试播 KAWAII 等）
+  const animationStateMachinePaused = useSceneStore((s) => s.animationStateMachinePaused);
   const { animationUrl: stateMachineUrl, nextAnimationUrl: stateMachineNextUrl } = useVTuberAnimationState();
   useEffect(() => {
+    if (animationStateMachinePaused) return;
     setAnimationUrl(stateMachineUrl);
     setNextAnimationUrl(stateMachineNextUrl);
-  }, [stateMachineUrl, stateMachineNextUrl, setAnimationUrl, setNextAnimationUrl]);
+  }, [animationStateMachinePaused, stateMachineUrl, stateMachineNextUrl, setAnimationUrl, setNextAnimationUrl]);
 
   // 初始化：若 store 尚无动画 URL，用配置默认
   useEffect(() => {
