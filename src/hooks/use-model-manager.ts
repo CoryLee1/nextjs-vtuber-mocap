@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { generateVrmThumbnailBlob } from '@/lib/vrm-thumbnail-render';
 
 // 默认模型列表
 const DEFAULT_MODELS = [
@@ -74,14 +75,7 @@ export const useModelManager = () => {
     return allModels.find(model => model.id === selectedModelId) || DEFAULT_MODELS[0];
   }, [getAllModels, selectedModelId]);
 
-  // 生成缩略图（占位符实现）
-  const generateThumbnail = useCallback(async (file: any) => {
-    // TODO: 实现真实的 VRM 缩略图生成
-    // 现在返回 1111.jpg
-    return '/images/1111.jpg';
-  }, []);
-
-  // 上传模型到 S3
+  // 上传模型到 S3（VRM 会尝试生成证件照缩略图并上传）
   const uploadModel = useCallback(async (file: any) => {
     setIsUploading(true);
     setUploadProgress(0);
@@ -98,21 +92,35 @@ export const useModelManager = () => {
       const uploadResult = await s3Uploader.uploadFile(file, (progress) => {
         setUploadProgress(progress);
       });
-      
-      // 生成缩略图
-      const thumbnail = await generateThumbnail(file);
-      
+
+      let thumbnail: string | null = null;
+      const isVRM = file.name.toLowerCase().endsWith('.vrm');
+      if (isVRM) {
+        try {
+          const result = await generateVrmThumbnailBlob(file);
+          if (result?.blob) {
+            const thumb = await s3Uploader.uploadThumbnail(result.blob, uploadResult.fileName);
+            thumbnail = thumb.url;
+          }
+        } catch (e) {
+          console.warn('缩略图生成/上传失败，使用占位图', e);
+        }
+      }
+      if (!thumbnail) {
+        thumbnail = '/images/1111.jpg';
+      }
+
       const newModel = {
         id: `uploaded-${Date.now()}`,
         name: file.name.replace(/\.(vrm|fbx)$/i, ''),
         url: uploadResult.url,
-        thumbnail: thumbnail,
+        thumbnail,
         isUploaded: true,
         size: s3Uploader.formatFileSize(file.size),
         uploadDate: new Date().toLocaleDateString('zh-CN'),
         originalName: file.name,
         s3Key: uploadResult.fileName,
-        category: file.name.toLowerCase().endsWith('.vrm') ? 'vrm' : 'fbx'
+        category: isVRM ? 'vrm' : 'fbx'
       };
 
       setUploadedModels(prev => [...prev, newModel]);
@@ -131,7 +139,7 @@ export const useModelManager = () => {
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [generateThumbnail, clearError]);
+  }, [clearError]);
 
   // 下载在线模型
   const downloadModel = useCallback(async (onlineModel) => {

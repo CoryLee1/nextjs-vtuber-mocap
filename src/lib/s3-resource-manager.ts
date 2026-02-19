@@ -58,14 +58,17 @@ export class S3ResourceManager {
         for (const object of vrmResponse.Contents) {
           if (object.Key && object.Key.endsWith('.vrm')) {
             const fileName = object.Key.split('/').pop() || '';
-            const modelName = fileName.replace('.vrm', '');
-            
+            const modelName = fileName.replace(/\.vrm$/i, '');
+            // 约定：缩略图为 vrm/{modelName}_thumb.png（上传时自动生成）
+            const thumbnailKey = `vrm/${modelName}_thumb.png`;
+            const thumbnailUrl = `${this.s3Config.baseUrl}/${thumbnailKey}`;
+
             vrmModels.push({
               id: `s3-${object.Key}`,
               name: modelName,
               url: `${this.s3Config.baseUrl}/${object.Key}`,
               category: 'vrm',
-              thumbnail: null,
+              thumbnail: thumbnailUrl,
               tags: ['VRM', 'S3'],
               description: `S3中的VRM模型文件`,
               size: object.Size,

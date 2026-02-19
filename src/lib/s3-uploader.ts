@@ -159,6 +159,41 @@ export class S3Uploader {
     }
   }
 
+  /**
+   * 上传 VRM 缩略图（证件照）到 S3。
+   * 约定：VRM 为 vrm/ModelName.vrm 时，缩略图为 vrm/ModelName_thumb.png
+   */
+  async uploadThumbnail(blob: Blob, vrmS3Key: string): Promise<{ url: string; fileName: string }> {
+    const fileName = vrmS3Key.replace(/\.vrm$/i, '_thumb.png');
+    const file = new File([blob], fileName.split('/').pop() || 'thumb.png', { type: 'image/png' });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileName', fileName);
+    formData.append('fileType', 'image/png');
+    formData.append('bucketName', this.s3Config.bucketName);
+
+    const response = await fetch('/api/s3/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`缩略图上传失败: ${response.status} ${errText}`);
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.message || '缩略图上传失败');
+    }
+
+    return {
+      url: `${this.s3Config.baseUrl}/${fileName}`,
+      fileName,
+    };
+  }
+
   // 模拟上传功能
   async simulateUpload(file: File, fileName: string, onProgress?: ((progress: number) => void) | null): Promise<S3UploadResult> {
     return new Promise<S3UploadResult>((resolve) => {

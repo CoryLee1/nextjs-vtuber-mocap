@@ -105,12 +105,10 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
       {/* 顶部导航栏 */}
       <div className="relative z-10 flex items-center justify-between p-8">
         <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <span className="text-white font-black text-xl">E</span>
-          </div>
+          <img src="/logo.svg" alt="Echuu" className="w-10 h-10 rounded-xl object-contain" />
           <div className="flex flex-col">
-            <h1 className="text-xl font-black text-white leading-none">VTuber Mocap</h1>
-            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-1">Platform</span>
+            <h1 className="text-xl font-black text-white leading-none">Echuu</h1>
+            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-1">AI Vtubing Platform</span>
           </div>
         </div>
         
@@ -260,37 +258,45 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                     <Loader2 className="h-8 w-8 text-white/50 animate-spin" />
                   </div>
                 ) : s3Models.length > 0 ? (
-                  s3Models.slice(0, 4).map((model) => (
-                    <div
-                      key={model.id}
-                      className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden"
-                      title={model.name}
-                    >
-                      {model.thumbnail ? (
+                  s3Models.slice(0, 4).map((model) => {
+                    const thumbSrc =
+                      model.thumbnail ||
+                      `/api/vrm-thumbnail?url=${encodeURIComponent(model.url)}`;
+                    return (
+                      <div
+                        key={model.id}
+                        className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden"
+                        title={model.name}
+                      >
                         <img
-                          src={model.thumbnail}
+                          src={thumbSrc}
                           alt={model.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover bg-white/5"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/logo.svg';
+                            (e.target as HTMLImageElement).className =
+                              'w-full h-full object-contain p-4 opacity-80';
+                          }}
                         />
-                      ) : (
-                        <Users className="h-8 w-8 text-white/50 shrink-0" />
-                      )}
-                      <span className="text-xs text-white/80 truncate w-full px-2 text-center mt-1">
-                        {model.name}
-                      </span>
-                    </div>
-                  ))
+                        <span className="text-xs text-white/80 truncate w-full px-2 text-center mt-1">
+                          {model.name}
+                        </span>
+                      </div>
+                    );
+                  })
                 ) : (
                   [1, 2, 3, 4].map((i) => (
-                    <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
-                      <Users className="h-8 w-8 text-white/50" />
+                    <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden">
+                      <img src="/logo.svg" alt="" className="w-full h-full object-contain p-6 opacity-60" aria-hidden />
+                      <span className="text-xs text-white/50 truncate w-full px-2 text-center mt-1">—</span>
                     </div>
                   ))
                 )
               ) : (
                 [1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
-                    <Users className="h-8 w-8 text-white/50" />
+                  <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden">
+                    <img src="/logo.svg" alt="" className="w-full h-full object-contain p-6 opacity-60" aria-hidden />
+                    <span className="text-xs text-white/50 truncate w-full px-2 text-center mt-1">—</span>
                   </div>
                 ))
               )}

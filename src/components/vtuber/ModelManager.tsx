@@ -504,23 +504,28 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
                     className="cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white"
                   >
                     <CardContent className="p-4">
-                      {/* 缩略图 */}
-                      <div className="aspect-square bg-sky-50 rounded-lg mb-3 flex items-center justify-center border border-sky-100">
-                        {model.thumbnail ? (
-                          <img
-                            src={model.thumbnail}
-                            alt={model.name}
-                            className="w-full h-full object-cover rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = 'flex';
-                            }}
-                          />
+                      {/* 缩略图：优先 thumbnail，否则从 VRM meta.thumbnailImage 解析 */}
+                      <div className="aspect-square bg-sky-50 rounded-lg mb-3 flex items-center justify-center border border-sky-100 overflow-hidden">
+                        {(model.thumbnail || model.url?.startsWith('http')) ? (
+                          <>
+                            <img
+                              src={
+                                model.thumbnail ||
+                                `/api/vrm-thumbnail?url=${encodeURIComponent(model.url)}`
+                              }
+                              alt={model.name}
+                              className="w-full h-full object-cover rounded-lg"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                (e.currentTarget.nextElementSibling as HTMLElement)!.style.display =
+                                  'flex';
+                              }}
+                            />
+                            <div className="text-sky-400 text-4xl hidden">🎭</div>
+                          </>
                         ) : (
                           <div className="text-sky-400 text-4xl">🎭</div>
                         )}
-                        {/* 备用图标 */}
-                        <div className="text-sky-400 text-4xl hidden">🎭</div>
                       </div>
 
                       {/* 模型信息 */}
