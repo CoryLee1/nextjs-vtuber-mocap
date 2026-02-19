@@ -138,14 +138,17 @@ export const PowerToggle = memo(({
   isActive: boolean, 
   onToggle: () => void 
 }) => {
-  const { onlineCount, connectionState, connect, roomId } = useEchuuWebSocket();
+  const { onlineCount, connectionState, connect, disconnect, roomId } = useEchuuWebSocket();
   const { locale } = useI18n();
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [angelCount, setAngelCount] = useState<number | null>(null);
 
+  // 有 roomId 连直播间，无则连大厅 lobby，以便始终显示 ONLINE（全站在线）；切换目标时先断再连
   useEffect(() => {
-    if (roomId) connect(roomId);
-  }, [roomId, connect]);
+    const target = roomId ?? 'lobby';
+    disconnect();
+    connect(target);
+  }, [roomId, connect, disconnect]);
 
   // VIEWS / ANGELS 同步：首次加载 + 定时轮询，使各端数字一致；ONLINE 由 WebSocket user_count 实时更新
   const syncStats = React.useCallback(() => {
