@@ -11,8 +11,9 @@ import {
 } from './UILayoutRedesign';
 import { BGMPlayer } from './BGMPlayer';
 import { StreamEndMVP } from './StreamEndMVP';
-import { PixelTrail } from '@/components/effects/PixelTrail';
+import { RoomCursors } from './RoomCursors';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 
 // 状态指示器接口 (保留以兼容 VTuberApp.tsx)
 interface StatusIndicatorProps {
@@ -51,6 +52,7 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
   controlProps
 }) => {
   const [isStreamPanelOpen, setIsStreamPanelOpen] = useState(false);
+  const roomId = useEchuuWebSocket((s) => s.roomId);
   const handlePanelOpenChange = useCallback((open: boolean) => {
     setIsStreamPanelOpen(open);
     useSceneStore.getState().setStreamPanelOpen(open);
@@ -77,7 +79,7 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
       />
 
       {/* 2.5 左侧 StreamRoom 控制 + 右侧 Chat */}
-      <StreamRoomSidebar onPanelOpenChange={handlePanelOpenChange} onCameraToggle={controlProps.onCameraToggle} />
+      <StreamRoomSidebar onPanelOpenChange={handlePanelOpenChange} onCameraToggle={controlProps.onCameraToggle} onOpenAnimationLibrary={controlProps.onOpenAnimationLibrary} />
       <StreamRoomChatPanel />
 
       {/* 3. 左下角信息面板 */}
@@ -93,8 +95,9 @@ export const VTuberLayout: React.FC<VTuberLayoutProps> = ({
       {/* 5.5 直播结束 MVP 结算页 */}
       <StreamEndMVP />
 
-      {/* 6. 星星光标 + 像素轨迹 */}
-      <PixelTrail />
+      {/* 5.6 直播间内：其他观众光标（包子）+ 本机包子光标 + 发送本机光标 */}
+      <RoomCursors />
+
     </div>
   );
 };
