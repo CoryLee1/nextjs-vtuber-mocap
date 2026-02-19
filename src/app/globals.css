@@ -5,9 +5,11 @@
 @layer base {
   @font-face {
     font-family: 'MHTIROGLA';
-    src: url('/project-resources/helvetica-neue-ultra-light.ttf') format('truetype');
+    src: local('Helvetica Neue Ultra Light'), local('Helvetica Neue'), local('Arial'),
+         url('/project-resources/helvetica-neue-ultra-light.ttf') format('truetype');
     font-weight: 500;
     font-style: normal;
+    font-display: optional;
   }
 
   :root {

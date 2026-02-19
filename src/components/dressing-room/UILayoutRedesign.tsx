@@ -740,7 +740,7 @@ export const StreamRoomSidebar = memo(({
             <img src={accentSmall.src} alt="" className="absolute" style={{ left: '77px', top: '14px', width: '19px', height: '7px', transform: 'rotate(3.04deg)' }} />
             <img src={accentMedium.src} alt="" className="absolute" style={{ left: '73px', top: '8px', width: '26px', height: '8px', transform: 'rotate(3.04deg)' }} />
             <img src={accentLarge.src} alt="" className="absolute" style={{ left: '65px', top: '0px', width: '37px', height: '11px', transform: 'rotate(3.04deg)' }} />
-            <div className="absolute text-[12px] leading-[13px] text-black w-full text-center" style={{ left: '0px', top: '108px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+            <div className="absolute text-[12px] leading-[13px] text-black w-full text-center" style={{ left: '0px', top: '108px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Character Setting
             </div>
           </button>
@@ -756,7 +756,7 @@ export const StreamRoomSidebar = memo(({
               <div className="absolute" style={{ left: '0px', top: '5px', width: '7px', height: '7px', background: '#FF5C5C', borderRadius: '2px' }} />
               <div className="absolute text-[12px] leading-[20px] text-[#FF5C5C]" style={{ left: '11px', top: '0px', fontFamily: 'Dubai', fontWeight: 700 }}>LIVE</div>
             </div>
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '96px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '96px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Live Setting
             </div>
           </button>
@@ -767,7 +767,7 @@ export const StreamRoomSidebar = memo(({
             className={`relative w-[114px] h-[92px] transition-transform ${panelOpen && panelType === 'sound' ? 'scale-105' : 'hover:scale-105'}`}
           >
             <img src={soundSettingIcon.src} alt="" className="absolute" style={{ left: '24px', top: '0px', width: '66px', height: '71px' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '79px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '79px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Sound Setting
             </div>
           </button>
@@ -780,7 +780,7 @@ export const StreamRoomSidebar = memo(({
             <img src={sceneBaseIcon.src} alt="" className="absolute" style={{ left: '12px', top: '54px', width: '131px', height: '81px' }} />
             <img src={sceneOverlayIcon.src} alt="" className="absolute" style={{ left: '14px', top: '8px', width: '127px', height: '127px' }} />
             <img src={sceneRibbonIcon.src} alt="" className="absolute" style={{ left: '58px', top: '42px', width: '59px', height: '59px', transform: 'matrix(0.98, -0.18, 0.18, 0.98, 0, 0)' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '126px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '126px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Scene
             </div>
           </button>
@@ -791,7 +791,7 @@ export const StreamRoomSidebar = memo(({
             className={`relative w-[152px] h-[83px] transition-transform ${panelOpen && panelType === 'calendar' ? 'scale-105' : 'hover:scale-105'}`}
           >
             <img src={calendarIcon.src} alt="" className="absolute" style={{ left: '42px', top: '0px', width: '68px', height: '68px' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '71px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '71px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Calendar Memory
             </div>
           </button>
@@ -802,7 +802,7 @@ export const StreamRoomSidebar = memo(({
             className={`relative w-[152px] h-[118px] transition-transform ${panelOpen && panelType === 'mocap' ? 'scale-105' : 'hover:scale-105'}`}
           >
             <img src={mocapBtnIcon.src} alt="" className="absolute left-1/2 top-0 h-[102px] w-[80px] -translate-x-1/2 object-contain" />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '105px', fontFamily: 'MHTIROGLA', fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '105px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Webcam Mocap
             </div>
           </button>

@@ -29,7 +29,7 @@ const steps = [
     content: '选择或上传您的VRM模型，作为直播角色的外观。',
     details: 'Want a customized model? Make it from Vroid Studio: Link',
     actionLabel: '选择/上传模型',
-    actionHref: '/v1/auth/oc-selection',
+    actionHref: null as string | null,  // 使用主应用 Character Setting，见下方 locale 拼接
   },
   {
     id: 2,
@@ -54,9 +54,11 @@ const steps = [
 ];
 
 export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [activeStep, setActiveStep] = useState(0);
   const currentStep = steps[activeStep];
+  // 步骤 1（选择/上传模型）指向主应用根，在侧栏 Character Setting 中操作
+  const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
@@ -205,9 +207,9 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                   <p className="text-sm text-blue-300">
                     {currentStep.details}
                   </p>
-                  {currentStep.actionHref && (
+                  {actionHref && (
                     <div className="mt-6">
-                      <Link href={currentStep.actionHref}>
+                      <Link href={actionHref}>
                         <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
                           {currentStep.actionLabel}
                         </Button>
