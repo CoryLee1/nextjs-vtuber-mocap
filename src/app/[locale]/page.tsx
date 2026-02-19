@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { getProviders, signIn, useSession } from 'next-auth/react';
 import LoadingPage from '@/components/ui/LoadingPage';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 
 // 动态导入 VTuber 组件（避免 SSR 问题）
 const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), {
@@ -18,6 +20,9 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const canvasReady = useSceneStore((s) => s.canvasReady);
   const { status } = useSession();
+  const searchParams = useSearchParams();
+  const { roomId, setRoom, connect } = useEchuuWebSocket();
+  const createdRoomRef = useRef(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +58,26 @@ export default function HomePage() {
         setGoogleEnabled(false);
       });
   }, []);
+
+  // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom
+  useEffect(() => {
+    if (isLoading || status !== 'authenticated') return;
+    const urlRoomId = searchParams?.get('room_id')?.trim();
+    if (urlRoomId) return; // 通过链接进房当观众，不创建新房间
+    if (roomId) return; // 已有房间（含 useRoomIdFromUrl 已设置）
+    if (createdRoomRef.current) return;
+    createdRoomRef.current = true;
+    import('@/lib/echuu-client').then(({ createRoom }) => {
+      createRoom()
+        .then((r) => {
+          setRoom(r.room_id, r.owner_token);
+          connect(r.room_id);
+        })
+        .catch(() => {
+          createdRoomRef.current = false;
+        });
+    });
+  }, [isLoading, status, searchParams, roomId, setRoom, connect]);
 
   return (
     <main className="relative w-full h-screen overflow-hidden">

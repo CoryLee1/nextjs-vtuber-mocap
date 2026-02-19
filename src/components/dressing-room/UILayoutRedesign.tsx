@@ -337,6 +337,27 @@ function useRoomIdFromUrl() {
   }, [searchParams, setRoom, connect, ownerToken]);
 }
 
+// 4.4.1 房主开播或进入房间后，把 room_id 同步到地址栏，这样分享/复制链接会带房间号
+function useSyncRoomIdToUrl() {
+  const pathname = usePathname() || '/zh';
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { roomId } = useEchuuWebSocket();
+  useEffect(() => {
+    const currentInUrl = searchParams?.get('room_id')?.trim() || null;
+    if (currentInUrl === roomId) return; // 已同步，避免重复 replace
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    if (roomId) {
+      params.set('room_id', roomId);
+    } else {
+      params.delete('room_id');
+    }
+    const query = params.toString();
+    const url = query ? `${pathname}?${query}` : pathname;
+    router.replace(url, { scroll: false });
+  }, [roomId, pathname, searchParams, router]);
+}
+
 // 4.5 左侧 StreamRoom 控制 + 面板
 export const StreamRoomSidebar = memo(({
   onPanelOpenChange,
@@ -350,6 +371,9 @@ export const StreamRoomSidebar = memo(({
   onOpenAnimationLibrary?: () => void;
 }) => {
   useRoomIdFromUrl();
+  useSyncRoomIdToUrl();
+  const { roomId } = useEchuuWebSocket();
+  const pathname = usePathname() || '/zh';
   const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
@@ -967,6 +991,32 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'live' && (
             <div className="flex flex-col gap-4">
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '房间链接' : 'Room link'}</label>
+              {roomId ? (
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    className="flex-1 h-10 rounded-lg px-3 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[12px] truncate"
+                    value={typeof window !== 'undefined' ? `${window.location.origin}${pathname}${pathname.includes('?') ? '&' : '?'}room_id=${roomId}` : ''}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      const url = typeof window !== 'undefined' ? `${window.location.origin}${pathname}${pathname.includes('?') ? '&' : '?'}room_id=${roomId}` : '';
+                      navigator.clipboard?.writeText(url).then(() => toast({ title: locale === 'zh' ? '已复制' : 'Copied' }));
+                    }}
+                  >
+                    {locale === 'zh' ? '复制' : 'Copy'}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400">
+                  {locale === 'zh' ? '点击底部「Go Live」开播后，房间链接将显示于此，可分享给观众。' : 'After going live with the bottom Go Live button, the room link will appear here to share with viewers.'}
+                </p>
+              )}
               <label className="text-[12px] text-slate-500">{locale === 'zh' ? '直播平台' : 'Streaming Platform'}</label>
               <Select
                 value={livePlatform || '__none__'}
