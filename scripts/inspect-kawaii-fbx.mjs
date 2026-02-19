@@ -2,6 +2,8 @@
  * 独立脚本：解析 KAWAII FBX 并打印骨骼名，用于制作 KAWAII_VRM_RIG_MAP。
  * 运行: node scripts/inspect-kawaii-fbx.mjs
  * 或:   node scripts/inspect-kawaii-fbx.mjs public/models/animations/kawaii-test/@KA_Idle51_StandingTalk1_2.FBX
+ *
+ * 注：曾有 /api/inspect-fbx 提供相同能力，因会打包 Three.js 导致 Vercel 函数超 300MB 已移除，仅用本脚本本地执行。
  */
 import { readFile } from 'fs/promises';
 import path from 'path';
