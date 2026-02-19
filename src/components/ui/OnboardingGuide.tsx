@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,11 @@ import {
   X, 
   Upload, 
   Users, 
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
+import type { VRMModel } from '@/types';
 
 interface OnboardingGuideProps {
   onComplete: () => void;
@@ -27,7 +29,7 @@ const steps = [
     description: '选择或上传 .vrm',
     icon: Upload,
     content: '选择或上传您的VRM模型，作为直播角色的外观。',
-    details: 'Want a customized model? Make it from Vroid Studio: Link',
+    details: 'Want a customized model? Make it from VRoid Studio.',
     actionLabel: '选择/上传模型',
     actionHref: null as string | null,  // 使用主应用 Character Setting，见下方 locale 拼接
   },
@@ -53,12 +55,27 @@ const steps = [
   }
 ];
 
+const VROID_STUDIO_URL = 'https://vroid.com/en/studio';
+
 export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
   const [activeStep, setActiveStep] = useState(0);
+  const [s3Models, setS3Models] = useState<VRMModel[]>([]);
+  const [s3Loading, setS3Loading] = useState(false);
   const currentStep = steps[activeStep];
   // 步骤 1（选择/上传模型）指向主应用根，在侧栏 Character Setting 中操作
   const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
+
+  // 步骤 1 时拉取 S3 模型列表
+  useEffect(() => {
+    if (currentStep.id !== 1) return;
+    setS3Loading(true);
+    fetch('/api/s3/resources?type=models')
+      .then((res) => (res.ok ? res.json() : { success: false, data: [] }))
+      .then((json) => setS3Models(Array.isArray(json?.data) ? json.data : []))
+      .catch(() => setS3Models([]))
+      .finally(() => setS3Loading(false));
+  }, [currentStep.id]);
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
@@ -205,7 +222,22 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                     {currentStep.content}
                   </p>
                   <p className="text-sm text-blue-300">
-                    {currentStep.details}
+                    {currentStep.id === 1 ? (
+                      <>
+                        Want a customized model? Make it from{' '}
+                        <a
+                          href={VROID_STUDIO_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-[#ef0]"
+                        >
+                          VRoid Studio
+                        </a>
+                        .
+                      </>
+                    ) : (
+                      currentStep.details
+                    )}
                   </p>
                   {actionHref && (
                     <div className="mt-6">
@@ -220,16 +252,51 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
               </CardContent>
             </Card>
 
-            {/* 模型预览区域 */}
+            {/* S3 模型库：步骤 1 时展示，其余步骤保留占位 */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
-                  <Users className="h-8 w-8 text-white/50" />
-                </div>
-              ))}
+              {currentStep.id === 1 ? (
+                s3Loading ? (
+                  <div className="col-span-2 aspect-square max-h-48 bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-white/50 animate-spin" />
+                  </div>
+                ) : s3Models.length > 0 ? (
+                  s3Models.slice(0, 4).map((model) => (
+                    <div
+                      key={model.id}
+                      className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden"
+                      title={model.name}
+                    >
+                      {model.thumbnail ? (
+                        <img
+                          src={model.thumbnail}
+                          alt={model.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Users className="h-8 w-8 text-white/50 shrink-0" />
+                      )}
+                      <span className="text-xs text-white/80 truncate w-full px-2 text-center mt-1">
+                        {model.name}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  [1, 2, 3, 4].map((i) => (
+                    <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
+                      <Users className="h-8 w-8 text-white/50" />
+                    </div>
+                  ))
+                )
+              ) : (
+                [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
+                    <Users className="h-8 w-8 text-white/50" />
+                  </div>
+                ))
+              )}
             </div>
 
-            {/* 上传区域 */}
+            {/* 上传区域：步骤 1 时显示 VRoid 链接 */}
             <Card className="bg-white/5 backdrop-blur-sm border-white/20 border-dashed">
               <CardContent className="p-8 text-center">
                 <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -239,7 +306,16 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                   UPLOAD CHARACTER (.vrm)
                 </h4>
                 <p className="text-sm text-blue-300">
-                  Want a customized model? Make it from Vroid Studio: Link
+                  Want a customized model? Make it from{' '}
+                  <a
+                    href={VROID_STUDIO_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-[#ef0]"
+                  >
+                    VRoid Studio
+                  </a>
+                  .
                 </p>
               </CardContent>
             </Card>
