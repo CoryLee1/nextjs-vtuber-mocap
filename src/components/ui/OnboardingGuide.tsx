@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
+import { OnboardingModelPreview } from '@/components/dressing-room/OnboardingModelPreview';
 import type { VRMModel } from '@/types';
 
 interface OnboardingGuideProps {
@@ -338,14 +339,17 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     );
                   })
                 ) : (
-                  <div className="col-span-2 aspect-square max-h-48 bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center gap-2 p-4">
-                    {s3Error ? (
-                      <p className="text-sm text-amber-400 text-center">加载模型列表失败，请检查 S3 配置或稍后重试</p>
-                    ) : (
-                      <p className="text-sm text-white/60 text-center">
-                        暂无模型。点击上方「选择模型」从库中挑选，或「上传模型」上传 .vrm，主界面中央将显示角色预览。
-                      </p>
-                    )}
+                  <div className="col-span-2 aspect-square max-h-48 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden relative bg-white/5">
+                    <OnboardingModelPreview />
+                    <div className="absolute inset-x-0 bottom-0 py-2 px-3 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center gap-1">
+                      {s3Error ? (
+                        <p className="text-sm text-amber-400 text-center">加载模型列表失败，请检查 S3 配置或稍后重试</p>
+                      ) : (
+                        <p className="text-sm text-white/80 text-center">
+                          暂无模型。点击上方「选择模型」从库中挑选，或「上传模型」上传 .vrm，主界面中央将显示角色预览。
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )
               ) : (

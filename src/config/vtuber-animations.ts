@@ -106,3 +106,6 @@ export const PRELOAD_ANIMATION_URLS: string[] = [
   ...IDLE_ROTATION_ANIMATIONS.map((a) => a.url),
   DEFAULT_SPEAKING_URL,
 ].filter((url, i, arr) => arr.indexOf(url) === i);
+
+/** 引导页/占位用默认 3D 模型（透明背景预览、播 idle） */
+export const DEFAULT_PREVIEW_MODEL_URL = `${S3_BASE}/AvatarSample_A.vrm`;
