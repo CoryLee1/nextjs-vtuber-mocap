@@ -342,7 +342,9 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     {s3Error ? (
                       <p className="text-sm text-amber-400 text-center">加载模型列表失败，请检查 S3 配置或稍后重试</p>
                     ) : (
-                      <p className="text-sm text-white/60 text-center">暂无模型，点击上方「上传模型」上传 .vrm</p>
+                      <p className="text-sm text-white/60 text-center">
+                        暂无模型。点击上方「选择模型」从库中挑选，或「上传模型」上传 .vrm，主界面中央将显示角色预览。
+                      </p>
                     )}
                   </div>
                 )
