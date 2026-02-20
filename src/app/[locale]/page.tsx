@@ -228,9 +228,13 @@ export default function HomePage() {
         <OnboardingGuide
           onComplete={() => setShowOnboarding(false)}
           onSkip={() => setShowOnboarding(false)}
-          onStep1Click={() => {
+          onStep1Select={() => {
             setShowOnboarding(false);
             router.replace(`${pathname || ''}?openModelManager=1`);
+          }}
+          onStep1Upload={() => {
+            setShowOnboarding(false);
+            router.replace(`${pathname || ''}?openModelManager=1&openUpload=1`);
           }}
         />
       )}

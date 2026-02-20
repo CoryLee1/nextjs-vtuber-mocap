@@ -21,8 +21,10 @@ import type { VRMModel } from '@/types';
 interface OnboardingGuideProps {
   onComplete: () => void;
   onSkip: () => void;
-  /** 步骤 1 点击「选择/上传模型」时调用（关闭引导并打开模型管理器），不传则用 Link 跳转 */
-  onStep1Click?: () => void;
+  /** 步骤 1「选择模型」：关闭引导并打开模型管理器 */
+  onStep1Select?: () => void;
+  /** 步骤 1「上传模型」：关闭引导并打开模型管理器且自动打开上传对话框 */
+  onStep1Upload?: () => void;
 }
 
 const steps = [
@@ -31,10 +33,9 @@ const steps = [
     title: 'SELECT / UPLOAD MODEL',
     description: '选择或上传 .vrm',
     icon: Upload,
-    content: '选择或上传您的VRM模型，作为直播角色的外观。',
+    content: '从模型库选择已有模型，或上传新的 VRM 作为直播角色外观。',
     details: 'Want a customized model? Make it from VRoid Studio.',
-    actionLabel: '选择/上传模型',
-    actionHref: null as string | null,  // 使用主应用 Character Setting，见下方 locale 拼接
+    actionHref: null as string | null,
   },
   {
     id: 2,
@@ -60,14 +61,13 @@ const steps = [
 
 const VROID_STUDIO_URL = 'https://vroid.com/en/studio';
 
-export default function OnboardingGuide({ onComplete, onSkip, onStep1Click }: OnboardingGuideProps) {
+export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onStep1Upload }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
   const [activeStep, setActiveStep] = useState(0);
   const [s3Models, setS3Models] = useState<VRMModel[]>([]);
   const [s3Loading, setS3Loading] = useState(false);
   const [s3Error, setS3Error] = useState(false);
   const currentStep = steps[activeStep];
-  // 步骤 1（选择/上传模型）：若传了 onStep1Click 则点击后关闭引导并打开模型管理器，否则跳转
   const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
 
   // 步骤 1 时展示 S3 模型列表：优先用 Loading 阶段预拉的缓存
@@ -263,14 +263,33 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Click }: On
                     )}
                   </p>
                   {actionHref && (
-                    <div className="mt-6">
-                      {currentStep.id === 1 && onStep1Click ? (
-                        <Button
-                          onClick={onStep1Click}
-                          className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold"
-                        >
-                          {currentStep.actionLabel}
-                        </Button>
+                    <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                      {currentStep.id === 1 && (onStep1Select || onStep1Upload) ? (
+                        <>
+                          {onStep1Select && (
+                            <Button
+                              onClick={onStep1Select}
+                              className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold"
+                            >
+                              选择模型
+                            </Button>
+                          )}
+                          {onStep1Upload && (
+                            <Button
+                              onClick={onStep1Upload}
+                              variant="outline"
+                              className="border-[#ef0] text-[#ef0] hover:bg-[#ef0]/10 font-bold"
+                            >
+                              上传模型
+                            </Button>
+                          )}
+                        </>
+                      ) : currentStep.id === 1 ? (
+                        <Link href={actionHref}>
+                          <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
+                            选择或上传模型
+                          </Button>
+                        </Link>
                       ) : (
                         <Link href={actionHref}>
                           <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
@@ -323,7 +342,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Click }: On
                     {s3Error ? (
                       <p className="text-sm text-amber-400 text-center">加载模型列表失败，请检查 S3 配置或稍后重试</p>
                     ) : (
-                      <p className="text-sm text-white/60 text-center">暂无模型，点击上方「选择/上传模型」上传 .vrm</p>
+                      <p className="text-sm text-white/60 text-center">暂无模型，点击上方「上传模型」上传 .vrm</p>
                     )}
                   </div>
                 )

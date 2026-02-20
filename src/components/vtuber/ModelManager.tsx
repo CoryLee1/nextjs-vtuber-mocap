@@ -29,9 +29,13 @@ import { backfillVrmThumbnails } from '@/lib/backfill-vrm-thumbnails';
 interface ModelManagerProps {
   onClose: () => void;
   onSelect: (model: VRMModel) => void;
+  /** 打开时自动弹出上传对话框（如从引导页「上传模型」进入） */
+  initialOpenUpload?: boolean;
+  /** 消费完 initialOpenUpload 后调用，便于父组件清除状态 */
+  onInitialOpenUploadConsumed?: () => void;
 }
 
-export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect }) => {
+export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, initialOpenUpload, onInitialOpenUploadConsumed }) => {
   const { t } = useI18n();
   const { trackFeatureUsed, trackError } = useTracking();
   const [models, setModels] = useState<VRMModel[]>([]);
@@ -47,6 +51,14 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
   const [uploadResults, setUploadResults] = useState<any[]>([]);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
+
+  // 从引导页「上传模型」进入时自动打开上传对话框
+  useEffect(() => {
+    if (initialOpenUpload) {
+      setUploadDialogOpen(true);
+      onInitialOpenUploadConsumed?.();
+    }
+  }, [initialOpenUpload, onInitialOpenUploadConsumed]);
 
   // 加载模型：优先用 Loading 阶段预拉的 S3 缓存，再刷新
   useEffect(() => {

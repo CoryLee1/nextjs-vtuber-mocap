@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { VTuberLayout } from './VTuberLayout';
 import { EchuuLiveAudio } from './EchuuLiveAudio';
@@ -18,6 +18,7 @@ import { DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
 export default function VTuberApp() {
   const { t } = useI18n();
+  const { trackPageView, trackFeatureUsed, trackError } = useTracking();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -44,9 +45,11 @@ export default function VTuberApp() {
     trackPageView('VTuber App', window.location.href);
   }, [trackPageView]);
 
-  // 支持 URL ?openModelManager=1 从引导页「选择/上传模型」跳转过来自动打开模型管理器
+  // 支持 URL ?openModelManager=1 从引导页跳转；openUpload=1 时自动打开上传对话框（用 ref 存，因 replace 会清掉 query）
+  const openUploadOnMountRef = useRef(false);
   useEffect(() => {
     if (searchParams?.get('openModelManager') === '1') {
+      openUploadOnMountRef.current = searchParams.get('openUpload') === '1';
       handlers.handleOpenModelManager();
       router.replace(pathname || '/');
     }
@@ -236,6 +239,8 @@ export default function VTuberApp() {
             handlers.handleModelSelect(model);
             trackFeatureUsed('model_selected', 'model_management');
           }}
+          initialOpenUpload={openUploadOnMountRef.current}
+          onInitialOpenUploadConsumed={() => { openUploadOnMountRef.current = false; }}
         />
       )}
 
