@@ -16,13 +16,19 @@ import { useSceneStore } from '@/hooks/use-scene-store';
 import { useVTuberAnimationState } from '@/hooks/use-vtuber-animation-state';
 import { DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
-export default function VTuberApp() {
+interface VTuberAppProps {
+  /** 由 page 统一渲染 ModelManager 时传入，打开时调用此回调而非内部 state */
+  onOpenModelManager?: () => void;
+}
+
+export default function VTuberApp({ onOpenModelManager }: VTuberAppProps = {}) {
   const { t } = useI18n();
   const { trackPageView, trackFeatureUsed, trackError } = useTracking();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const { state, uiState, handlers } = useVTuberControls();
+  const usePageLevelModelManager = Boolean(onOpenModelManager);
   
   // 场景状态管理
   const {
@@ -45,15 +51,14 @@ export default function VTuberApp() {
     trackPageView('VTuber App', window.location.href);
   }, [trackPageView]);
 
-  // 支持 URL ?openModelManager=1 从引导页跳转；openUpload=1 时自动打开上传对话框（用 ref 存，因 replace 会清掉 query）
-  const openUploadOnMountRef = useRef(false);
+  // 支持 URL ?openModelManager=1 从书签/外链打开模型管理器（仅当未使用 page 层 ModelManager 时）
   useEffect(() => {
+    if (usePageLevelModelManager) return;
     if (searchParams?.get('openModelManager') === '1') {
-      openUploadOnMountRef.current = searchParams.get('openUpload') === '1';
       handlers.handleOpenModelManager();
       router.replace(pathname || '/');
     }
-  }, [searchParams, pathname, router, handlers.handleOpenModelManager]);
+  }, [usePageLevelModelManager, searchParams, pathname, router, handlers.handleOpenModelManager]);
 
   // 初始化场景状态：设置为 main 场景
   useEffect(() => {
@@ -181,7 +186,11 @@ export default function VTuberApp() {
       trackFeatureUsed('debug_toggled', 'debug_tools');
     },
     onOpenModelManager: () => {
-      handlers.handleOpenModelManager();
+      if (onOpenModelManager) {
+        onOpenModelManager();
+      } else {
+        handlers.handleOpenModelManager();
+      }
       trackFeatureUsed('model_manager_opened', 'model_management');
     },
     onOpenAnimationLibrary: () => {
@@ -231,8 +240,8 @@ export default function VTuberApp() {
         }}
       />
 
-      {/* 模型管理器 */}
-      {uiState.showModelManager && (
+      {/* 模型管理器：由 page 统一渲染时此处不渲染 */}
+      {!usePageLevelModelManager && uiState.showModelManager && (
         <ModelManager
           onClose={handlers.handleCloseModelManager}
           onSelect={(model: any) => {

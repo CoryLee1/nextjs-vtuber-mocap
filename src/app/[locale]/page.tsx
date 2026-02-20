@@ -10,6 +10,7 @@ import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
+import { ModelManager } from '@/components/vtuber/ModelManager';
 
 // 动态导入 VTuber 组件（避免 SSR 问题）
 const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), {
@@ -33,6 +34,8 @@ export default function HomePage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [showModelManager, setShowModelManager] = useState(false);
+  const [openUploadOnMount, setOpenUploadOnMount] = useState(false);
 
   // 模拟加载完成后的逻辑
   const handleLoadingComplete = () => {
@@ -95,7 +98,24 @@ export default function HomePage() {
       )}
 
       {/* 2. 主应用 */}
-      {!isLoading && <VTuberApp />}
+      {!isLoading && (
+        <VTuberApp
+          onOpenModelManager={() => setShowModelManager(true)}
+        />
+      )}
+
+      {/* 2.4 模型管理器：由 page 统一渲染，引导页/主应用都只打开此弹窗，不 redirect */}
+      {showModelManager && (
+        <ModelManager
+          onClose={() => setShowModelManager(false)}
+          onSelect={(model: any) => {
+            useSceneStore.getState().setVRMModelUrl(model?.url ?? null);
+            setShowModelManager(false);
+          }}
+          initialOpenUpload={openUploadOnMount}
+          onInitialOpenUploadConsumed={() => setOpenUploadOnMount(false)}
+        />
+      )}
 
       {/* 2.5 登录遮罩（在新手引导之前） */}
       {!isLoading && status !== 'authenticated' && (
@@ -229,12 +249,12 @@ export default function HomePage() {
           onComplete={() => setShowOnboarding(false)}
           onSkip={() => setShowOnboarding(false)}
           onStep1Select={() => {
-            setShowOnboarding(false);
-            router.replace(`${pathname || ''}?openModelManager=1`);
+            setOpenUploadOnMount(false);
+            setShowModelManager(true);
           }}
           onStep1Upload={() => {
-            setShowOnboarding(false);
-            router.replace(`${pathname || ''}?openModelManager=1&openUpload=1`);
+            setOpenUploadOnMount(true);
+            setShowModelManager(true);
           }}
         />
       )}

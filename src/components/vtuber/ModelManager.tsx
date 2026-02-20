@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { useTracking } from '@/hooks/use-tracking';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { backfillVrmThumbnails } from '@/lib/backfill-vrm-thumbnails';
+import { generateVrmThumbnailBlob } from '@/lib/vrm-thumbnail-render';
 
 interface ModelManagerProps {
   onClose: () => void;
@@ -51,6 +52,10 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
   const [uploadResults, setUploadResults] = useState<any[]>([]);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
+  /** 缩略图加载失败时客户端生成的证件照 blob URL */
+  const [clientThumbnails, setClientThumbnails] = useState<Record<string, string>>({});
+  const clientThumbnailsRef = useRef(clientThumbnails);
+  clientThumbnailsRef.current = clientThumbnails;
 
   // 从引导页「上传模型」进入时自动打开上传对话框
   useEffect(() => {
@@ -59,6 +64,13 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
       onInitialOpenUploadConsumed?.();
     }
   }, [initialOpenUpload, onInitialOpenUploadConsumed]);
+
+  // 卸载时撤销客户端生成的缩略图 blob URL
+  useEffect(() => {
+    return () => {
+      Object.values(clientThumbnailsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   // 加载模型：优先用 Loading 阶段预拉的 S3 缓存，再刷新
   useEffect(() => {
@@ -528,21 +540,40 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
                     className="cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white"
                   >
                     <CardContent className="p-4">
-                      {/* 缩略图：优先 thumbnail，否则从 VRM meta.thumbnailImage 解析 */}
+                      {/* 缩略图：优先客户端生成的，再 thumbnail，再 /api/vrm-thumbnail；失败则尝试客户端生成证件照 */}
                       <div className="aspect-square bg-sky-50 rounded-lg mb-3 flex items-center justify-center border border-sky-100 overflow-hidden">
-                        {(model.thumbnail || model.url?.startsWith('http')) ? (
+                        {(clientThumbnails[model.id] || model.thumbnail || model.url?.startsWith('http')) ? (
                           <>
                             <img
                               src={
+                                clientThumbnails[model.id] ||
                                 model.thumbnail ||
                                 `/api/vrm-thumbnail?url=${encodeURIComponent(model.url)}`
                               }
                               alt={model.name}
                               className="w-full h-full object-cover rounded-lg"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                (e.currentTarget.nextElementSibling as HTMLElement)!.style.display =
-                                  'flex';
+                              onError={async (e) => {
+                                const el = e.currentTarget;
+                                if (clientThumbnails[model.id]) return;
+                                if (!model.url?.toLowerCase().endsWith('.vrm')) {
+                                  el.style.display = 'none';
+                                  (el.nextElementSibling as HTMLElement)!.style.display = 'flex';
+                                  return;
+                                }
+                                try {
+                                  const res = await fetch(model.url);
+                                  if (!res.ok) throw new Error('fetch failed');
+                                  const blob = await res.blob();
+                                  const file = new File([blob], (model.name || 'model') + '.vrm', { type: 'model/vrm' });
+                                  const result = await generateVrmThumbnailBlob(file);
+                                  if (result?.blob) {
+                                    const url = URL.createObjectURL(result.blob);
+                                    setClientThumbnails((prev) => ({ ...prev, [model.id]: url }));
+                                    return;
+                                  }
+                                } catch (_) {}
+                                el.style.display = 'none';
+                                (el.nextElementSibling as HTMLElement)!.style.display = 'flex';
                               }}
                             />
                             <div className="text-sky-400 text-4xl hidden">🎭</div>
