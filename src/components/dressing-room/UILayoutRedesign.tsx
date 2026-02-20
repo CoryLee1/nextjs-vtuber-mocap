@@ -49,6 +49,7 @@ import mocapBtnIcon from '@/app/v1/assets/ECHUU V1 UX_icon/mocap btn.svg';
 import type { VRMModel } from '@/types';
 import { getModels } from '@/lib/resource-manager';
 import { s3Uploader } from '@/lib/s3-uploader';
+import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 
@@ -514,7 +515,7 @@ export const StreamRoomSidebar = memo(({
     });
   }, [selectedCalendarDate, streamMemories]);
 
-  // 与 ModelManager 一致：合并本地预设（resource-manager）+ S3 列表
+  // 与 ModelManager 一致：合并本地预设 + S3 列表（优先用 Loading 预拉缓存）
   useEffect(() => {
     if (panelType !== 'character' || !panelOpen) return;
     const load = async () => {
@@ -529,9 +530,12 @@ export const StreamRoomSidebar = memo(({
           tags: m.tags,
           description: m.description,
         })) : [];
-        const res = await fetch('/api/s3/resources?type=models');
-        const body = await res.json().catch(() => ({}));
-        const s3List: VRMModel[] = body.success && body.data ? body.data : [];
+        const store = useS3ResourcesStore.getState();
+        let s3List = store.modelsLoaded ? store.s3Models : [];
+        if (s3List.length === 0) {
+          await store.loadModels();
+          s3List = useS3ResourcesStore.getState().s3Models;
+        }
         const seen = new Set(localModels.map((m) => m.url));
         s3List.forEach((m) => {
           if (!seen.has(m.url)) {

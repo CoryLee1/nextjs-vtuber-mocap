@@ -12,7 +12,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log('收到S3资源请求:', { type })
 
     if (type === 'models') {
-      const models = await s3ResourceManager.getModelsFromS3()
+      const checkThumbs = searchParams.get('checkThumbs') === '1'
+      const models = await s3ResourceManager.getModelsFromS3({ checkThumbnails: checkThumbs })
       return NextResponse.json({
         success: true,
         data: models

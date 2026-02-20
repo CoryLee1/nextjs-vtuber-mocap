@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { getProviders, signIn, useSession } from 'next-auth/react';
 import LoadingPage from '@/components/ui/LoadingPage';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
+import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 
 // 动态导入 VTuber 组件（避免 SSR 问题）
 const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), {
@@ -21,6 +22,8 @@ export default function HomePage() {
   const canvasReady = useSceneStore((s) => s.canvasReady);
   const { status } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { roomId, setRoom, connect } = useEchuuWebSocket();
   const createdRoomRef = useRef(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -57,6 +60,11 @@ export default function HomePage() {
       .catch(() => {
         setGoogleEnabled(false);
       });
+  }, []);
+
+  // Loading 期间预拉 S3 模型与动画，进入场景时列表已有缓存
+  useEffect(() => {
+    useS3ResourcesStore.getState().loadAll();
   }, []);
 
   // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom
@@ -217,9 +225,13 @@ export default function HomePage() {
 
       {/* 3. 新手引导：等 3D 画布和 UI 就绪后再显示，避免人物/界面未加载完就出现步骤 */}
       {showOnboarding && !isLoading && canvasReady && (
-        <OnboardingGuide 
-          onComplete={() => setShowOnboarding(false)} 
-          onSkip={() => setShowOnboarding(false)} 
+        <OnboardingGuide
+          onComplete={() => setShowOnboarding(false)}
+          onSkip={() => setShowOnboarding(false)}
+          onStep1Click={() => {
+            setShowOnboarding(false);
+            router.replace(`${pathname || ''}?openModelManager=1`);
+          }}
         />
       )}
     </main>

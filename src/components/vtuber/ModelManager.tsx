@@ -23,6 +23,8 @@ import { VRMModel } from '@/types';
 import { useI18n } from '@/hooks/use-i18n';
 import { useTracking } from '@/hooks/use-tracking';
 import { s3Uploader } from '@/lib/s3-uploader';
+import { useS3ResourcesStore } from '@/stores/s3-resources-store';
+import { backfillVrmThumbnails } from '@/lib/backfill-vrm-thumbnails';
 
 interface ModelManagerProps {
   onClose: () => void;
@@ -43,35 +45,30 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
   const [uploadResults, setUploadResults] = useState<any[]>([]);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
 
-  // 加载模型
+  // 加载模型：优先用 Loading 阶段预拉的 S3 缓存，再刷新
   useEffect(() => {
+    const merge = (local: VRMModel[], s3: VRMModel[]) => {
+      const all = [...local];
+      const ids = new Set(local.map(m => m.id));
+      s3.forEach(m => { if (!ids.has(m.id)) { ids.add(m.id); all.push(m); } });
+      return all;
+    };
+
     const loadModels = async () => {
       setLoading(true);
       try {
-        // 获取本地模型
         const localModels = await getModels(undefined) || [];
-        
-        // 获取S3中的模型
-        const s3Response = await fetch('/api/s3/resources?type=models');
-        let s3Models = [];
-        
-        if (s3Response.ok) {
-          const s3Data = await s3Response.json();
-          s3Models = s3Data.data || [];
+        const store = useS3ResourcesStore.getState();
+        if (store.modelsLoaded && store.s3Models.length >= 0) {
+          setModels(merge(localModels, store.s3Models));
         }
-        
-        // 合并本地模型和S3模型，去重
-        const allModels = [...localModels];
-        const existingIds = new Set(localModels.map(m => m.id));
-        
-        s3Models.forEach(s3Model => {
-          if (!existingIds.has(s3Model.id)) {
-            allModels.push(s3Model);
-          }
-        });
-        
-        setModels(allModels);
+        setLoading(false);
+        await store.loadModels();
+        const s3Models = useS3ResourcesStore.getState().s3Models;
+        setModels(merge(localModels, s3Models));
         trackFeatureUsed('models_loaded', 'model_management');
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -84,56 +81,28 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
     loadModels();
   }, [trackFeatureUsed, trackError]);
 
-  // 搜索模型
+  // 搜索模型（使用缓存 S3 列表）
   useEffect(() => {
+    const merge = (local: VRMModel[], s3: VRMModel[]) => {
+      const all = [...local];
+      const ids = new Set(local.map(m => m.id));
+      s3.forEach(m => { if (!ids.has(m.id)) { ids.add(m.id); all.push(m); } });
+      return all;
+    };
+
     const search = async () => {
+      const localModels = await getModels(undefined) || [];
+      const s3Models = useS3ResourcesStore.getState().s3Models;
+
       if (!searchTerm.trim()) {
-        // 重新加载所有模型
-        const localModels = await getModels(undefined) || [];
-        const s3Response = await fetch('/api/s3/resources?type=models');
-        let s3Models = [];
-        
-        if (s3Response.ok) {
-          const s3Data = await s3Response.json();
-          s3Models = s3Data.data || [];
-        }
-        
-        const allModels = [...localModels];
-        const existingIds = new Set(localModels.map(m => m.id));
-        
-        s3Models.forEach(s3Model => {
-          if (!existingIds.has(s3Model.id)) {
-            allModels.push(s3Model);
-          }
-        });
-        
-        setModels(allModels);
+        setModels(merge(localModels, s3Models));
         return;
       }
 
       setLoading(true);
       try {
-        // 获取所有模型（本地+S3）
-        const localModels = await getModels(undefined) || [];
-        const s3Response = await fetch('/api/s3/resources?type=models');
-        let s3Models = [];
-        
-        if (s3Response.ok) {
-          const s3Data = await s3Response.json();
-          s3Models = s3Data.data || [];
-        }
-        
-        const allModels = [...localModels];
-        const existingIds = new Set(localModels.map(m => m.id));
-        
-        s3Models.forEach(s3Model => {
-          if (!existingIds.has(s3Model.id)) {
-            allModels.push(s3Model);
-          }
-        });
-        
-        // 在合并的模型中搜索
-        const filtered = allModels.filter(model => 
+        const allModels = merge(localModels, s3Models);
+        const filtered = allModels.filter(model =>
           model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (model.tags && model.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
         );
@@ -311,6 +280,33 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
     }
   };
 
+  // 补全 S3 中缺失缩略图的模型（拉列表检查后逐个生成证件照并上传）
+  const handleBackfillThumbnails = async () => {
+    setBackfilling(true);
+    setBackfillStatus('正在检查缺失缩略图的模型…');
+    try {
+      const { ok, fail } = await backfillVrmThumbnails((p) => {
+        setBackfillStatus(`${p.current}/${p.total} ${p.modelName} ${p.success ? '✓' : '✗ ' + (p.error || '')}`);
+      });
+      setBackfillStatus(null);
+      if (ok > 0 || fail > 0) {
+        await useS3ResourcesStore.getState().loadModels();
+        const localModels = await getModels(undefined) || [];
+        const s3Models = useS3ResourcesStore.getState().s3Models;
+        const all = [...localModels];
+        const ids = new Set(localModels.map((m: VRMModel) => m.id));
+        s3Models.forEach((m: VRMModel) => { if (!ids.has(m.id)) { ids.add(m.id); all.push(m); } });
+        setModels(all);
+      }
+      alert(`补全完成：成功 ${ok}，失败 ${fail}`);
+    } catch (e) {
+      setBackfillStatus(null);
+      alert('补全失败: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
       <Card className="w-full max-w-6xl h-[80vh] bg-white/95 backdrop-blur-sm border-sky-200">
@@ -323,10 +319,23 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect })
               <div>
                 <CardTitle className="text-sky-900">{t('vtuber.model.manager')}</CardTitle>
                 <p className="text-sm text-sky-600">{t('vtuber.model.title')}</p>
+                {backfillStatus && (
+                  <p className="text-xs text-amber-600 mt-1 truncate max-w-md" title={backfillStatus}>{backfillStatus}</p>
+                )}
               </div>
             </div>
             
             <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                disabled={backfilling}
+                onClick={handleBackfillThumbnails}
+              >
+                {backfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                补全缺失缩略图
+              </Button>
               <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-sky-500 hover:bg-sky-600 text-white">

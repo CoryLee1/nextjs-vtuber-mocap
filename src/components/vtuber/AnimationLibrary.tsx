@@ -28,6 +28,7 @@ import { useI18n } from '@/hooks/use-i18n';
 import { useTracking } from '@/hooks/use-tracking';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { animationStorage } from '@/lib/animation-storage';
+import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 
 interface AnimationLibraryProps {
   onClose: () => void;
@@ -61,34 +62,26 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
 
   const selectedAnimation = getSelectedAnimation();
 
-  // 加载动画（本地+S3）
+  // 加载动画：优先用 Loading 阶段预拉的 S3 缓存，再刷新
   useEffect(() => {
+    const merge = (local: Animation[], s3: Animation[]) => {
+      const all = [...local];
+      const ids = new Set(local.map(a => a.id));
+      s3.forEach(a => { if (!ids.has(a.id)) { ids.add(a.id); all.push(a); } });
+      return all;
+    };
+
     const loadAnimations = async () => {
+      const localAnimations = animations || [];
+      const store = useS3ResourcesStore.getState();
+      if (store.animationsLoaded && store.s3Animations.length >= 0) {
+        setAllAnimations(merge(localAnimations, store.s3Animations));
+      }
       setIsLoadingS3(true);
       try {
-        // 获取本地动画
-        const localAnimations = animations || [];
-        
-        // 获取S3中的动画
-        const s3Response = await fetch('/api/s3/resources?type=animations');
-        let s3Animations = [];
-        
-        if (s3Response.ok) {
-          const s3Data = await s3Response.json();
-          s3Animations = s3Data.data || [];
-        }
-        
-        // 合并本地动画和S3动画，去重
-        const allAnimations = [...localAnimations];
-        const existingIds = new Set(localAnimations.map(a => a.id));
-        
-        s3Animations.forEach(s3Animation => {
-          if (!existingIds.has(s3Animation.id)) {
-            allAnimations.push(s3Animation);
-          }
-        });
-        
-        setAllAnimations(allAnimations);
+        await store.loadAnimations();
+        const s3Animations = useS3ResourcesStore.getState().s3Animations;
+        setAllAnimations(merge(localAnimations, s3Animations));
         trackFeatureUsed('animations_loaded', 'animation_management');
       } catch (error) {
         console.error('Failed to load animations:', error);
@@ -209,34 +202,15 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
       setAllAnimations(prevAnimations => [...uploadedAnimations, ...prevAnimations]);
       trackFeatureUsed('animation_upload_completed', 'animation_upload', uploadedAnimations.length);
       
-      // 重新加载S3动画列表以确保数据同步
-      const loadAnimations = async () => {
-        try {
-          const localAnimations = animations || [];
-          const s3Response = await fetch('/api/s3/resources?type=animations');
-          let s3Animations = [];
-          
-          if (s3Response.ok) {
-            const s3Data = await s3Response.json();
-            s3Animations = s3Data.data || [];
-          }
-          
-          const allAnimations = [...localAnimations];
-          const existingIds = new Set(localAnimations.map(a => a.id));
-          
-          s3Animations.forEach(s3Animation => {
-            if (!existingIds.has(s3Animation.id)) {
-              allAnimations.push(s3Animation);
-            }
-          });
-          
-          setAllAnimations(allAnimations);
-        } catch (error) {
-          console.error('Failed to reload animations:', error);
-        }
-      };
-      
-      loadAnimations();
+      // 刷新 S3 缓存并更新列表
+      const store = useS3ResourcesStore.getState();
+      await store.loadAnimations();
+      const s3Animations = useS3ResourcesStore.getState().s3Animations;
+      const localAnimations = animations || [];
+      const all = [...localAnimations];
+      const ids = new Set(localAnimations.map((a: Animation) => a.id));
+      s3Animations.forEach((a: Animation) => { if (!ids.has(a.id)) { ids.add(a.id); all.push(a); } });
+      setAllAnimations(all);
       
       // 上传成功后关闭对话框并重置状态
       setUploading(false);

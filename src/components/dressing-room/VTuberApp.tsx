@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { VTuberLayout } from './VTuberLayout';
 import { EchuuLiveAudio } from './EchuuLiveAudio';
 import { CameraWidget } from './CameraWidget';
@@ -17,7 +18,9 @@ import { DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
 export default function VTuberApp() {
   const { t } = useI18n();
-  const { trackPageView, trackFeatureUsed, trackError } = useTracking();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { state, uiState, handlers } = useVTuberControls();
   
   // 场景状态管理
@@ -40,6 +43,14 @@ export default function VTuberApp() {
   useEffect(() => {
     trackPageView('VTuber App', window.location.href);
   }, [trackPageView]);
+
+  // 支持 URL ?openModelManager=1 从引导页「选择/上传模型」跳转过来自动打开模型管理器
+  useEffect(() => {
+    if (searchParams?.get('openModelManager') === '1') {
+      handlers.handleOpenModelManager();
+      router.replace(pathname || '/');
+    }
+  }, [searchParams, pathname, router, handlers.handleOpenModelManager]);
 
   // 初始化场景状态：设置为 main 场景
   useEffect(() => {

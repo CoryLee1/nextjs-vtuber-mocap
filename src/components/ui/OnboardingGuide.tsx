@@ -15,11 +15,14 @@ import {
   Loader2
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
+import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import type { VRMModel } from '@/types';
 
 interface OnboardingGuideProps {
   onComplete: () => void;
   onSkip: () => void;
+  /** 步骤 1 点击「选择/上传模型」时调用（关闭引导并打开模型管理器），不传则用 Link 跳转 */
+  onStep1Click?: () => void;
 }
 
 const steps = [
@@ -57,23 +60,40 @@ const steps = [
 
 const VROID_STUDIO_URL = 'https://vroid.com/en/studio';
 
-export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideProps) {
+export default function OnboardingGuide({ onComplete, onSkip, onStep1Click }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
   const [activeStep, setActiveStep] = useState(0);
   const [s3Models, setS3Models] = useState<VRMModel[]>([]);
   const [s3Loading, setS3Loading] = useState(false);
+  const [s3Error, setS3Error] = useState(false);
   const currentStep = steps[activeStep];
-  // 步骤 1（选择/上传模型）指向主应用根，在侧栏 Character Setting 中操作
+  // 步骤 1（选择/上传模型）：若传了 onStep1Click 则点击后关闭引导并打开模型管理器，否则跳转
   const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
 
-  // 步骤 1 时拉取 S3 模型列表
+  // 步骤 1 时展示 S3 模型列表：优先用 Loading 阶段预拉的缓存
   useEffect(() => {
     if (currentStep.id !== 1) return;
+    const store = useS3ResourcesStore.getState();
+    if (store.modelsLoaded) {
+      setS3Models(store.s3Models);
+      setS3Loading(false);
+      setS3Error(false);
+      return;
+    }
     setS3Loading(true);
+    setS3Error(false);
     fetch('/api/s3/resources?type=models')
-      .then((res) => (res.ok ? res.json() : { success: false, data: [] }))
-      .then((json) => setS3Models(Array.isArray(json?.data) ? json.data : []))
-      .catch(() => setS3Models([]))
+      .then(async (res) => {
+        const json = res.ok ? await res.json() : { success: false, data: [] };
+        const data = Array.isArray(json?.data) ? json.data : [];
+        setS3Models(data);
+        if (!res.ok) setS3Error(true);
+        useS3ResourcesStore.getState().setS3Models(data);
+      })
+      .catch(() => {
+        setS3Models([]);
+        setS3Error(true);
+      })
       .finally(() => setS3Loading(false));
   }, [currentStep.id]);
 
@@ -219,6 +239,11 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                   <p className="text-blue-200 mb-4">
                     {currentStep.content}
                   </p>
+                  {currentStep.id === 1 && (
+                    <p className="text-sm text-white/70 mb-2">
+                      选择或上传后，主界面中央将显示角色预览。
+                    </p>
+                  )}
                   <p className="text-sm text-blue-300">
                     {currentStep.id === 1 ? (
                       <>
@@ -239,11 +264,20 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                   </p>
                   {actionHref && (
                     <div className="mt-6">
-                      <Link href={actionHref}>
-                        <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
+                      {currentStep.id === 1 && onStep1Click ? (
+                        <Button
+                          onClick={onStep1Click}
+                          className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold"
+                        >
                           {currentStep.actionLabel}
                         </Button>
-                      </Link>
+                      ) : (
+                        <Link href={actionHref}>
+                          <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
+                            {currentStep.actionLabel}
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   )}
                 </div>
@@ -285,12 +319,13 @@ export default function OnboardingGuide({ onComplete, onSkip }: OnboardingGuideP
                     );
                   })
                 ) : (
-                  [1, 2, 3, 4].map((i) => (
-                    <div key={i} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden">
-                      <img src="/logo.svg" alt="" className="w-full h-full object-contain p-6 opacity-60" aria-hidden />
-                      <span className="text-xs text-white/50 truncate w-full px-2 text-center mt-1">—</span>
-                    </div>
-                  ))
+                  <div className="col-span-2 aspect-square max-h-48 bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center gap-2 p-4">
+                    {s3Error ? (
+                      <p className="text-sm text-amber-400 text-center">加载模型列表失败，请检查 S3 配置或稍后重试</p>
+                    ) : (
+                      <p className="text-sm text-white/60 text-center">暂无模型，点击上方「选择/上传模型」上传 .vrm</p>
+                    )}
+                  </div>
                 )
               ) : (
                 [1, 2, 3, 4].map((i) => (

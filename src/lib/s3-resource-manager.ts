@@ -1,6 +1,14 @@
-import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { VRMModel, Animation } from '@/types';
 import { ENV_CONFIG } from '../../env.config';
+
+export interface GetModelsFromS3Options {
+  /** 是否检查缩略图是否真实存在（HeadObject），不存在则 thumbnail 不填且 hasThumbnail=false */
+  checkThumbnails?: boolean;
+}
+
+/** 返回的模型项可带 s3Key、hasThumbnail（供客户端补证件照用） */
+export type VRMModelFromS3 = VRMModel & { s3Key?: string; hasThumbnail?: boolean };
 
 export class S3ResourceManager {
   private s3Config: {
@@ -40,42 +48,55 @@ export class S3ResourceManager {
     });
   }
 
-  // 从S3获取模型列表
-  async getModelsFromS3(): Promise<VRMModel[]> {
+  // 从S3获取模型列表；checkThumbnails 为 true 时用 HeadObject 检查 _thumb.png 是否存在
+  async getModelsFromS3(options?: GetModelsFromS3Options): Promise<VRMModelFromS3[]> {
     try {
       const s3Client = this.getS3Client();
-      
-      // 只获取VRM文件夹中的文件
+      const checkThumbnails = options?.checkThumbnails ?? false;
+
       const vrmCommand = new ListObjectsV2Command({
         Bucket: this.s3Config.bucketName,
         Prefix: 'vrm/',
       });
 
       const vrmResponse = await s3Client.send(vrmCommand);
-      const vrmModels: VRMModel[] = [];
+      const vrmModels: VRMModelFromS3[] = [];
 
       if (vrmResponse.Contents) {
         for (const object of vrmResponse.Contents) {
-          if (object.Key && object.Key.endsWith('.vrm')) {
-            const fileName = object.Key.split('/').pop() || '';
-            const modelName = fileName.replace(/\.vrm$/i, '');
-            // 约定：缩略图为 vrm/{modelName}_thumb.png（上传时自动生成）
-            const thumbnailKey = `vrm/${modelName}_thumb.png`;
-            const thumbnailUrl = `${this.s3Config.baseUrl}/${thumbnailKey}`;
+          if (!object.Key || !object.Key.endsWith('.vrm')) continue;
+          const key = object.Key;
+          const fileName = key.split('/').pop() || '';
+          const modelName = fileName.replace(/\.vrm$/i, '');
+          const thumbnailKey = `vrm/${modelName}_thumb.png`;
+          const thumbnailUrl = `${this.s3Config.baseUrl}/${thumbnailKey}`;
 
-            vrmModels.push({
-              id: `s3-${object.Key}`,
-              name: modelName,
-              url: `${this.s3Config.baseUrl}/${object.Key}`,
-              category: 'vrm',
-              thumbnail: thumbnailUrl,
-              tags: ['VRM', 'S3'],
-              description: `S3中的VRM模型文件`,
-              size: object.Size,
-              type: 'model/vrm',
-              createdAt: object.LastModified?.toISOString()
-            });
+          let hasThumbnail = true;
+          if (checkThumbnails) {
+            try {
+              await s3Client.send(new HeadObjectCommand({
+                Bucket: this.s3Config.bucketName,
+                Key: thumbnailKey,
+              }));
+            } catch {
+              hasThumbnail = false;
+            }
           }
+
+          vrmModels.push({
+            id: `s3-${key}`,
+            name: modelName,
+            url: `${this.s3Config.baseUrl}/${key}`,
+            category: 'vrm',
+            thumbnail: hasThumbnail ? thumbnailUrl : undefined,
+            tags: ['VRM', 'S3'],
+            description: `S3中的VRM模型文件`,
+            size: object.Size,
+            type: 'model/vrm',
+            createdAt: object.LastModified?.toISOString(),
+            s3Key: key,
+            hasThumbnail,
+          });
         }
       }
 
