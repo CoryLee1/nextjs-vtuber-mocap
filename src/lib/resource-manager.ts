@@ -16,43 +16,43 @@ const RESOURCE_CONFIG = {
         id: 'avatar-sample-a',
         name: 'Avatar Sample A',
         url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
-        thumbnail: '/images/thumbnails/avatar-sample-a.jpg',
+        thumbnail: undefined as string | undefined, // 使用 /api/vrm-thumbnail?url=... 或占位
         category: 'anime',
         tags: ['female', 'long-hair'],
         size: '15MB'
       },
       {
-        id: 'avatar-sample-c', 
+        id: 'avatar-sample-c',
         name: 'Avatar Sample C',
         url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_C.vrm',
-        thumbnail: '/images/thumbnails/avatar-sample-c.jpg',
+        thumbnail: undefined as string | undefined,
         category: 'anime',
         tags: ['female', 'short-hair'],
         size: '14MB'
       },
       {
-        id: 'avatar-sample-h', 
+        id: 'avatar-sample-h',
         name: 'Avatar Sample H',
         url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_H.vrm',
-        thumbnail: '/images/thumbnails/avatar-sample-h.jpg',
+        thumbnail: undefined as string | undefined,
         category: 'anime',
         tags: ['female', 'long-hair'],
         size: '19MB'
       },
       {
-        id: 'avatar-sample-m', 
+        id: 'avatar-sample-m',
         name: 'Avatar Sample M',
         url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_M.vrm',
-        thumbnail: '/images/thumbnails/avatar-sample-m.jpg',
+        thumbnail: undefined as string | undefined,
         category: 'anime',
         tags: ['male', 'short-hair'],
         size: '20MB'
       },
       {
-        id: 'avatar-sample-z', 
+        id: 'avatar-sample-z',
         name: 'Avatar Sample Z',
         url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_Z.vrm',
-        thumbnail: '/images/thumbnails/avatar-sample-z.jpg',
+        thumbnail: undefined as string | undefined,
         category: 'anime',
         tags: ['male', 'long-hair'],
         size: '17MB'

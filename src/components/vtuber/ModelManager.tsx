@@ -310,7 +310,10 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
         s3Models.forEach((m: VRMModel) => { if (!ids.has(m.id)) { ids.add(m.id); all.push(m); } });
         setModels(all);
       }
-      alert(`补全完成：成功 ${ok}，失败 ${fail}`);
+      const msg = ok > 0 || fail > 0
+        ? `补全完成：成功 ${ok}，失败 ${fail}`
+        : '补全完成：当前 S3（vrm/ 目录）中无缺失缩略图的模型，或暂无 .vrm 文件。列表中的「Avatar Sample A/C/H」等为预设模型，其缩略图通过接口从 VRM 内嵌图或占位图显示。';
+      alert(msg);
     } catch (e) {
       setBackfillStatus(null);
       alert('补全失败: ' + (e instanceof Error ? e.message : String(e)));
