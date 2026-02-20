@@ -335,7 +335,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] pointer-events-auto">
       <Card className="w-full max-w-6xl h-[80vh] bg-white/95 backdrop-blur-sm border-sky-200">
         <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-200">
           <div className="flex items-center justify-between">
