@@ -8,7 +8,7 @@ const CURSOR_STALE_MS = 3000;
 const BUN_CURSOR_URL = '/cursors/bun.png';
 
 /**
- * 直播间内：1）本机光标改为包子图；2）发送本机光标位置；3）渲染其他观众的光标（包子图）。
+ * 直播间内：1）发送本机光标位置；2）渲染其他观众的光标（包子图）。本机使用系统默认光标。
  * 后端需广播 type: 'cursor', viewer_id, x, y。
  */
 export const RoomCursors = memo(function RoomCursors() {
@@ -41,19 +41,6 @@ export const RoomCursors = memo(function RoomCursors() {
     },
     [isInRoom, sendCursor]
   );
-
-  useEffect(() => {
-    if (!isInRoom) return;
-    const style = document.createElement('style');
-    style.id = 'room-cursor-style';
-    style.textContent = `body.room-cursor-active, body.room-cursor-active * { cursor: url("${BUN_CURSOR_URL}") 8 8, auto !important; }`;
-    document.head.appendChild(style);
-    document.body.classList.add('room-cursor-active');
-    return () => {
-      document.body.classList.remove('room-cursor-active');
-      document.getElementById('room-cursor-style')?.remove();
-    };
-  }, [isInRoom]);
 
   useEffect(() => {
     if (!isInRoom) return;

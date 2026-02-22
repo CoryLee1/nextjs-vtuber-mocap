@@ -48,6 +48,8 @@ import accentSmall from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 262 (Stroke).sv
 import mocapBtnIcon from '@/app/v1/assets/ECHUU V1 UX_icon/mocap btn.svg';
 import type { VRMModel } from '@/types';
 import { getModels } from '@/lib/resource-manager';
+import { SOCIAL_CAPTURE_PRESETS } from '@/config/social-capture-presets';
+import type { SocialCapturePreset } from '@/config/social-capture-presets';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { DayPicker } from 'react-day-picker';
@@ -1313,37 +1315,66 @@ export const StreamRoomSidebar = memo(({
 
 StreamRoomSidebar.displayName = 'StreamRoomSidebar';
 
-// 聊天面板底部按钮：语言切换 + 直播拍照（仅截 3D 画布，不含 UI，可编辑）
+// 聊天面板底部按钮：语言切换 + 直播拍照（仅截 3D 画布，可选社交尺寸+控制文件大小）
 const ChatPanelFooterButtons = memo(() => {
   const { locale, changeLocale } = useI18n();
   const canvasReady = useSceneStore((s) => s.canvasReady);
   const lastCaptureBlobUrl = useSceneStore((s) => s.lastCaptureBlobUrl);
   const setLastCaptureBlobUrl = useSceneStore((s) => s.setLastCaptureBlobUrl);
   const [langOpen, setLangOpen] = useState(false);
+  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  const pendingPresetRef = useRef<SocialCapturePreset | null>(null);
 
-  // 发请求：由 Canvas 内 TakePhotoCapture 在 useFrame 中截帧并写回 lastCaptureBlobUrl
-  const handleTakePhoto = () => {
+  // 发请求：由 Canvas 内 TakePhotoCapture 在 useFrame 中截帧并写回 lastCaptureBlobUrl；preset 存到 ref 供消费时使用
+  const handleTakePhoto = (preset: SocialCapturePreset | null) => {
     if (!canvasReady) {
       toast({ title: '无法截图', description: '3D 场景未就绪，请稍后再试', variant: 'destructive' });
       return;
     }
+    pendingPresetRef.current = preset;
+    setCaptureMenuOpen(false);
     useSceneStore.getState().setTakePhotoRequest(Date.now());
   };
 
-  // 消费截帧结果：下载 + 新标签页 + toast，然后清空；blob URL 延迟 revoke 以便新标签页加载
+  // 消费截帧结果：若选了预设则裁剪为平台尺寸+JPEG 控制体积，否则原图 PNG；下载并清空
   useEffect(() => {
     if (!lastCaptureBlobUrl) return;
     const url = lastCaptureBlobUrl;
-    const name = `stream-photo-${Date.now()}.png`;
+    const preset = pendingPresetRef.current;
+    pendingPresetRef.current = null;
     setLastCaptureBlobUrl(null);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    a.click();
-    const w = window.open(url, '_blank', 'noopener');
-    if (w) w.document.title = name;
-    toast({ title: '已保存', description: `已下载并在新标签页打开：${name}` });
-    if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    const finish = (finalUrl: string, fileName: string, mime: string) => {
+      const a = document.createElement('a');
+      a.href = finalUrl;
+      a.download = fileName;
+      a.click();
+      const w = window.open(finalUrl, '_blank', 'noopener');
+      if (w) w.document.title = fileName;
+      toast({ title: '已保存', description: `已下载：${fileName}` });
+      if (finalUrl.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(finalUrl), 2000);
+    };
+
+    if (preset) {
+      import('@/lib/capture-utils').then(({ processCaptureToPreset }) => {
+        processCaptureToPreset(url, preset)
+          .then(({ blobUrl }) => {
+            const ext = 'jpg';
+            const name = `stream-${preset.id.replace(':', 'x')}-${Date.now()}.${ext}`;
+            finish(blobUrl, name, 'image/jpeg');
+          })
+          .catch(() => {
+            toast({ title: '处理失败', description: '已按原图下载', variant: 'destructive' });
+            const name = `stream-photo-${Date.now()}.png`;
+            finish(url, name, 'image/png');
+          });
+      });
+      if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    } else {
+      const name = `stream-photo-${Date.now()}.png`;
+      finish(url, name, 'image/png');
+      if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
   }, [lastCaptureBlobUrl, setLastCaptureBlobUrl]);
 
   const locales = [
@@ -1385,16 +1416,43 @@ const ChatPanelFooterButtons = memo(() => {
           </>
         )}
       </div>
-      <button
-        type="button"
-        onClick={handleTakePhoto}
-        disabled={!canvasReady}
-        className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#EEFF00] text-[#EEFF00] text-[11px] font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-label="Take photo (3D view only)"
-        title={canvasReady ? '截取 3D 画面（可编辑）' : '3D 场景就绪后可用'}
-      >
-        <Camera className="h-4 w-4" />
-      </button>
+      <div className="relative w-full">
+        <button
+          type="button"
+          onClick={() => canvasReady && setCaptureMenuOpen((o) => !o)}
+          disabled={!canvasReady}
+          className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#EEFF00] text-[#EEFF00] text-[11px] font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Take photo (3D view only)"
+          title={canvasReady ? '截取 3D 画面（可选平台尺寸）' : '3D 场景就绪后可用'}
+        >
+          <Camera className="h-4 w-4" />
+        </button>
+        {captureMenuOpen && (
+          <>
+            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#EEFF00]/50 min-w-[180px] z-20 shadow-lg max-h-[240px] overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => handleTakePhoto(null)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10"
+              >
+                {locale === 'zh' ? '原始 (PNG)' : 'Original (PNG)'}
+              </button>
+              {SOCIAL_CAPTURE_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleTakePhoto(p)}
+                  className="w-full flex flex-col items-start gap-0.5 px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10"
+                >
+                  <span>{locale === 'zh' ? p.label : p.labelEn}</span>
+                  <span className="text-[10px] text-white/50">{p.width}×{p.height}</span>
+                </button>
+              ))}
+            </div>
+            <div className="fixed inset-0 z-10" aria-hidden onClick={() => setCaptureMenuOpen(false)} />
+          </>
+        )}
+      </div>
     </div>
   );
 });
@@ -1551,30 +1609,51 @@ const CaptionTypewriter = memo(({ fullText }: { fullText: string }) => {
 });
 CaptionTypewriter.displayName = 'CaptionTypewriter';
 
-/** 分享：随时可用。有 roomId 时分享直播间链接，无 roomId 时分享当前页（主应用）链接 */
+/** 分享直播间：仅在有 roomId 时可点击，复制/分享带 room_id 的链接；无 roomId 时禁用并提示开播后可用 */
 const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const pathname = usePathname();
   const { locale } = useI18n();
   const handleShare = async () => {
+    if (!roomId) return;
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     const path = pathname || '/zh';
-    const shareUrl = roomId
-      ? `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`
-      : `${base}${path}`;
-    // 不调用 navigator.share，避免桌面端弹出 "We couldn't show you all the ways you could share"
+    const shareUrl = `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`;
+    const shareTitle = locale === 'zh' ? 'Echuu 直播间' : 'Echuu Live Room';
     try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          url: shareUrl,
+          text: shareTitle,
+        });
+        toast({ title: locale === 'zh' ? '已分享' : 'Shared' });
+        return;
+      }
       await navigator.clipboard?.writeText(shareUrl);
       toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
-    } catch {
-      toast({ title: locale === 'zh' ? '复制失败' : 'Copy failed', description: shareUrl, variant: 'destructive' });
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      try {
+        await navigator.clipboard?.writeText(shareUrl);
+        toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
+      } catch {
+        toast({ title: locale === 'zh' ? '复制失败' : 'Copy failed', description: shareUrl, variant: 'destructive' });
+      }
     }
   };
-  const title = locale === 'zh' ? '分享' : 'Share';
+  const disabled = !roomId;
+  const title = disabled
+    ? (locale === 'zh' ? '开播后可用' : 'Available after going live')
+    : (locale === 'zh' ? '分享直播间' : 'Share room');
   return (
     <button
       type="button"
       onClick={handleShare}
-      className="absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-slate-600 hover:text-black hover:bg-black/10 transition-colors"
+      disabled={disabled}
+      className={cn(
+        'absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
+        disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 hover:text-black hover:bg-black/10'
+      )}
       title={title}
       aria-label={title}
     >
