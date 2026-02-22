@@ -16,7 +16,10 @@ import {
   Camera,
   Languages,
   Share2,
-  Film
+  Film,
+  Copy,
+  ExternalLink,
+  QrCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +31,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
@@ -54,6 +64,8 @@ import { s3Uploader } from '@/lib/s3-uploader';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
+import { TwitterShare, RedditShare } from 'react-share-kit';
+import { QRCodeSVG } from 'qrcode.react';
 
 /** 单次直播回忆：供 agent 下次直播参考 */
 export type StreamMemory = {
@@ -1609,56 +1621,172 @@ const CaptionTypewriter = memo(({ fullText }: { fullText: string }) => {
 });
 CaptionTypewriter.displayName = 'CaptionTypewriter';
 
-/** 分享直播间：仅在有 roomId 时可点击，复制/分享带 room_id 的链接；无 roomId 时禁用并提示开播后可用 */
+/** 分享直播间：自定义分享卡片（桌面/移动一致），支持 X/Reddit + 微信/小红书/B站二维码与复制 */
 const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const pathname = usePathname();
   const { locale } = useI18n();
-  const handleShare = async () => {
-    if (!roomId) return;
-    const base = typeof window !== 'undefined' ? window.location.origin : '';
-    const path = pathname || '/zh';
-    const shareUrl = `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`;
-    const shareTitle = locale === 'zh' ? 'Echuu 直播间' : 'Echuu Live Room';
+  const [open, setOpen] = useState(false);
+  const disabled = !roomId;
+
+  const base = typeof window !== 'undefined' ? window.location.origin : '';
+  const path = pathname || '/zh';
+  const shareUrl = roomId
+    ? `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`
+    : `${base}${path}`;
+  const shareTitle = locale === 'zh' ? 'Echuu 直播间' : 'Echuu Live Room';
+  const shareText = locale === 'zh' ? '来看看我的 Echuu 直播间' : 'Join my Echuu live room';
+  const shareCaption = locale === 'zh'
+    ? `正在 Echuu 直播中！欢迎来围观互动：${shareUrl}`
+    : `Live now on Echuu! Join and interact: ${shareUrl}`;
+
+  const copyLink = async () => {
     try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({
-          title: shareTitle,
-          url: shareUrl,
-          text: shareTitle,
-        });
-        toast({ title: locale === 'zh' ? '已分享' : 'Shared' });
-        return;
-      }
       await navigator.clipboard?.writeText(shareUrl);
       toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
-    } catch (e: any) {
-      if (e?.name === 'AbortError') return;
-      try {
-        await navigator.clipboard?.writeText(shareUrl);
-        toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
-      } catch {
-        toast({ title: locale === 'zh' ? '复制失败' : 'Copy failed', description: shareUrl, variant: 'destructive' });
-      }
+    } catch {
+      toast({ title: locale === 'zh' ? '复制失败' : 'Copy failed', description: shareUrl, variant: 'destructive' });
     }
   };
-  const disabled = !roomId;
+
+  const openPostPage = async (platformName: string, url: string) => {
+    await copyLink();
+    window.open(url, '_blank', 'noopener');
+    toast({
+      title: locale === 'zh' ? `${platformName} 已打开` : `${platformName} opened`,
+      description: locale === 'zh' ? '已复制链接，可在该平台粘贴发布' : 'Link copied, paste it in the platform post editor.',
+    });
+  };
+
   const title = disabled
     ? (locale === 'zh' ? '开播后可用' : 'Available after going live')
     : (locale === 'zh' ? '分享直播间' : 'Share room');
+
   return (
-    <button
-      type="button"
-      onClick={handleShare}
-      disabled={disabled}
-      className={cn(
-        'absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
-        disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 hover:text-black hover:bg-black/10'
-      )}
-      title={title}
-      aria-label={title}
-    >
-      <Share2 className="w-4 h-4" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen(true)}
+        disabled={disabled}
+        className={cn(
+          'absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
+          disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 hover:text-black hover:bg-black/10'
+        )}
+        title={title}
+        aria-label={title}
+      >
+        <Share2 className="w-4 h-4" />
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[760px]">
+          <DialogHeader>
+            <DialogTitle>{locale === 'zh' ? '分享直播间' : 'Share Live Room'}</DialogTitle>
+            <DialogDescription>
+              {locale === 'zh'
+                ? '支持 X、Reddit，及微信/小红书/B站二维码分享。'
+                : 'Share to X, Reddit, and QR-based channels (WeChat, RED, Bilibili).'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4">
+            <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900 space-y-3">
+              <div className="text-sm font-semibold">{locale === 'zh' ? '快速分发' : 'Quick Distribution'}</div>
+              <div className="rounded-lg border bg-white p-3">
+                <div className="text-xs text-slate-500 mb-2">{locale === 'zh' ? '推荐文案（可直接复制）' : 'Recommended caption'}</div>
+                <div className="text-xs leading-5 text-slate-700 break-all">{shareCaption}</div>
+              </div>
+              <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '海外平台' : 'Global Platforms'}</div>
+              <div className="flex flex-wrap gap-2">
+                <TwitterShare url={shareUrl} title={shareText} buttonTitle="X" round size={44} />
+                <RedditShare url={shareUrl} title={shareTitle} buttonTitle="Reddit" round size={44} />
+                <button
+                  type="button"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  onClick={() => openPostPage('Instagram', 'https://www.instagram.com/')}
+                >
+                  Instagram
+                </button>
+              </div>
+              <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '中文平台（复制链接 + 扫码）' : 'Chinese Platforms (Copy + QR)'}</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  onClick={async () => {
+                    await copyLink();
+                    toast({
+                      title: locale === 'zh' ? '微信分享建议' : 'WeChat share tip',
+                      description: locale === 'zh' ? '已复制链接，请用微信扫码区或粘贴到会话发送。' : 'Link copied. Use QR panel or paste into WeChat chat.',
+                    });
+                  }}
+                >
+                  微信
+                </button>
+                <button
+                  type="button"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  onClick={() => openPostPage(locale === 'zh' ? '小红书' : 'RED', 'https://www.xiaohongshu.com/')}
+                >
+                  {locale === 'zh' ? '小红书' : 'RED'}
+                </button>
+                <button
+                  type="button"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  onClick={() => openPostPage(locale === 'zh' ? 'B站' : 'Bilibili', 'https://www.bilibili.com/')}
+                >
+                  {locale === 'zh' ? 'B站' : 'Bilibili'}
+                </button>
+                <button
+                  type="button"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  onClick={copyLink}
+                >
+                  <Copy className="w-4 h-4 inline-block mr-1" />
+                  {locale === 'zh' ? '复制链接' : 'Copy Link'}
+                </button>
+              </div>
+
+              <div className="rounded-lg border bg-white p-3">
+                <div className="text-xs text-slate-500 mb-2">{locale === 'zh' ? '直播链接' : 'Live URL'}</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    className="flex-1 h-9 px-2 rounded border text-xs bg-slate-50"
+                  />
+                  <button
+                    type="button"
+                    className="h-9 px-2 rounded border bg-white hover:bg-slate-50"
+                    onClick={copyLink}
+                    title={locale === 'zh' ? '复制链接' : 'Copy'}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center gap-3">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <QrCode className="w-4 h-4" />
+                {locale === 'zh' ? '微信/小红书/B站扫码分享' : 'WeChat / RED / Bilibili QR'}
+              </div>
+              <div className="bg-white p-3 rounded-lg border">
+                <QRCodeSVG value={shareUrl} size={180} includeMargin />
+              </div>
+              <button
+                type="button"
+                className="h-9 px-3 rounded border bg-white hover:bg-slate-100 text-sm"
+                onClick={copyLink}
+              >
+                <ExternalLink className="w-4 h-4 inline-block mr-1" />
+                {locale === 'zh' ? '复制链接并发布' : 'Copy & Post'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 });
 ShareRoomButton.displayName = 'ShareRoomButton';
