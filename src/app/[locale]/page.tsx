@@ -66,10 +66,12 @@ export default function HomePage() {
       });
   }, []);
 
-  // Loading 期间预拉 S3 模型与动画，并预加载默认环境图/VRM/Idle，进入场景时已有缓存
+  // Loading 期间预拉 S3 模型与动画；S3 模型列表返回后结束 loading（无固定时长）
   useEffect(() => {
-    useS3ResourcesStore.getState().loadAll();
     preloadCriticalAssets();
+    useS3ResourcesStore.getState().loadAll().then(() => {
+      handleLoadingComplete();
+    });
   }, []);
 
   // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom
@@ -96,7 +98,7 @@ export default function HomePage() {
     <main className="relative w-full h-screen overflow-hidden">
       {/* 1. 开屏加载页 */}
       {isLoading && (
-        <LoadingPage onComplete={handleLoadingComplete} duration={3000} />
+        <LoadingPage onComplete={handleLoadingComplete} duration={0} />
       )}
 
       {/* 2. 主应用 */}

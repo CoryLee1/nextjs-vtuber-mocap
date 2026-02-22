@@ -24,7 +24,9 @@ export default function LoadingPage({
   const [isFinished, setIsFinished] = useState(false);
   const [showContent, setShowContent] = useState(true);
 
+  // duration <= 0 或 undefined：不设定时，由父级在 S3 等就绪后调用 onComplete
   useEffect(() => {
+    if (duration == null || duration <= 0) return;
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -33,13 +35,10 @@ export default function LoadingPage({
 
       if (nextProgress >= 100) {
         clearInterval(interval);
-        
-        // 如果不需要自动退出（如测试模式），直接调用完成回调并停止
         if (!exitOnComplete) {
           onComplete?.();
           return;
         }
-
         setTimeout(() => {
           setShowContent(false);
           setTimeout(() => {
@@ -49,7 +48,6 @@ export default function LoadingPage({
         }, 500);
       }
     }, 16);
-
     return () => clearInterval(interval);
   }, [duration, onComplete, exitOnComplete]);
 

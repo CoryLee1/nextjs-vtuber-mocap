@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, Suspense, memo, useMemo, useLayoutEffect } from 'react';
-import { Grid, Environment, useFBX, useTexture } from '@react-three/drei';
+import { Grid, Environment, useFBX, useTexture, Cloud, Clouds } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ConstellationParticles } from '@/components/canvas/ConstellationParticles';
@@ -21,19 +21,21 @@ import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { usePerformance } from '@/hooks/use-performance';
 
-// PERF: 优化的加载指示器组件
+// 加载占位：drei 粒子云（替代原蓝色球）
 const LoadingIndicator = memo(() => (
   <group position={[0, 1, 0]}>
-    <mesh>
-      <sphereGeometry args={[0.3, 16, 16]} />
-      <meshStandardMaterial 
-        color="#3b82f6" 
-        emissive="#1e40af"
-        emissiveIntensity={0.5}
-        transparent
-        opacity={0.8}
+    <Clouds limit={200} material={THREE.MeshBasicMaterial}>
+      <Cloud
+        segments={40}
+        bounds={[1.2, 0.5, 0.5]}
+        volume={6}
+        color="#e0f2fe"
+        opacity={0.92}
+        speed={0.4}
+        growth={3}
       />
-    </mesh>
+      <Cloud seed={1} segments={25} bounds={[0.8, 0.4, 0.4]} volume={4} color="#bae6fd" opacity={0.85} speed={0.3} />
+    </Clouds>
   </group>
 ));
 
