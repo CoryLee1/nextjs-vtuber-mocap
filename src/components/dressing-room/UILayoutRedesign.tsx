@@ -1638,6 +1638,8 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const shareCaption = locale === 'zh'
     ? `正在 Echuu 直播中！欢迎来围观互动：${shareUrl}`
     : `Live now on Echuu! Join and interact: ${shareUrl}`;
+  const iconBtnClass =
+    'h-11 w-11 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center';
 
   const copyLink = async () => {
     try {
@@ -1668,7 +1670,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
         onClick={() => !disabled && setOpen(true)}
         disabled={disabled}
         className={cn(
-          'absolute right-[10px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
+          'absolute right-[4px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
           disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 hover:text-black hover:bg-black/10'
         )}
         title={title}
@@ -1696,72 +1698,82 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                 <div className="text-xs leading-5 text-slate-700 break-all">{shareCaption}</div>
               </div>
               <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '海外平台' : 'Global Platforms'}</div>
-              <div className="flex flex-wrap gap-2">
-                <TwitterShare
-                  url={shareUrl}
-                  title={shareText}
-                  round
-                  size={44}
-                  bgColor="#111827"
-                  iconFillColor="#ffffff"
-                />
-                <RedditShare
-                  url={shareUrl}
-                  title={shareTitle}
-                  round
-                  size={44}
-                  bgColor="#ff4500"
-                  iconFillColor="#ffffff"
-                />
-                <button
-                  type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
-                  onClick={() => openPostPage('Instagram', 'https://www.instagram.com/')}
-                >
-                  <img src="/images/Instagram_logo_2022%20(1).svg" alt="Instagram" className="w-4 h-4" />
-                  Instagram
-                </button>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex flex-col items-center gap-1">
+                  <TwitterShare
+                    url={shareUrl}
+                    title={shareText}
+                    round
+                    size={44}
+                    bgColor="#111827"
+                    iconFillColor="#ffffff"
+                  />
+                  <span className="text-[11px] text-slate-600">X</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <RedditShare
+                    url={shareUrl}
+                    title={shareTitle}
+                    round
+                    size={44}
+                    bgColor="#ff4500"
+                    iconFillColor="#ffffff"
+                  />
+                  <span className="text-[11px] text-slate-600">Reddit</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    className={iconBtnClass}
+                    onClick={() => openPostPage('Instagram', 'https://www.instagram.com/')}
+                    title="Instagram"
+                  >
+                    <img src="/images/Instagram_logo_2022%20(1).svg" alt="Instagram" className="w-5 h-5" />
+                  </button>
+                  <span className="text-[11px] text-slate-600">Instagram</span>
+                </div>
               </div>
               <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '中文平台（复制链接 + 扫码）' : 'Chinese Platforms (Copy + QR)'}</div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
-                  onClick={async () => {
-                    await copyLink();
-                    toast({
-                      title: locale === 'zh' ? '微信分享建议' : 'WeChat share tip',
-                      description: locale === 'zh' ? '已复制链接，请用微信扫码区或粘贴到会话发送。' : 'Link copied. Use QR panel or paste into WeChat chat.',
-                    });
-                  }}
-                >
-                  <img src="/images/wechat-logo-svgrepo-com.svg" alt="WeChat" className="w-4 h-4" />
-                  微信
-                </button>
-                <button
-                  type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
-                  onClick={() => openPostPage(locale === 'zh' ? '小红书' : 'RED', 'https://www.xiaohongshu.com/')}
-                >
-                  <img src="/images/Xiaohongshu.svg" alt="Xiaohongshu" className="w-4 h-4" />
-                  {locale === 'zh' ? '小红书' : 'RED'}
-                </button>
-                <button
-                  type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
-                  onClick={() => openPostPage(locale === 'zh' ? 'B站' : 'Bilibili', 'https://www.bilibili.com/')}
-                >
-                  <img src="/images/bilibili.svg" alt="Bilibili" className="w-4 h-4" />
-                  {locale === 'zh' ? 'B站' : 'Bilibili'}
-                </button>
-                <button
-                  type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900"
-                  onClick={copyLink}
-                >
-                  <Copy className="w-4 h-4 inline-block mr-1" />
-                  {locale === 'zh' ? '复制链接' : 'Copy Link'}
-                </button>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    className={iconBtnClass}
+                    onClick={async () => {
+                      await copyLink();
+                      toast({
+                        title: locale === 'zh' ? '微信分享建议' : 'WeChat share tip',
+                        description: locale === 'zh' ? '已复制链接，请用微信扫码区或粘贴到会话发送。' : 'Link copied. Use QR panel or paste into WeChat chat.',
+                      });
+                    }}
+                    title="WeChat"
+                  >
+                    <img src="/images/wechat-logo-svgrepo-com.svg" alt="WeChat" className="w-5 h-5" />
+                  </button>
+                  <span className="text-[11px] text-slate-600">WeChat</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    className={iconBtnClass}
+                    onClick={() => openPostPage(locale === 'zh' ? '小红书' : 'RED', 'https://www.xiaohongshu.com/')}
+                    title={locale === 'zh' ? '小红书' : 'RED'}
+                  >
+                    <img src="/images/Xiaohongshu.svg" alt="Xiaohongshu" className="w-5 h-5" />
+                  </button>
+                  <span className="text-[11px] text-slate-600">{locale === 'zh' ? '小红书' : 'RED'}</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    className={iconBtnClass}
+                    onClick={() => openPostPage(locale === 'zh' ? 'B站' : 'Bilibili', 'https://www.bilibili.com/')}
+                    title={locale === 'zh' ? 'B站' : 'Bilibili'}
+                  >
+                    <img src="/images/bilibili.svg" alt="Bilibili" className="w-5 h-5" />
+                  </button>
+                  <span className="text-[11px] text-slate-600">{locale === 'zh' ? 'B站' : 'Bilibili'}</span>
+                </div>
               </div>
 
               <div className="rounded-lg border bg-white p-3">
@@ -1911,12 +1923,17 @@ export const GoLiveButton = memo(() => {
 
       {/* Bar: 最小 214×53，随文案宽度自适应 */}
       <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-[#E9E9E9] rounded-[26.5px] flex items-center gap-0">
+        {/* Go Live 外圈流光，提高可见性 */}
+        <span
+          aria-hidden
+          className="absolute left-[3px] top-[5px] w-[44px] h-[44px] rounded-full bg-[#EEFF00]/35 blur-[10px] animate-pulse pointer-events-none"
+        />
         <button
           type="button"
           onClick={handleGoLive}
           disabled={isStarting || isAudience}
           title={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : undefined}
-          className="absolute left-[5px] top-[7px] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             background: 'rgba(255, 255, 255, 0.068)',
             boxShadow:
@@ -1933,7 +1950,7 @@ export const GoLiveButton = memo(() => {
         <ShareRoomButton roomId={roomId} />
         {/* Stream Topic — 与侧边栏「直播主题」一致 */}
         <span
-          className="pl-[46px] pr-2 text-[15px] leading-[15px] text-black flex items-center max-w-[280px] truncate"
+          className="pl-[46px] pr-[48px] text-[15px] leading-[15px] text-black flex items-center max-w-[300px] truncate"
           style={{ fontFamily: "'Subway Ticker', system-ui, sans-serif" }}
           title={topic?.trim() || undefined}
         >
