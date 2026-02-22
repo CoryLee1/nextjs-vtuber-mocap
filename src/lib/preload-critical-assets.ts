@@ -7,16 +7,60 @@ import { DEFAULT_PREVIEW_MODEL_URL, DEFAULT_IDLE_URL } from '@/config/vtuber-ani
 /** 默认环境/背景图（与 MainScene DEFAULT_ENV_BACKGROUND_URL 一致） */
 const DEFAULT_ENV_BACKGROUND_URL = '/images/sky (3).png';
 
-export function preloadCriticalAssets(): void {
+const PRELOAD_TIMEOUT_MS = 25000;
+
+interface PreloadOptions {
+  onProgress?: (progress: number) => void;
+}
+
+async function fetchAndCache(url: string): Promise<void> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), PRELOAD_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(url, { mode: 'cors', signal: controller.signal, cache: 'force-cache' });
+    if (!res.ok) {
+      throw new Error(`preload failed: ${res.status}`);
+    }
+    // 读取完整响应体，确保关键资源真实下载进浏览器缓存。
+    await res.arrayBuffer();
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+export async function preloadCriticalAssets(options?: PreloadOptions): Promise<void> {
   if (typeof window === 'undefined') return;
+  const onProgress = options?.onProgress;
+  let currentProgress = 0;
+  const emitProgress = (next: number) => {
+    currentProgress = Math.max(currentProgress, Math.min(100, next));
+    onProgress?.(currentProgress);
+  };
+  emitProgress(2);
 
   // 默认环境图（PNG）：主场景背景，预加载后 useTexture 命中缓存
-  const img = new Image();
-  img.src = DEFAULT_ENV_BACKGROUND_URL;
+  const imagePreload = new Promise<void>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      emitProgress(25);
+      resolve();
+    };
+    img.onerror = () => {
+      emitProgress(25);
+      resolve();
+    };
+    img.src = DEFAULT_ENV_BACKGROUND_URL;
+  });
 
-  // 默认 VRM：引导页预览与主场景可能用到，预取进 HTTP 缓存
-  fetch(DEFAULT_PREVIEW_MODEL_URL, { mode: 'cors' }).catch(() => {});
+  // 默认 VRM + 默认 Idle：完整下载，降低首进场黑屏等待
+  const modelPreload = fetchAndCache(DEFAULT_PREVIEW_MODEL_URL)
+    .catch(() => {})
+    .finally(() => emitProgress(70));
+  const idleAnimPreload = fetchAndCache(DEFAULT_IDLE_URL)
+    .catch(() => {})
+    .finally(() => emitProgress(95));
 
-  // 默认 Idle 动画：主场景状态机首帧即用，预取进缓存
-  fetch(DEFAULT_IDLE_URL, { mode: 'cors' }).catch(() => {});
+  await Promise.allSettled([imagePreload, modelPreload, idleAnimPreload]);
+  emitProgress(100);
 }

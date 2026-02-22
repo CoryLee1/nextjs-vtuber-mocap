@@ -1,6 +1,7 @@
 import { S3Client, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { VRMModel, Animation } from '@/types';
 import { ENV_CONFIG } from '../../env.config';
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 
 export interface GetModelsFromS3Options {
   /** 是否检查缩略图是否真实存在（HeadObject），不存在则 thumbnail 不填且 hasThumbnail=false */
@@ -69,7 +70,7 @@ export class S3ResourceManager {
           const fileName = key.split('/').pop() || '';
           const modelName = fileName.replace(/\.vrm$/i, '');
           const thumbnailKey = `vrm/${modelName}_thumb.png`;
-          const thumbnailUrl = `${this.s3Config.baseUrl}/${thumbnailKey}`;
+          const thumbnailUrl = getS3ObjectReadUrlByKey(thumbnailKey);
 
           let hasThumbnail = true;
           if (checkThumbnails) {
@@ -86,7 +87,7 @@ export class S3ResourceManager {
           vrmModels.push({
             id: `s3-${key}`,
             name: modelName,
-            url: `${this.s3Config.baseUrl}/${key}`,
+            url: getS3ObjectReadUrlByKey(key),
             category: 'vrm',
             thumbnail: hasThumbnail ? thumbnailUrl : undefined,
             tags: ['VRM', 'S3'],
@@ -130,7 +131,7 @@ export class S3ResourceManager {
             animations.push({
               id: `s3-${object.Key}`,
               name: animationName,
-              url: `${this.s3Config.baseUrl}/${object.Key}`,
+              url: getS3ObjectReadUrlByKey(object.Key),
               type: 'fbx',
               thumbnail: null,
               tags: ['FBX', 'S3'],

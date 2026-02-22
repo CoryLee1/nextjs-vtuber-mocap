@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getAnimations } from '@/lib/resource-manager';
 import { animationStorage } from '@/lib/animation-storage';
 import { Animation } from '@/types';
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 
 export const useAnimationLibrary = () => {
     const [animations, setAnimations] = useState<Animation[]>([]);
@@ -28,7 +29,7 @@ export const useAnimationLibrary = () => {
                         id: 'local-idle',
                         name: '待机动画',
                         description: '默认的待机动画',
-                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
+                        url: getS3ObjectReadUrlByKey('animations/Idle.fbx'),
                         type: 'fbx',
                         isDefault: true,
                         category: 'idle',
@@ -82,7 +83,7 @@ export const useAnimationLibrary = () => {
                         id: 'local-idle',
                         name: '待机动画',
                         description: '默认的待机动画',
-                        url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
+                        url: getS3ObjectReadUrlByKey('animations/Idle.fbx'),
                         type: 'fbx',
                         isDefault: true,
                         category: 'idle',

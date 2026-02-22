@@ -1,3 +1,5 @@
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
+
 // MediaPipe 配置
 export const MEDIAPIPE_CONFIG = {
   modelComplexity: 1, // 保持完整模型
@@ -302,14 +304,14 @@ export const ANIMATION_CONFIG = {
   
   // 动画文件路径映射
   ANIMATION_FILES: {
-    'Idle': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
-    'Breakdance 1990': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Breakdance%201990.fbx',
-    'Mma Kick': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Mma%20Kick.fbx',
-    'Breakdance Uprock Var 2': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Breakdance%20Uprock%20Var%202.fbx',
-    'Twist Dance': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Twist%20Dance.fbx',
-    'Sitting Laughing': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Sitting%20Laughing.fbx',
-    'Taunt': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Taunt.fbx',
-    'Capoeira': 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Capoeira.fbx'
+    'Idle': getS3ObjectReadUrlByKey('animations/Idle.fbx'),
+    'Breakdance 1990': getS3ObjectReadUrlByKey('animations/Breakdance 1990.fbx'),
+    'Mma Kick': getS3ObjectReadUrlByKey('animations/Mma Kick.fbx'),
+    'Breakdance Uprock Var 2': getS3ObjectReadUrlByKey('animations/Breakdance Uprock Var 2.fbx'),
+    'Twist Dance': getS3ObjectReadUrlByKey('animations/Twist Dance.fbx'),
+    'Sitting Laughing': getS3ObjectReadUrlByKey('animations/Sitting Laughing.fbx'),
+    'Taunt': getS3ObjectReadUrlByKey('animations/Taunt.fbx'),
+    'Capoeira': getS3ObjectReadUrlByKey('animations/Capoeira.fbx')
   },
   
   // 动画分类

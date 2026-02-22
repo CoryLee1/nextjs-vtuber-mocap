@@ -4,6 +4,7 @@ import type { VRM } from '@pixiv/three-vrm';
 import type { CameraSettings } from '@/types/vtuber';
 import type { Object3D, Mesh, Material } from 'three';
 import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
+import { DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
 
 /**
  * 场景类型
@@ -348,7 +349,7 @@ export const useSceneStore = create<SceneState>()(
     persona: '一个性格古怪、喜欢碎碎念的虚拟主播',
     background: '正在直播，和观众聊天',
     topic: '关于上司的超劲爆八卦',
-    modelUrl: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
+    modelUrl: DEFAULT_PREVIEW_MODEL_URL,
     modelName: 'Avatar Sample A',
   },
   setEchuuConfig: (config) => {

@@ -8,6 +8,7 @@ interface LoadingPageProps {
   message?: string;
   duration?: number;
   exitOnComplete?: boolean;
+  progressValue?: number | null;
 }
 
 /**
@@ -18,15 +19,33 @@ export default function LoadingPage({
   onComplete, 
   message = "Initializing...", 
   duration = 3000,
-  exitOnComplete = true
+  exitOnComplete = true,
+  progressValue = null
 }: LoadingPageProps) {
   const [progress, setProgress] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [showContent, setShowContent] = useState(true);
+  const [isExiting, setIsExiting] = useState(false);
+
+  const startExit = React.useCallback(() => {
+    if (isExiting) return;
+    setIsExiting(true);
+    if (!exitOnComplete) {
+      onComplete?.();
+      return;
+    }
+    setTimeout(() => {
+      setShowContent(false);
+      setTimeout(() => {
+        setIsFinished(true);
+        onComplete?.();
+      }, 800);
+    }, 500);
+  }, [isExiting, exitOnComplete, onComplete]);
 
   // duration <= 0 或 undefined：不设定时，由父级在 S3 等就绪后调用 onComplete
   useEffect(() => {
-    if (duration == null || duration <= 0) return;
+    if (duration == null || duration <= 0) return undefined;
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -35,21 +54,34 @@ export default function LoadingPage({
 
       if (nextProgress >= 100) {
         clearInterval(interval);
-        if (!exitOnComplete) {
-          onComplete?.();
-          return;
-        }
-        setTimeout(() => {
-          setShowContent(false);
-          setTimeout(() => {
-            setIsFinished(true);
-            onComplete?.();
-          }, 800);
-        }, 500);
+        startExit();
       }
     }, 16);
     return () => clearInterval(interval);
-  }, [duration, onComplete, exitOnComplete]);
+  }, [duration, startExit]);
+
+  // 外部进度驱动：用于真实资源预加载进度
+  useEffect(() => {
+    if (progressValue == null) return;
+    const clamped = Math.max(0, Math.min(100, progressValue));
+    setProgress(clamped);
+    if (clamped >= 100) {
+      startExit();
+    }
+  }, [progressValue, startExit]);
+
+  // 当没有 duration、也没有外部进度时，保留平滑“trickle”动画，避免进度条静止
+  useEffect(() => {
+    if (!(duration == null || duration <= 0)) return;
+    if (progressValue != null) return;
+    const interval = window.setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 92) return prev;
+        return Math.min(92, prev + Math.max(0.6, (92 - prev) * 0.03));
+      });
+    }, 120);
+    return () => window.clearInterval(interval);
+  }, [duration, progressValue]);
 
   if (isFinished) return null;
 

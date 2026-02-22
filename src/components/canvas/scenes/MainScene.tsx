@@ -5,7 +5,7 @@ import { Grid, Environment, useFBX, useTexture, Cloud, Clouds } from '@react-thr
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
-import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
+import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
 
 /** 预加载单个 FBX，填满 useLoader 缓存，切换动画时无需再等 */
 const PreloadFbx = memo(({ url }: { url: string }) => {
@@ -204,7 +204,7 @@ export const MainScene: React.FC = () => {
   }, [setVrmRef]);
 
   // 默认模型 URL
-  const defaultModelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm';
+  const defaultModelUrl = DEFAULT_PREVIEW_MODEL_URL;
   const defaultAnimationUrl = DEFAULT_IDLE_URL;
 
   const envUrl = hdrUrl || DEFAULT_ENV_BACKGROUND_URL;

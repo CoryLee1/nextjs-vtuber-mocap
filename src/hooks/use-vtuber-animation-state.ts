@@ -8,6 +8,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import {
+  DEFAULT_IDLE_URL,
   DEFAULT_SPEAKING_URL,
   IDLE_ROTATION_ANIMATIONS,
   SPEAKING_ANIMATIONS,
@@ -18,7 +19,7 @@ import {
 /** idle 状态下每隔多少秒随机切换到下一个 idle 动画 */
 const IDLE_ROTATE_SEC = 20;
 
-const FALLBACK_IDLE_URL = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx';
+const FALLBACK_IDLE_URL = DEFAULT_IDLE_URL;
 
 function pickRandomIdleUrl(): string {
   if (IDLE_ROTATION_ANIMATIONS.length === 0) return FALLBACK_IDLE_URL;

@@ -1,4 +1,5 @@
 import { S3UploadResult } from '@/types/api';
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 
 // S3 上传工具
 export class S3Uploader {
@@ -112,7 +113,7 @@ export class S3Uploader {
             try {
               const response = JSON.parse(xhr.responseText);
               if (response.success) {
-                const fileUrl = `${this.s3Config.baseUrl}/${fileName}`;
+                const fileUrl = getS3ObjectReadUrlByKey(fileName);
                 resolve({
                   url: fileUrl,
                   fileName: fileName,
@@ -191,7 +192,7 @@ export class S3Uploader {
     }
 
     return {
-      url: `${this.s3Config.baseUrl}/${fileName}`,
+      url: getS3ObjectReadUrlByKey(fileName),
       fileName,
     };
   }
@@ -207,7 +208,7 @@ export class S3Uploader {
           clearInterval(interval);
           
           // 模拟上传完成，返回一个模拟的S3 URL
-          const fileUrl = `${this.s3Config.baseUrl}/${fileName}`;
+          const fileUrl = getS3ObjectReadUrlByKey(fileName);
           const fileExtension = file.name.split('.').pop()?.toLowerCase();
           const isVRM = fileExtension === 'vrm';
           const isMP3 = fileExtension === 'mp3';

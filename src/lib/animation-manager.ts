@@ -4,6 +4,7 @@ import { AnimationMixer, LoopRepeat, AnimationUtils } from 'three';
 import * as THREE from 'three';
 import { MIXAMO_VRM_RIG_MAP, KAWAII_VRM_RIG_MAP, KAWAII_QUAT_SIGN_FLIPS, KAWAII_YUP_QUAT_SIGN_FLIPS, KAWAII_YUP_LOWERLEG_BONES } from '@/lib/constants';
 import { detectFbxSceneZUp, convertPositionZUpToYUp, convertQuaternionTrackZUpToYUp, convertQuaternionZUpToYUp } from '@/lib/coordinate-axes';
+import { DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
 const KAWAII_LOWERLEG_BONES = new Set(KAWAII_YUP_LOWERLEG_BONES);
 
@@ -504,7 +505,7 @@ const getVrmId = (vrm: any): string => {
 
 // 改进的动画管理器：默认 URL 与 vtuber-animations 保持一致，且规范化错误路径（缺少 /animations/）
 const S3_ANIM_BASE = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com';
-const DEFAULT_ANIMATION_URL = `${S3_ANIM_BASE}/animations/Idle.fbx`;
+const DEFAULT_ANIMATION_URL = DEFAULT_IDLE_URL;
 
 /** 若 URL 是 S3 base 直接加文件名（缺少 /animations/），修正为正确路径，避免 403/404 */
 function normalizeAnimationUrl(url: string): string {

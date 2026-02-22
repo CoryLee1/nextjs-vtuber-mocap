@@ -20,6 +20,7 @@ const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), 
 
 export default function HomePageClient() {
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const canvasReady = useSceneStore((s) => s.canvasReady);
   const { status } = useSession();
@@ -66,13 +67,33 @@ export default function HomePageClient() {
       });
   }, []);
 
-  // Loading 期间预拉 S3 模型与动画；S3 模型列表返回后结束 loading（无固定时长）
+  // Loading 期间仅预拉“首屏关键素材”（默认模型 + 默认动画 + 背景）
+  // 不阻塞于 /api/s3/resources（该接口依赖 ListBucket，当前 IAM 会 AccessDenied）。
   useEffect(() => {
-    preloadCriticalAssets();
-    useS3ResourcesStore.getState().loadAll().then(() => {
-      handleLoadingComplete();
-    });
+    let cancelled = false;
+
+    (async () => {
+      await preloadCriticalAssets({
+        onProgress: (p) => {
+          if (!cancelled) setLoadingProgress(p);
+        },
+      });
+
+      if (!cancelled) {
+        setLoadingProgress(100);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // 进入主界面后再后台尝试拉取资源列表（不影响首屏与引导）
+  useEffect(() => {
+    if (isLoading) return;
+    useS3ResourcesStore.getState().loadAll().catch(() => {});
+  }, [isLoading]);
 
   // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom
   useEffect(() => {
@@ -98,7 +119,12 @@ export default function HomePageClient() {
     <main className="relative w-full h-screen overflow-hidden">
       {/* 1. 开屏加载页 */}
       {isLoading && (
-        <LoadingPage onComplete={handleLoadingComplete} duration={0} />
+        <LoadingPage
+          onComplete={handleLoadingComplete}
+          duration={0}
+          progressValue={loadingProgress}
+          message="Preloading critical assets..."
+        />
       )}
 
       {/* 2. 主应用 */}

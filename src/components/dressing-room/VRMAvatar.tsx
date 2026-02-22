@@ -21,6 +21,7 @@ import { useVRMInfoLogger } from '@/lib/vrm/debug/use-vrm-info-logger';
 import { VRMController } from './VRMController';
 import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
 import { applyEchuuCue } from '@/lib/echuu-vrm-bridge';
+import { DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
 
 // PERF: 导入拆分的常量和组件
 import {
@@ -68,8 +69,8 @@ interface VRMAvatarProps {
     [key: string]: any;
 }
 export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
-    modelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
-    animationUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/animations/Idle.fbx',
+    modelUrl = DEFAULT_PREVIEW_MODEL_URL,
+    animationUrl = DEFAULT_IDLE_URL,
     nextAnimationUrl = null,
     additiveAnimationUrl = null,
     additiveWeight = 0,

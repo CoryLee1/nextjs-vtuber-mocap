@@ -2,13 +2,14 @@ import { useState, useCallback } from 'react';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { generateVrmThumbnailBlob } from '@/lib/vrm-thumbnail-render';
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 
 // 默认模型列表
 const DEFAULT_MODELS = [
   {
     id: 'avatar-sample-a',
     name: 'Avatar Sample A',
-    url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
+    url: getS3ObjectReadUrlByKey('AvatarSample_A.vrm'),
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '15 MB',
@@ -18,7 +19,7 @@ const DEFAULT_MODELS = [
   {
     id: 'avatar-sample-c',
     name: 'Avatar Sample C',
-    url: 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_C.vrm',
+    url: getS3ObjectReadUrlByKey('AvatarSample_C.vrm'),
     thumbnail: '/images/1111.jpg',
     isDefault: true,
     size: '14 MB',
