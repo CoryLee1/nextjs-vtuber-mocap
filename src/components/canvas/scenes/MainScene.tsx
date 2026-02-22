@@ -47,21 +47,26 @@ function isHdrEnvUrl(url: string): boolean {
 }
 
 /** PNG/JPG 等距柱状图做 360° 背景：设置 mapping 后 Three 会按球面采样 */
-const EnvBackgroundFromTexture = memo(({ url, intensity = 1 }: { url: string; intensity?: number }) => {
+const EnvBackgroundFromTexture = memo(({ url, intensity = 1, rotationDeg = 0 }: { url: string; intensity?: number; rotationDeg?: number }) => {
   const { scene } = useThree();
   const texture = useTexture(url);
   useLayoutEffect(() => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     const prevBg = scene.background;
     const prevIntensity = (scene as any).backgroundIntensity;
+    const prevRotation = (scene as any).backgroundRotation;
     scene.background = texture;
     if (typeof (scene as any).backgroundIntensity !== 'undefined') (scene as any).backgroundIntensity = intensity;
+    if (typeof (scene as any).backgroundRotation !== 'undefined') {
+      (scene as any).backgroundRotation = new THREE.Euler(0, (rotationDeg * Math.PI) / 180, 0, 'XYZ');
+    }
     return () => {
       scene.background = prevBg;
       if (typeof prevIntensity !== 'undefined') (scene as any).backgroundIntensity = prevIntensity;
+      if (typeof prevRotation !== 'undefined') (scene as any).backgroundRotation = prevRotation;
       texture.dispose();
     };
-  }, [scene, texture, intensity]);
+  }, [scene, texture, intensity, rotationDeg]);
   return null;
 });
 EnvBackgroundFromTexture.displayName = 'EnvBackgroundFromTexture';
@@ -162,6 +167,7 @@ export const MainScene: React.FC = () => {
     echuuAudioPlaying,
     hdrUrl,
     envBackgroundIntensity,
+    envBackgroundRotation,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
@@ -212,9 +218,9 @@ export const MainScene: React.FC = () => {
 
   const particleElements = useMemo(
     () => [
-      { color: '#ffffff', size: 0.04, count: Math.max(8, Math.floor(perfSettings.particleCount * 0.4)) },
-      { color: '#9dfeed', size: 0.025, count: Math.max(10, Math.floor(perfSettings.particleCount * 0.5)) },
-      { color: '#cfff21', size: 0.02, count: Math.max(12, Math.floor(perfSettings.particleCount * 0.6)) },
+      { color: '#ffffff', size: 0.1, count: Math.max(8, Math.floor(perfSettings.particleCount * 0.4)) },
+      { color: '#9dfeed', size: 0.06, count: Math.max(10, Math.floor(perfSettings.particleCount * 0.5)) },
+      { color: '#cfff21', size: 0.05, count: Math.max(12, Math.floor(perfSettings.particleCount * 0.6)) },
     ],
     [perfSettings.particleCount]
   );
@@ -230,11 +236,12 @@ export const MainScene: React.FC = () => {
           files={envUrl}
           background
           backgroundIntensity={envBackgroundIntensity}
+          backgroundRotation={[0, (envBackgroundRotation * Math.PI) / 180, 0]}
           resolution={perfSettings.hdrResolution}
         />
       ) : (
         <Suspense fallback={null}>
-          <EnvBackgroundFromTexture url={envUrl} intensity={envBackgroundIntensity} />
+          <EnvBackgroundFromTexture url={envUrl} intensity={envBackgroundIntensity} rotationDeg={envBackgroundRotation} />
         </Suspense>
       )}
 
@@ -312,11 +319,11 @@ export const MainScene: React.FC = () => {
       {perfSettings.sparkles && (
         <ConstellationParticles
           elements={particleElements}
-          lineMaxDistance={1.4}
+          lineMaxDistance={1.8}
           lineMaxNeighbors={4}
           lineOpacity={0.4}
           lineColor="#88ddff"
-          scale={1.2}
+          scale={2}
           position={[0, 1.2, 0]}
           drift
         />

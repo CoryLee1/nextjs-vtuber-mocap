@@ -138,6 +138,9 @@ interface SceneState {
   /** 环境/背景亮度乘数（1=原图，>1 更亮） */
   envBackgroundIntensity: number;
   setEnvBackgroundIntensity: (v: number) => void;
+  /** 环境/背景旋转（度 0–360，绕 Y 轴） */
+  envBackgroundRotation: number;
+  setEnvBackgroundRotation: (v: number) => void;
 }
 
 /**
@@ -368,6 +371,8 @@ export const useSceneStore = create<SceneState>()(
   setSceneFbxUrl: (url) => set({ sceneFbxUrl: url }),
   envBackgroundIntensity: 1.25,
   setEnvBackgroundIntensity: (v) => set({ envBackgroundIntensity: Math.max(0.1, Math.min(3, v)) }),
+  envBackgroundRotation: 0,
+  setEnvBackgroundRotation: (v) => set({ envBackgroundRotation: ((v % 360) + 360) % 360 }),
   }))
 );
 
