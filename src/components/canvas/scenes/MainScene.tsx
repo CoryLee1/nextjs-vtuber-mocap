@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense, memo, useMemo, useLayoutEffect } from 'react';
+import React, { useEffect, useRef, Suspense, memo, useLayoutEffect } from 'react';
 import { Grid, Environment, useFBX, useTexture, Cloud, Clouds } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ConstellationParticles } from '@/components/canvas/ConstellationParticles';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
@@ -21,20 +20,19 @@ import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { usePerformance } from '@/hooks/use-performance';
 
-// 加载占位：drei 粒子云（替代原蓝色球）
+// 加载占位：单朵 drei 粒子云（替代原蓝色球）
 const LoadingIndicator = memo(() => (
   <group position={[0, 1, 0]}>
-    <Clouds limit={200} material={THREE.MeshBasicMaterial}>
+    <Clouds limit={80} material={THREE.MeshBasicMaterial}>
       <Cloud
-        segments={40}
-        bounds={[1.2, 0.5, 0.5]}
-        volume={6}
+        segments={24}
+        bounds={[0.5, 0.25, 0.25]}
+        volume={2}
         color="#e0f2fe"
-        opacity={0.92}
-        speed={0.4}
-        growth={3}
+        opacity={0.9}
+        speed={0.3}
+        growth={2}
       />
-      <Cloud seed={1} segments={25} bounds={[0.8, 0.4, 0.4]} volume={4} color="#bae6fd" opacity={0.85} speed={0.3} />
     </Clouds>
   </group>
 ));
@@ -104,14 +102,14 @@ const GridFloor = memo(() => (
 // ─── 主场景光源（只照到角色/地板，不照天空）────────────────────────────────────────
 // 天空是 scene.background 贴图，不参与光照计算；天空发灰/饱和度低来自色调映射，见下。
 //
-// 1. 主方向光：右前上方 [5,5,5]，强度 1.2，投阴影（512 阴影贴图）
-// 2. 补光：左后 [-5,3,-5]，强度 0.6，不投阴影
-// 3. 顶光：[0,10,0]，强度 0.4，不投阴影
-// 4. 环境光：强度 0.4，无方向
+// 1. 主方向光：右前上方 [5,5,5]，投阴影（512 阴影贴图）
+// 2. 补光：左后 [-5,3,-5]，不投阴影
+// 3. 顶光：[0,10,0]，不投阴影
+// 4. 环境光：无方向（略提亮人物）
 const Lighting = memo(() => (
   <>
     <directionalLight
-      intensity={1.2}
+      intensity={1.5}
       position={[5, 5, 5]}
       castShadow
       shadow-mapSize-width={512}
@@ -123,9 +121,9 @@ const Lighting = memo(() => (
       shadow-camera-bottom={-8}
       shadow-color="#ffffff"
     />
-    <directionalLight intensity={0.6} position={[-5, 3, -5]} castShadow={false} />
-    <directionalLight intensity={0.4} position={[0, 10, 0]} castShadow={false} />
-    <ambientLight intensity={0.4} />
+    <directionalLight intensity={0.75} position={[-5, 3, -5]} castShadow={false} />
+    <directionalLight intensity={0.5} position={[0, 10, 0]} castShadow={false} />
+    <ambientLight intensity={0.52} />
   </>
 ));
 
@@ -208,15 +206,6 @@ export const MainScene: React.FC = () => {
   // 默认模型 URL
   const defaultModelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm';
   const defaultAnimationUrl = DEFAULT_IDLE_URL;
-
-  const particleElements = useMemo(
-    () => [
-      { color: '#ffffff', size: 0.1, count: Math.max(8, Math.floor(perfSettings.particleCount * 0.4)) },
-      { color: '#9dfeed', size: 0.06, count: Math.max(10, Math.floor(perfSettings.particleCount * 0.5)) },
-      { color: '#cfff21', size: 0.05, count: Math.max(12, Math.floor(perfSettings.particleCount * 0.6)) },
-    ],
-    [perfSettings.particleCount]
-  );
 
   const envUrl = hdrUrl || DEFAULT_ENV_BACKGROUND_URL;
   const useHdrEnv = isHdrEnvUrl(envUrl);
@@ -307,20 +296,6 @@ export const MainScene: React.FC = () => {
           />
         </Suspense>
       </group>
-      
-      {/* 星座粒子：可定义多种元素，近距离粒子拖尾连线发光 */}
-      {perfSettings.sparkles && (
-        <ConstellationParticles
-          elements={particleElements}
-          lineMaxDistance={1.8}
-          lineMaxNeighbors={4}
-          lineOpacity={0.4}
-          lineColor="#88ddff"
-          scale={2}
-          position={[0, 1.2, 0]}
-          drift
-        />
-      )}
       
       {/* 后期处理已暂时禁用，避免 postprocessing addPass 时 alpha 为 null 报错 */}
     </>
