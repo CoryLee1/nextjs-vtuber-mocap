@@ -1111,25 +1111,28 @@ export const StreamRoomSidebar = memo(({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__default__">{t('vtuber.scene.hdrDefault')}</SelectItem>
+                  <SelectItem value="/images/sky (3).png">sky (3).png</SelectItem>
                   <SelectItem value="/images/SKY.hdr">SKY.hdr</SelectItem>
-                  {hdr && hdr !== '/images/SKY.hdr' && (
-                    <SelectItem value={hdr}>{locale === 'zh' ? '已上传的 HDR' : 'Uploaded HDR'}</SelectItem>
+                  {hdr && hdr !== '/images/SKY.hdr' && hdr !== '/images/sky (3).png' && (
+                    <SelectItem value={hdr}>{locale === 'zh' ? '已上传的环境图' : 'Uploaded env'}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              {/* HDR 预览：预设用 SKY 缩略图，自定义显示占位 */}
+              {/* 环境/背景预览：默认用 sky (3).png，可选 SKY.hdr，自定义显示占位 */}
               <div className="w-full aspect-video rounded-lg overflow-hidden bg-slate-200 border border-slate-200 shrink-0">
-                {(!hdr || hdr === '/images/SKY.hdr') ? (
+                {(!hdr || hdr === '__default__' || hdr === '/images/sky (3).png') ? (
+                  <img src="/images/sky (3).png" alt="Env preview" className="w-full h-full object-cover" />
+                ) : hdr === '/images/SKY.hdr' ? (
                   <img src="/images/HDRSky.png" alt="HDR preview" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-300 to-slate-400 text-slate-600 text-xs font-medium">
-                    {locale === 'zh' ? '自定义 HDR' : 'Custom HDR'}
+                    {locale === 'zh' ? '自定义环境图' : 'Custom env'}
                   </div>
                 )}
               </div>
-              <input ref={hdrInputRef} type="file" accept=".hdr" className="hidden" onChange={handleHdrUpload} />
+              <input ref={hdrInputRef} type="file" accept=".hdr,.png,.jpg,.jpeg" className="hidden" onChange={handleHdrUpload} />
               <Button type="button" variant="outline" size="sm" className="w-full" disabled={uploadingHdr} onClick={() => hdrInputRef.current?.click()}>
-                {uploadingHdr ? t('vtuber.scene.uploading') : t('vtuber.scene.uploadHdr')}
+                {uploadingHdr ? t('vtuber.scene.uploading') : (locale === 'zh' ? '上传 HDR/PNG/JPG 环境图' : 'Upload HDR/PNG/JPG env')}
               </Button>
               <label className="text-[12px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
               <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>

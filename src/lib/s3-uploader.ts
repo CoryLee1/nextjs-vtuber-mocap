@@ -71,12 +71,13 @@ export class S3Uploader {
       const isAnimation = fileExtension === 'fbx' && file.name.toLowerCase().includes('animation');
       const isMP3 = fileExtension === 'mp3';
       const isHdr = fileExtension === 'hdr';
+      const isEnvImage = ['png', 'jpg', 'jpeg'].includes(fileExtension || '');
       const isFbx = fileExtension === 'fbx';
       const isGlb = fileExtension === 'glb';
       const isGltf = fileExtension === 'gltf';
       const purpose = options?.purpose;
       let folderName: string;
-      if (purpose === 'hdr' && isHdr) folderName = 'hdr';
+      if (purpose === 'hdr' && (isHdr || isEnvImage)) folderName = 'hdr';
       else if (purpose === 'scene' && (isGlb || isGltf)) folderName = 'scene';
       else if (isVRM) folderName = 'vrm';
       else if (isMP3) folderName = 'bgm';
@@ -143,11 +144,12 @@ export class S3Uploader {
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
       const purpose = options?.purpose;
       const isHdr = fileExtension === 'hdr';
+      const isEnvImage = ['png', 'jpg', 'jpeg'].includes(fileExtension || '');
       const isFbx = fileExtension === 'fbx';
       const isGlb = fileExtension === 'glb';
       const isGltf = fileExtension === 'gltf';
       let folderName: string;
-      if (purpose === 'hdr' && isHdr) folderName = 'hdr';
+      if (purpose === 'hdr' && (isHdr || isEnvImage)) folderName = 'hdr';
       else if (purpose === 'scene' && (isGlb || isGltf)) folderName = 'scene';
       else if (fileExtension === 'vrm') folderName = 'vrm';
       else if (fileExtension === 'mp3') folderName = 'bgm';
@@ -269,11 +271,13 @@ export class S3Uploader {
   /** 场景模型（GLB/GLTF）上传大小上限 30MB */
   static SCENE_MODEL_MAX_SIZE = 30 * 1024 * 1024;
 
+  /** 环境/背景图：支持 .hdr、.png、.jpg（等距柱状图） */
   validateHDRFile(file: File): string[] {
     const errors: string[] = [];
     const ext = file.name.toLowerCase().split('.').pop();
-    if (ext !== 'hdr') errors.push('❌ 仅支持 .hdr 格式');
-    if (file.size > S3Uploader.HDR_MAX_SIZE) errors.push(`❌ HDR 不能超过 ${S3Uploader.HDR_MAX_SIZE / 1024 / 1024}MB`);
+    const allowed = ['hdr', 'png', 'jpg', 'jpeg'];
+    if (!ext || !allowed.includes(ext)) errors.push('❌ 仅支持 .hdr / .png / .jpg 格式');
+    if (file.size > S3Uploader.HDR_MAX_SIZE) errors.push(`❌ 环境图不能超过 ${S3Uploader.HDR_MAX_SIZE / 1024 / 1024}MB`);
     if (file.size === 0) errors.push('❌ 文件不能为空');
     return errors;
   }

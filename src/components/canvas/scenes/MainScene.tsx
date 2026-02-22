@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense, memo } from 'react';
-import { Grid, Environment, Sparkles, useFBX } from '@react-three/drei';
+import React, { useEffect, useRef, Suspense, memo, useMemo, useLayoutEffect } from 'react';
+import { Grid, Environment, useFBX, useTexture } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import { ConstellationParticles } from '@/components/canvas/ConstellationParticles';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
 
@@ -33,6 +35,31 @@ const LoadingIndicator = memo(() => (
     </mesh>
   </group>
 ));
+
+/** 默认环境/背景图（支持 .hdr 或 .png/.jpg 等距柱状图） */
+const DEFAULT_ENV_BACKGROUND_URL = '/images/sky (3).png';
+
+/** 根据 URL 扩展名判断是否用 HDR 专用 loader（.hdr / .exr），其余用普通贴图 */
+function isHdrEnvUrl(url: string): boolean {
+  const u = url.toLowerCase();
+  return u.endsWith('.hdr') || u.endsWith('.exr');
+}
+
+/** 仅当 URL 为 PNG/JPG 时用贴图做背景，避免 drei Environment 只认 HDR */
+const EnvBackgroundFromTexture = memo(({ url }: { url: string }) => {
+  const { scene } = useThree();
+  const texture = useTexture(url);
+  useLayoutEffect(() => {
+    const prev = scene.background;
+    scene.background = texture;
+    return () => {
+      scene.background = prev;
+      texture.dispose();
+    };
+  }, [scene, texture]);
+  return null;
+});
+EnvBackgroundFromTexture.displayName = 'EnvBackgroundFromTexture';
 
 // PERF: 网格地板组件
 const GridFloor = memo(() => (
@@ -177,14 +204,32 @@ export const MainScene: React.FC = () => {
   const defaultModelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm';
   const defaultAnimationUrl = DEFAULT_IDLE_URL;
 
+  const particleElements = useMemo(
+    () => [
+      { color: '#ffffff', size: 0.1, count: Math.max(8, Math.floor(perfSettings.particleCount * 0.4)) },
+      { color: '#9dfeed', size: 0.06, count: Math.max(10, Math.floor(perfSettings.particleCount * 0.5)) },
+      { color: '#cfff21', size: 0.05, count: Math.max(12, Math.floor(perfSettings.particleCount * 0.6)) },
+    ],
+    [perfSettings.particleCount]
+  );
+
+  const envUrl = hdrUrl || DEFAULT_ENV_BACKGROUND_URL;
+  const useHdrEnv = isHdrEnvUrl(envUrl);
+
   return (
     <>
-      {/* PERF: HDR 环境贴图 - 侧栏可选/上传，无则默认 */}
-      <Environment
-        files={hdrUrl || '/images/SKY.hdr'}
-        background
-        resolution={perfSettings.hdrResolution}
-      />
+      {/* PERF: 环境/背景 - 支持 HDR(.hdr/.exr) 或 PNG/JPG 等距柱状图，默认 sky (3).png */}
+      {useHdrEnv ? (
+        <Environment
+          files={envUrl}
+          background
+          resolution={perfSettings.hdrResolution}
+        />
+      ) : (
+        <Suspense fallback={null}>
+          <EnvBackgroundFromTexture url={envUrl} />
+        </Suspense>
+      )}
 
       {/* 相机控制器 */}
       <CameraController
@@ -256,15 +301,17 @@ export const MainScene: React.FC = () => {
         </Suspense>
       </group>
       
-      {/* PERF: Sparkles 特效 - 根据性能模式控制 */}
+      {/* 星座粒子：可定义多种元素，近距离粒子拖尾连线发光 */}
       {perfSettings.sparkles && (
-        <Sparkles
-          count={perfSettings.particleCount}
+        <ConstellationParticles
+          elements={particleElements}
+          lineMaxDistance={1.8}
+          lineMaxNeighbors={4}
+          lineOpacity={0.4}
+          lineColor="#88ddff"
           scale={2}
-          size={2.5}
-          speed={0.3}
-          color="#ffffff"
           position={[0, 1.2, 0]}
+          drift
         />
       )}
       
