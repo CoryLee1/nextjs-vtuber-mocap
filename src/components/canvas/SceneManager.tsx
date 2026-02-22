@@ -1,10 +1,30 @@
 'use client';
 
-import React, { memo } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { useThree } from '@react-three/fiber';
+import React, { memo, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { MainScene } from './scenes/MainScene';
+
+const TONE_MAP = {
+  aces: THREE.ACESFilmicToneMapping,
+  linear: THREE.LinearToneMapping,
+  reinhard: THREE.ReinhardToneMapping,
+} as const;
+
+/** 同步 store 的色调映射模式与曝光到 renderer；天空饱和度可由 toneMappingMode 切换（linear/reinhard 更艳）. */
+const ToneMappingSync = memo(function ToneMappingSync() {
+  const gl = useThree((s) => s.gl);
+  const toneMappingExposure = useSceneStore((s) => s.toneMappingExposure);
+  const toneMappingMode = useSceneStore((s) => s.toneMappingMode);
+
+  useEffect(() => {
+    gl.toneMapping = TONE_MAP[toneMappingMode];
+    gl.toneMappingExposure = toneMappingExposure;
+  }, [gl, toneMappingMode, toneMappingExposure]);
+
+  return null;
+});
 
 /**
  * 在 Canvas 内部响应截帧请求（useFrame 时当前帧已绘制，直接 toBlob 即可）
@@ -61,6 +81,7 @@ export const SceneManager: React.FC = () => {
   return (
     <>
       <TakePhotoCapture />
+      <ToneMappingSync />
 
       {/* 主场景 - 使用 visible 控制显隐 */}
       {/* 注意：背景色由 Environment 组件控制，不再使用纯色背景 */}

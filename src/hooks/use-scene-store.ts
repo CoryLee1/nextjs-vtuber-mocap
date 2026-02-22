@@ -141,6 +141,12 @@ interface SceneState {
   /** 环境/背景旋转（度 0–360，绕 Y 轴） */
   envBackgroundRotation: number;
   setEnvBackgroundRotation: (v: number) => void;
+  /** 整体曝光（色调映射曝光，>1 更亮、天空更通透，缓解发灰） */
+  toneMappingExposure: number;
+  setToneMappingExposure: (v: number) => void;
+  /** 色调映射模式：aces=电影感易发灰，linear=最鲜艳，reinhard=折中 */
+  toneMappingMode: 'aces' | 'linear' | 'reinhard';
+  setToneMappingMode: (v: 'aces' | 'linear' | 'reinhard') => void;
 }
 
 /**
@@ -373,6 +379,10 @@ export const useSceneStore = create<SceneState>()(
   setEnvBackgroundIntensity: (v) => set({ envBackgroundIntensity: Math.max(0.1, Math.min(3, v)) }),
   envBackgroundRotation: 0,
   setEnvBackgroundRotation: (v) => set({ envBackgroundRotation: ((v % 360) + 360) % 360 }),
+  toneMappingExposure: 1.2,
+  setToneMappingExposure: (v) => set({ toneMappingExposure: Math.max(0.3, Math.min(3, v)) }),
+  toneMappingMode: 'reinhard',
+  setToneMappingMode: (v) => set({ toneMappingMode: v }),
   }))
 );
 

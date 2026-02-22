@@ -134,6 +134,8 @@ export const ConstellationParticles = memo(function ConstellationParticles({
 
   const pointsGeoRef = useRef<THREE.BufferGeometry | null>(null);
   const lineGeoRef = useRef<THREE.BufferGeometry | null>(null);
+  /** 连线顶点原始位置，用于每帧叠加波动 */
+  const originalLinePositionsRef = useRef<Float32Array | null>(null);
 
   if (typeof window === 'undefined') return null;
 
@@ -147,17 +149,35 @@ export const ConstellationParticles = memo(function ConstellationParticles({
 
   const lineGeo = useMemo(() => {
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(lineSegments, 3));
-    g.attributes.position.needsUpdate = true;
+    const posCopy = new Float32Array(lineSegments);
+    g.setAttribute('position', new THREE.BufferAttribute(posCopy, 3));
     lineGeoRef.current = g;
+    originalLinePositionsRef.current = new Float32Array(lineSegments);
     return g;
   }, [lineSegments]);
 
   const lineColorRgb = lineColor ? hexToRgb(lineColor) : [0.6, 0.9, 1];
 
-  useFrame((_, delta) => {
-    if (!drift || !groupRef.current) return;
-    groupRef.current.rotation.y += delta * 0.08;
+  useFrame((state, delta) => {
+    const t = state.clock.elapsedTime;
+    if (drift && groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.08;
+    }
+    const lineGeo = lineGeoRef.current;
+    const orig = originalLinePositionsRef.current;
+    if (lineGeo && orig && lineGeo.attributes.position) {
+      const arr = lineGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < arr.length; i += 3) {
+        const j = i / 3;
+        arr[i] = orig[i] + 0.018 * Math.sin(t + j * 0.5);
+        arr[i + 1] = orig[i + 1] + 0.018 * Math.cos(t * 0.85 + j * 0.3);
+        arr[i + 2] = orig[i + 2] + 0.012 * Math.sin(t * 0.6 + j * 0.7);
+      }
+      lineGeo.attributes.position.needsUpdate = true;
+    }
+    if (linesRef.current?.material && typeof (linesRef.current.material as any).opacity !== 'undefined') {
+      (linesRef.current.material as any).opacity = lineOpacity * (0.7 + 0.3 * Math.sin(t * 1.2));
+    }
   });
 
   return (

@@ -372,7 +372,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -466,6 +466,8 @@ export const StreamRoomSidebar = memo(({
         else setSceneFbxUrl(null);
         if (typeof parsed.envBackgroundIntensity === 'number') setEnvBackgroundIntensity(parsed.envBackgroundIntensity);
         if (typeof parsed.envBackgroundRotation === 'number') setEnvBackgroundRotation(parsed.envBackgroundRotation);
+        if (typeof parsed.toneMappingExposure === 'number') setToneMappingExposure(parsed.toneMappingExposure);
+        if (['aces', 'linear', 'reinhard'].includes(parsed.toneMappingMode)) setToneMappingMode(parsed.toneMappingMode);
       } catch {
         // ignore invalid storage
       }
@@ -481,7 +483,7 @@ export const StreamRoomSidebar = memo(({
         // ignore invalid storage
       }
     }
-  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity, setEnvBackgroundRotation]);
+  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity, setEnvBackgroundRotation, setToneMappingExposure, setToneMappingMode]);
 
   useEffect(() => {
     onPanelOpenChange?.(panelOpen);
@@ -596,7 +598,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1162,6 +1164,31 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{Math.round(envBackgroundRotation)}°</span>
               </div>
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '整体曝光' : 'Exposure'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={0.3}
+                  max={2.5}
+                  step={0.05}
+                  value={toneMappingExposure}
+                  onValueChange={setToneMappingExposure}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{toneMappingExposure.toFixed(1)}</span>
+              </div>
+              <p className="text-[11px] text-slate-400">{locale === 'zh' ? '调高可减轻天空发灰' : 'Higher = less gray sky'}</p>
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色调映射' : 'Tone mapping'}</label>
+              <Select value={toneMappingMode} onValueChange={(v: 'aces' | 'linear' | 'reinhard') => setToneMappingMode(v)}>
+                <SelectTrigger className="h-9 bg-white rounded-lg px-3 text-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reinhard">{locale === 'zh' ? '平衡（推荐，天空更艳）' : 'Reinhard (balanced)'}</SelectItem>
+                  <SelectItem value="linear">{locale === 'zh' ? '鲜艳（饱和度最高）' : 'Linear (vivid)'}</SelectItem>
+                  <SelectItem value="aces">{locale === 'zh' ? '电影感（ACES，易发灰）' : 'ACES (cinematic)'}</SelectItem>
+                </SelectContent>
+              </Select>
               <label className="text-[12px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
               <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>
               <div className="flex gap-2">

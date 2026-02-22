@@ -5,18 +5,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, CameraShake } from '@react-three/drei';
 import { Vector3, MOUSE } from 'three';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { ORBIT_CONTROLS_DEFAULTS, CAMERA_SHAKE_DEFAULTS } from '@/config/drei-camera-settings';
 
 /**
- * VRM 相机控制器（基于 drei OrbitControls）
- * 
- * 参考：https://codesandbox.io/p/sandbox/zhjbhy
- * 
- * 特性：
- * - 自动跟踪 VRM 头部骨骼（水平方向，使用 lerp 平滑插值）
- * - VRM 模型始终看向相机
- * - 鼠标右键控制抬头/低头
- * - CameraShake 微妙的呼吸效果
- * - 性能优化：节流计算 + 对象池
+ * VRM 相机控制器（drei OrbitControls + CameraShake）
+ *
+ * 与 R3F/drei 官方示例一致：OrbitControls makeDefault 后，其他组件（如 CameraShake）
+ * 会基于 state.controls 协同，不会互相覆盖。任意处可通过 useThree(state => state.controls) 拿到控制器。
+ *
+ * 特性：自动跟踪 VRM 头部（水平 lerp）、右键控制俯仰、CameraShake 呼吸感、节流+对象池。
  */
 interface CameraControllerProps {
   vrmRef?: React.RefObject<any>;
@@ -144,43 +141,30 @@ const CameraControllerComponent: React.FC<CameraControllerProps> = ({
     }
   });
 
+  const orbit = { ...ORBIT_CONTROLS_DEFAULTS, ...cameraSettings };
+
   return (
     <>
       <OrbitControls
         ref={controlsRef}
-        makeDefault // ✅ 关键：设置为默认控制器，让 CameraShake 和其他组件能够识别
+        makeDefault
         enabled={enableUserControl}
-        enableDamping // ✅ 启用阻尼，更平滑的交互
-        dampingFactor={0.01} // 阻尼系数（越小越平滑，但响应稍慢）
-        minDistance={cameraSettings.minDistance ?? 0.5}
-        maxDistance={cameraSettings.maxDistance ?? 10}
-        enablePan={false} // 禁用平移，让右键可以用于旋转
-        // 限制垂直旋转角度，防止看到头顶或脚底
-        minPolarAngle={Math.PI / 6} // 30度，防止看到头顶
-        maxPolarAngle={(Math.PI * 5) / 6} // 150度，防止看到脚底
-        // 自动旋转（可选）
-        autoRotate={cameraSettings.enableAutoRotate ?? false}
-        autoRotateSpeed={cameraSettings.autoRotateSpeed ?? 0.3}
-        // 通过 props 配置鼠标按钮（drei 的 OrbitControls 支持）
+        enableDamping={orbit.enableDamping}
+        dampingFactor={orbit.dampingFactor}
+        minDistance={cameraSettings.minDistance ?? orbit.minDistance}
+        maxDistance={cameraSettings.maxDistance ?? orbit.maxDistance}
+        enablePan={orbit.enablePan}
+        minPolarAngle={orbit.minPolarAngle}
+        maxPolarAngle={orbit.maxPolarAngle}
+        autoRotate={cameraSettings.enableAutoRotate ?? orbit.autoRotate}
+        autoRotateSpeed={cameraSettings.autoRotateSpeed ?? orbit.autoRotateSpeed}
         mouseButtons={{
-          LEFT: MOUSE.ROTATE, // 左键：旋转（水平和垂直）
-          MIDDLE: MOUSE.DOLLY, // 中键：缩放
-          RIGHT: MOUSE.ROTATE, // 右键：旋转（控制抬头/低头）
+          LEFT: MOUSE.ROTATE,
+          MIDDLE: MOUSE.DOLLY,
+          RIGHT: MOUSE.ROTATE,
         }}
       />
-      {/* CameraShake 效果 */}
-      {enableShake && (
-        <CameraShake
-          maxYaw={0.06} // 降低呼吸晃动幅度
-          maxPitch={0.03} // 降低呼吸晃动幅度
-          maxRoll={0.03} // 降低呼吸晃动幅度
-          yawFrequency={0.05} // Frequency of the the yaw rotation
-          pitchFrequency={0.2} // Frequency of the pitch rotation
-          rollFrequency={0.2} // Frequency of the roll rotation
-          intensity={0.6} // 降低整体强度
-          decayRate={0.9} // 更快衰减，减少抖动存在感
-        />
-      )}
+      {enableShake && <CameraShake {...CAMERA_SHAKE_DEFAULTS} />}
     </>
   );
 };

@@ -99,10 +99,15 @@ const GridFloor = memo(() => (
   </>
 ));
 
-// PERF: 优化的光照组件 - 降低阴影分辨率以提升性能
+// ─── 主场景光源（只照到角色/地板，不照天空）────────────────────────────────────────
+// 天空是 scene.background 贴图，不参与光照计算；天空发灰/饱和度低来自色调映射，见下。
+//
+// 1. 主方向光：右前上方 [5,5,5]，强度 1.2，投阴影（512 阴影贴图）
+// 2. 补光：左后 [-5,3,-5]，强度 0.6，不投阴影
+// 3. 顶光：[0,10,0]，强度 0.4，不投阴影
+// 4. 环境光：强度 0.4，无方向
 const Lighting = memo(() => (
   <>
-    {/* 主要光源 - 前方 */}
     <directionalLight
       intensity={1.2}
       position={[5, 5, 5]}
@@ -116,22 +121,8 @@ const Lighting = memo(() => (
       shadow-camera-bottom={-8}
       shadow-color="#ffffff"
     />
-    
-    {/* 补光 - 后方 */}
-    <directionalLight
-      intensity={0.6}
-      position={[-5, 3, -5]}
-      castShadow={false}
-    />
-    
-    {/* 顶部补光 */}
-    <directionalLight
-      intensity={0.4}
-      position={[0, 10, 0]}
-      castShadow={false}
-    />
-    
-    {/* 环境光 */}
+    <directionalLight intensity={0.6} position={[-5, 3, -5]} castShadow={false} />
+    <directionalLight intensity={0.4} position={[0, 10, 0]} castShadow={false} />
     <ambientLight intensity={0.4} />
   </>
 ));
