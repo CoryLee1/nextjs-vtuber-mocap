@@ -135,6 +135,9 @@ interface SceneState {
   sceneFbxUrl: string | null;
   setHdrUrl: (url: string | null) => void;
   setSceneFbxUrl: (url: string | null) => void;
+  /** 环境/背景亮度乘数（1=原图，>1 更亮） */
+  envBackgroundIntensity: number;
+  setEnvBackgroundIntensity: (v: number) => void;
 }
 
 /**
@@ -363,6 +366,8 @@ export const useSceneStore = create<SceneState>()(
   sceneFbxUrl: null,
   setHdrUrl: (url) => set({ hdrUrl: url }),
   setSceneFbxUrl: (url) => set({ sceneFbxUrl: url }),
+  envBackgroundIntensity: 1.25,
+  setEnvBackgroundIntensity: (v) => set({ envBackgroundIntensity: Math.max(0.1, Math.min(3, v)) }),
   }))
 );
 

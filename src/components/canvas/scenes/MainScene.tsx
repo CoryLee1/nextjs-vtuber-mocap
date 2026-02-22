@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, Suspense, memo, useMemo, useLayoutEffect } from 'react';
 import { Grid, Environment, useFBX, useTexture } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
 import { ConstellationParticles } from '@/components/canvas/ConstellationParticles';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL } from '@/config/vtuber-animations';
@@ -45,18 +46,22 @@ function isHdrEnvUrl(url: string): boolean {
   return u.endsWith('.hdr') || u.endsWith('.exr');
 }
 
-/** 仅当 URL 为 PNG/JPG 时用贴图做背景，避免 drei Environment 只认 HDR */
-const EnvBackgroundFromTexture = memo(({ url }: { url: string }) => {
+/** PNG/JPG 等距柱状图做 360° 背景：设置 mapping 后 Three 会按球面采样 */
+const EnvBackgroundFromTexture = memo(({ url, intensity = 1 }: { url: string; intensity?: number }) => {
   const { scene } = useThree();
   const texture = useTexture(url);
   useLayoutEffect(() => {
-    const prev = scene.background;
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    const prevBg = scene.background;
+    const prevIntensity = (scene as any).backgroundIntensity;
     scene.background = texture;
+    if (typeof (scene as any).backgroundIntensity !== 'undefined') (scene as any).backgroundIntensity = intensity;
     return () => {
-      scene.background = prev;
+      scene.background = prevBg;
+      if (typeof prevIntensity !== 'undefined') (scene as any).backgroundIntensity = prevIntensity;
       texture.dispose();
     };
-  }, [scene, texture]);
+  }, [scene, texture, intensity]);
   return null;
 });
 EnvBackgroundFromTexture.displayName = 'EnvBackgroundFromTexture';
@@ -156,6 +161,7 @@ export const MainScene: React.FC = () => {
     echuuCue,
     echuuAudioPlaying,
     hdrUrl,
+    envBackgroundIntensity,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
@@ -206,9 +212,9 @@ export const MainScene: React.FC = () => {
 
   const particleElements = useMemo(
     () => [
-      { color: '#ffffff', size: 0.1, count: Math.max(8, Math.floor(perfSettings.particleCount * 0.4)) },
-      { color: '#9dfeed', size: 0.06, count: Math.max(10, Math.floor(perfSettings.particleCount * 0.5)) },
-      { color: '#cfff21', size: 0.05, count: Math.max(12, Math.floor(perfSettings.particleCount * 0.6)) },
+      { color: '#ffffff', size: 0.04, count: Math.max(8, Math.floor(perfSettings.particleCount * 0.4)) },
+      { color: '#9dfeed', size: 0.025, count: Math.max(10, Math.floor(perfSettings.particleCount * 0.5)) },
+      { color: '#cfff21', size: 0.02, count: Math.max(12, Math.floor(perfSettings.particleCount * 0.6)) },
     ],
     [perfSettings.particleCount]
   );
@@ -223,11 +229,12 @@ export const MainScene: React.FC = () => {
         <Environment
           files={envUrl}
           background
+          backgroundIntensity={envBackgroundIntensity}
           resolution={perfSettings.hdrResolution}
         />
       ) : (
         <Suspense fallback={null}>
-          <EnvBackgroundFromTexture url={envUrl} />
+          <EnvBackgroundFromTexture url={envUrl} intensity={envBackgroundIntensity} />
         </Suspense>
       )}
 
@@ -305,11 +312,11 @@ export const MainScene: React.FC = () => {
       {perfSettings.sparkles && (
         <ConstellationParticles
           elements={particleElements}
-          lineMaxDistance={1.8}
+          lineMaxDistance={1.4}
           lineMaxNeighbors={4}
           lineOpacity={0.4}
           lineColor="#88ddff"
-          scale={2}
+          scale={1.2}
           position={[0, 1.2, 0]}
           drift
         />

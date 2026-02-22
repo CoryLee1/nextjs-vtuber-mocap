@@ -10,6 +10,7 @@ import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
+import { preloadCriticalAssets } from '@/lib/preload-critical-assets';
 import { ModelManager } from '@/components/vtuber/ModelManager';
 
 // 动态导入 VTuber 组件（避免 SSR 问题）
@@ -65,9 +66,10 @@ export default function HomePage() {
       });
   }, []);
 
-  // Loading 期间预拉 S3 模型与动画，进入场景时列表已有缓存
+  // Loading 期间预拉 S3 模型与动画，并预加载默认环境图/VRM/Idle，进入场景时已有缓存
   useEffect(() => {
     useS3ResourcesStore.getState().loadAll();
+    preloadCriticalAssets();
   }, []);
 
   // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom

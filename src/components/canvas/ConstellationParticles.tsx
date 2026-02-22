@@ -164,7 +164,7 @@ export const ConstellationParticles = memo(function ConstellationParticles({
     <group ref={groupRef} position={position}>
       <points ref={pointsRef} geometry={pointsGeo}>
         <pointsMaterial
-          size={2.2}
+          size={0.85}
           vertexColors
           sizeAttenuation
           transparent

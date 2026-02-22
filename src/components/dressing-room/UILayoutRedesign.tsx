@@ -372,7 +372,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -464,6 +464,7 @@ export const StreamRoomSidebar = memo(({
         else setHdrUrl(null);
         if (parsed.sceneFbxUrl) setSceneFbxUrl(parsed.sceneFbxUrl);
         else setSceneFbxUrl(null);
+        if (typeof parsed.envBackgroundIntensity === 'number') setEnvBackgroundIntensity(parsed.envBackgroundIntensity);
       } catch {
         // ignore invalid storage
       }
@@ -479,7 +480,7 @@ export const StreamRoomSidebar = memo(({
         // ignore invalid storage
       }
     }
-  }, [setEchuuConfig, setVRMModelUrl]);
+  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity]);
 
   useEffect(() => {
     onPanelOpenChange?.(panelOpen);
@@ -594,7 +595,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1134,6 +1135,19 @@ export const StreamRoomSidebar = memo(({
               <Button type="button" variant="outline" size="sm" className="w-full" disabled={uploadingHdr} onClick={() => hdrInputRef.current?.click()}>
                 {uploadingHdr ? t('vtuber.scene.uploading') : (locale === 'zh' ? '上传 HDR/PNG/JPG 环境图' : 'Upload HDR/PNG/JPG env')}
               </Button>
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '环境/背景亮度' : 'Env brightness'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={0.2}
+                  max={2.5}
+                  step={0.05}
+                  value={envBackgroundIntensity}
+                  onValueChange={setEnvBackgroundIntensity}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{envBackgroundIntensity.toFixed(1)}</span>
+              </div>
               <label className="text-[12px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
               <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>
               <div className="flex gap-2">
