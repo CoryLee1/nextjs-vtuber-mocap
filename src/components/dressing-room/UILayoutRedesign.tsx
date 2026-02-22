@@ -1639,7 +1639,8 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
     ? `正在 Echuu 直播中！欢迎来围观互动：${shareUrl}`
     : `Live now on Echuu! Join and interact: ${shareUrl}`;
   const iconBtnClass =
-    'h-11 w-11 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center';
+    'h-11 w-11 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center p-0 overflow-hidden';
+  const iconFillClass = 'w-full h-full object-cover';
 
   const copyLink = async () => {
     try {
@@ -1728,7 +1729,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     onClick={() => openPostPage('Instagram', 'https://www.instagram.com/')}
                     title="Instagram"
                   >
-                    <img src="/images/Instagram_logo_2022%20(1).svg" alt="Instagram" className="w-5 h-5" />
+                    <img src="/images/Instagram_logo_2022%20(1).svg" alt="Instagram" className={`${iconFillClass} scale-[1.5]`} />
                   </button>
                   <span className="text-[11px] text-slate-600">Instagram</span>
                 </div>
@@ -1748,7 +1749,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     }}
                     title="WeChat"
                   >
-                    <img src="/images/wechat-logo-svgrepo-com.svg" alt="WeChat" className="w-5 h-5" />
+                    <img src="/images/wechat-logo-svgrepo-com.svg" alt="WeChat" className={`${iconFillClass} scale-[1.5]`} />
                   </button>
                   <span className="text-[11px] text-slate-600">WeChat</span>
                 </div>
@@ -1759,7 +1760,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     onClick={() => openPostPage(locale === 'zh' ? '小红书' : 'RED', 'https://www.xiaohongshu.com/')}
                     title={locale === 'zh' ? '小红书' : 'RED'}
                   >
-                    <img src="/images/Xiaohongshu.svg" alt="Xiaohongshu" className="w-5 h-5" />
+                    <img src="/images/Xiaohongshu.svg" alt="Xiaohongshu" className={`${iconFillClass} scale-[1.5]`} />
                   </button>
                   <span className="text-[11px] text-slate-600">{locale === 'zh' ? '小红书' : 'RED'}</span>
                 </div>
@@ -1770,7 +1771,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     onClick={() => openPostPage(locale === 'zh' ? 'B站' : 'Bilibili', 'https://www.bilibili.com/')}
                     title={locale === 'zh' ? 'B站' : 'Bilibili'}
                   >
-                    <img src="/images/bilibili.svg" alt="Bilibili" className="w-5 h-5" />
+                    <img src="/images/bilibili.svg" alt="Bilibili" className={`${iconFillClass} scale-[1.75]`} />
                   </button>
                   <span className="text-[11px] text-slate-600">{locale === 'zh' ? 'B站' : 'Bilibili'}</span>
                 </div>
