@@ -64,7 +64,7 @@ import { s3Uploader } from '@/lib/s3-uploader';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { TwitterShare, RedditShare } from 'react-share-kit';
+import { TwitterShare, RedditShare } from 'react-share-lite';
 import { QRCodeSVG } from 'qrcode.react';
 
 /** 单次直播回忆：供 agent 下次直播参考 */
@@ -1697,13 +1697,28 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
               </div>
               <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '海外平台' : 'Global Platforms'}</div>
               <div className="flex flex-wrap gap-2">
-                <TwitterShare url={shareUrl} title={shareText} buttonTitle="X" round size={44} />
-                <RedditShare url={shareUrl} title={shareTitle} buttonTitle="Reddit" round size={44} />
+                <TwitterShare
+                  url={shareUrl}
+                  title={shareText}
+                  round
+                  size={44}
+                  bgColor="#111827"
+                  iconFillColor="#ffffff"
+                />
+                <RedditShare
+                  url={shareUrl}
+                  title={shareTitle}
+                  round
+                  size={44}
+                  bgColor="#ff4500"
+                  iconFillColor="#ffffff"
+                />
                 <button
                   type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
                   onClick={() => openPostPage('Instagram', 'https://www.instagram.com/')}
                 >
+                  <img src="/images/Instagram_logo_2022%20(1).svg" alt="Instagram" className="w-4 h-4" />
                   Instagram
                 </button>
               </div>
@@ -1711,7 +1726,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
                   onClick={async () => {
                     await copyLink();
                     toast({
@@ -1720,25 +1735,28 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     });
                   }}
                 >
+                  <img src="/images/wechat-logo-svgrepo-com.svg" alt="WeChat" className="w-4 h-4" />
                   微信
                 </button>
                 <button
                   type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
                   onClick={() => openPostPage(locale === 'zh' ? '小红书' : 'RED', 'https://www.xiaohongshu.com/')}
                 >
+                  <img src="/images/Xiaohongshu.svg" alt="Xiaohongshu" className="w-4 h-4" />
                   {locale === 'zh' ? '小红书' : 'RED'}
                 </button>
                 <button
                   type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900 flex items-center gap-1.5"
                   onClick={() => openPostPage(locale === 'zh' ? 'B站' : 'Bilibili', 'https://www.bilibili.com/')}
                 >
+                  <img src="/images/bilibili.svg" alt="Bilibili" className="w-4 h-4" />
                   {locale === 'zh' ? 'B站' : 'Bilibili'}
                 </button>
                 <button
                   type="button"
-                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm"
+                  className="h-11 px-3 rounded-full border bg-white hover:bg-slate-100 text-sm text-slate-900"
                   onClick={copyLink}
                 >
                   <Copy className="w-4 h-4 inline-block mr-1" />
@@ -1752,11 +1770,11 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                   <input
                     readOnly
                     value={shareUrl}
-                    className="flex-1 h-9 px-2 rounded border text-xs bg-slate-50"
+                    className="flex-1 h-9 px-2 rounded border text-xs bg-slate-50 text-slate-900"
                   />
                   <button
                     type="button"
-                    className="h-9 px-2 rounded border bg-white hover:bg-slate-50"
+                    className="h-9 px-2 rounded border bg-white hover:bg-slate-50 text-slate-900"
                     onClick={copyLink}
                     title={locale === 'zh' ? '复制链接' : 'Copy'}
                   >
@@ -1776,7 +1794,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
               </div>
               <button
                 type="button"
-                className="h-9 px-3 rounded border bg-white hover:bg-slate-100 text-sm"
+                className="h-9 px-3 rounded border bg-white hover:bg-slate-100 text-sm text-slate-900"
                 onClick={copyLink}
               >
                 <ExternalLink className="w-4 h-4 inline-block mr-1" />

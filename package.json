@@ -50,7 +50,7 @@
     "react-day-picker": "^9.13.1",
     "react-dom": "^18.2.0",
     "react-draggable": "^4.5.0",
-    "react-share-kit": "^1.1.0",
+    "react-share-lite": "^1.1.0",
     "stripe": "^18.4.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
