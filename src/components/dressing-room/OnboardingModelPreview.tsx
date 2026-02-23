@@ -237,6 +237,7 @@ function PreviewScene({
   }, [vrm]);
 
   const animationPlayingRef = useRef(false);
+  // 360° 旋转：作用于父 group，不覆盖骨骼动画；Greeting 动画在 vrm.scene 内由 mixer 驱动
   useFrame((_, delta) => {
     if (rotatingGroupRef.current && animationPlayingRef.current) {
       rotatingGroupRef.current.rotation.y += delta * 0.55;
