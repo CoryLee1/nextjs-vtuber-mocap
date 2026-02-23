@@ -8,6 +8,9 @@ const FALLBACK_BUCKET = 'nextjs-vtuber-assets';
 const FALLBACK_REGION = 'us-east-2';
 const FALLBACK_PUBLIC_BASE = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com';
 
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif)$/i;
+const THUMB_SUFFIX_RE = /_thumb\.(png|jpe?g|webp)$/i;
+
 function normalizeKey(raw: string): string {
   try {
     return decodeURIComponent(raw).replace(/^\/+/, '');
@@ -27,6 +30,19 @@ function isAllowedKey(key: string): boolean {
     key.startsWith('scene/') ||
     /^AvatarSample_[A-Z]\.vrm$/i.test(key)
   );
+}
+
+/** 是否为图片 key：用于直接代理返回 body，避免 <img> 跟随 302 导致裂图 */
+function isImageKey(key: string): boolean {
+  return THUMB_SUFFIX_RE.test(key) || IMAGE_EXT_RE.test(key);
+}
+
+function contentTypeFromKey(key: string): string {
+  if (key.endsWith('.png')) return 'image/png';
+  if (key.endsWith('.jpg') || key.endsWith('.jpeg')) return 'image/jpeg';
+  if (key.endsWith('.webp')) return 'image/webp';
+  if (key.endsWith('.gif')) return 'image/gif';
+  return 'application/octet-stream';
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -66,11 +82,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // 先探测服务端凭证是否具备对象读取权限，避免返回“必然 403”的签名 URL。
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     } catch {
-      const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${key}`;
+      // key 含空格、括号等需编码，否则 Location 头 URL 无效
+      const encodedPath = key.split('/').map(encodeURIComponent).join('/');
+      const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
       const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
       fallbackResponse.headers.set('Cache-Control', 'no-store');
       fallbackResponse.headers.set('x-s3-read-fallback', 'public-url');
       return fallbackResponse;
+    }
+
+    // 图片类 key 或 ?proxy=1 时直接代理返回 body（补全缩略图等需同源拉取 VRM，避免 302 跨域）
+    const proxyMode = request.nextUrl.searchParams.get('proxy') === '1';
+    if (isImageKey(key) || proxyMode) {
+      const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+      const obj = await s3Client.send(getCmd);
+      if (!obj.Body) {
+        return NextResponse.json({ success: false, message: 'Empty object' }, { status: 404 });
+      }
+      const body = await obj.Body.transformToByteArray();
+      const contentType = obj.ContentType || (key.endsWith('.vrm') ? 'model/vrm' : contentTypeFromKey(key));
+      const isThumbKey = THUMB_SUFFIX_RE.test(key);
+      return new NextResponse(body, {
+        headers: {
+          'Content-Type': contentType,
+          // _thumb 图片会被同名覆盖上传，需禁用缓存避免看到旧图
+          'Cache-Control': proxyMode || isThumbKey ? 'no-store' : 'public, max-age=86400',
+        },
+      });
     }
 
     const signedUrl = await getSignedUrl(
