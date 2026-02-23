@@ -114,18 +114,24 @@ function IdleUpdater({
     IDLE_NEXT_URL,
     0.12
   );
-  // 与主场景 VRMAvatar 一致：hasMixer 时主动 switchToIdleMode 启动动画，避免 T 字模
+  // 与主场景 VRMAvatar 一致：hasMixer 时主动 switchToIdleMode 启动动画，并启用 360° 旋转
   useEffect(() => {
     if (!vrm?.scene || !vrm?.humanoid) return;
-    const t = setTimeout(() => {
+    const tryStart = (attempt = 1, max = 8) => {
       const state = getAnimationState();
-      if (state?.hasMixer && (state.currentMode !== 'idle' || !state.isPlayingIdle)) {
-        switchToIdleMode();
-        forceIdleRestart();
+      if (state?.hasMixer) {
+        if (state.currentMode !== 'idle' || !state.isPlayingIdle) {
+          switchToIdleMode();
+          forceIdleRestart();
+        }
+        onAnimationPlayingRef && (onAnimationPlayingRef.current = true);
+        return;
       }
-    }, 300);
+      if (attempt < max) setTimeout(() => tryStart(attempt + 1, max), 250);
+    };
+    const t = setTimeout(() => tryStart(), 200);
     return () => clearTimeout(t);
-  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart]);
+  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart, onAnimationPlayingRef]);
 
   // 轮询检查动画状态：首次 500ms 后开始，每 400ms 重试，直到得到明确结果（playing/fallback/error）
   useEffect(() => {
