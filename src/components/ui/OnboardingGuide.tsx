@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 import {
   OnboardingModelPreview,
   DEFAULT_ONBOARDING_PREVIEW_CONFIG,
@@ -67,6 +68,8 @@ const steps = [
 ];
 
 const VROID_STUDIO_URL = 'https://vroid.com/en/studio';
+const STEP1_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Standing Greeting (1).fbx', { proxy: true });
+const STEP2_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Thinking.fbx', { proxy: true });
 
 export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onStep1Upload }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
@@ -80,6 +83,11 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
   const [s3Error, setS3Error] = useState(false);
   const currentStep = steps[activeStep];
   const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
+  const previewAnimationUrl = currentStep.id === 1
+    ? STEP1_PREVIEW_ANIMATION_URL
+    : currentStep.id === 2
+      ? STEP2_PREVIEW_ANIMATION_URL
+      : undefined;
 
   const updatePreview = (key: keyof OnboardingPreviewConfig, value: number) => {
     setPreviewConfig((c) => ({ ...c, [key]: value }));
@@ -162,7 +170,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
 
       <div className="relative z-10 flex h-full pt-20 items-center px-12">
         {/* 1. 左侧：步骤指示器与导航 */}
-        <div className="w-[280px] flex flex-col justify-start pt-12 pr-6 border-r border-white/5 h-[700px]">
+        <div className="w-[280px] flex flex-col justify-start pt-0 pr-6 border-r border-white/5 h-[784px]">
           <div className="mb-8">
             <h2 className="text-4xl font-bold text-white mb-2">
               STEP. 0{activeStep + 1}
@@ -212,6 +220,14 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
             })}
           </div>
 
+          <Button
+            onClick={handleNext}
+            className="w-full rounded-xl bg-[#ef0] text-black hover:bg-[#d4e600] font-bold mb-4 shadow-lg shadow-[#ef0]/10"
+          >
+            {activeStep === steps.length - 1 ? '完成' : 'Next Step'}
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+
           {/* 操作按钮 */}
           <div className="flex space-x-4 mt-auto">
             <Button
@@ -235,19 +251,17 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
         </div>
 
         {/* 2. 中间：模型展示区 (自适应撑满，高度限制 700px) */}
-        <div className="flex-1 h-[700px] relative px-4 flex items-center justify-center overflow-hidden">
-          {currentStep.id === 1 && (
+        <div className="flex-1 h-[785px] relative px-4 flex items-center justify-center overflow-hidden">
+          {(currentStep.id === 1 || currentStep.id === 2) && (
             <div className="w-full h-full">
-              <OnboardingModelPreview previewConfig={previewConfig} />
+              <OnboardingModelPreview previewConfig={previewConfig} animationUrl={previewAnimationUrl} />
             </div>
           )}
         </div>
 
         {/* 3. 右侧：内容/资源库 */}
-        <div className="w-[320px] flex flex-col justify-start pt-0 pl-6 border-l border-white/5 h-[700px]">
+        <div className="w-[320px] flex flex-col justify-start pt-0 pl-6 border-l border-white/5 h-[785px]">
           <div className="w-full">
-            <h3 className="text-2xl font-bold text-white mb-6">MODEL LIBRARY</h3>
-            
             {/* 当前步骤详情 */}
             <Card className="bg-white/10 backdrop-blur-sm border-white/20 mb-6">
               <CardContent className="p-6">
