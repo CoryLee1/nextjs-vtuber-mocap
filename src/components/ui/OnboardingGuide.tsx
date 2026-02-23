@@ -373,7 +373,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                       return (
                         <div 
                           key={model.id} 
-                          onClick={() => useSceneStore.getState().setVrmModelUrl(model.url)}
+                          onClick={() => useSceneStore.getState().setVRMModelUrl(model.url)}
                           className={`aspect-square bg-white/10 rounded-lg border ${isSelected ? 'border-[#ef0] ring-1 ring-[#ef0]' : 'border-white/20'} flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-white/40 transition-all`}
                         >
                           <img

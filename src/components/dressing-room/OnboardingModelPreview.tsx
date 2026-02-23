@@ -45,12 +45,12 @@ function degToRad(deg: number) {
 
 export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
   cameraX: 0,
-  cameraY: 1.5,
-  cameraZ: 2.5,
-  cameraRotationX: -10,
+  cameraY: 1.35, // 稍微降低高度，对齐身体中心
+  cameraZ: 3.2,  // 拉远距离，确保全身可见（原2.5太近）
+  cameraRotationX: -5, // 减小俯仰角，更平视
   cameraRotationY: 0,
   cameraRotationZ: 0,
-  fov: 42,
+  fov: 40, // 稍微减小FOV，减少透视变形
   modelScale: 1.1,
   groupPosY: -1.1,
   adjustCamera: 0.5,

@@ -127,6 +127,40 @@ const Lighting = memo(() => (
   </>
 ));
 
+// 简单的错误边界组件
+class ModelErrorBoundary extends React.Component<
+  { children: React.ReactNode; onError?: (error: any) => void },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('VRM Avatar load failed:', error, errorInfo);
+    this.props.onError?.(error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <group position={[0, 1, 0]}>
+          <mesh>
+            <boxGeometry args={[0.5, 0.5, 0.5]} />
+            <meshBasicMaterial color="red" wireframe />
+          </mesh>
+        </group>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /**
  * PERF: 主场景组件
  * 
@@ -255,9 +289,10 @@ export const MainScene: React.FC = () => {
 
       {/* VRM 角色 */}
       <group position-y={0}>
-        <Suspense fallback={<LoadingIndicator />}>
-          <VRMAvatar
-            ref={vrmRef}
+        <ModelErrorBoundary onError={(e) => console.error(e)}>
+          <Suspense fallback={<LoadingIndicator />}>
+            <VRMAvatar
+              ref={vrmRef}
             modelUrl={vrmModelUrl || defaultModelUrl}
             animationUrl={animationUrl || defaultAnimationUrl}
             nextAnimationUrl={nextAnimationUrl}
@@ -293,8 +328,9 @@ export const MainScene: React.FC = () => {
             }}
             echuuCue={echuuCue}
             echuuAudioPlaying={echuuAudioPlaying}
-          />
-        </Suspense>
+            />
+          </Suspense>
+        </ModelErrorBoundary>
       </group>
       
       {/* 后期处理已暂时禁用，避免 postprocessing addPass 时 alpha 为 null 报错 */}
