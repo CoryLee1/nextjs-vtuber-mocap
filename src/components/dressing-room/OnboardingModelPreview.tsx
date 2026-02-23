@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, useRef, Suspense, memo } from 'react';
 import dynamic from 'next/dynamic';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Stage, useFBX } from '@react-three/drei';
+import { Stage, useFBX, useGLTF } from '@react-three/drei';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import {
   DEFAULT_PREVIEW_MODEL_URL,
   IDLE_ROTATION_ANIMATIONS,
@@ -81,10 +82,12 @@ function IdleUpdater({
   vrm,
   animationUrl,
   onAnimationStatusChange,
+  onAnimationPlayingRef,
 }: {
   vrm: any;
   animationUrl?: string;
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
+  onAnimationPlayingRef?: React.MutableRefObject<boolean>;
 }) {
   const requestedAnimationUrl = animationUrl || ONBOARDING_PREVIEW_LOOP_URL || IDLE_URL;
   const [effectiveAnimationUrl, setEffectiveAnimationUrl] = useState<string>(requestedAnimationUrl);
@@ -148,6 +151,7 @@ function IdleUpdater({
             reason: fallbackLevelRef.current > 0 ? 'step animation unavailable, fallback applied' : undefined,
           });
           reportedPlayingRef.current = true;
+          onAnimationPlayingRef && (onAnimationPlayingRef.current = true);
         }
         return true; // 已解决，停止轮询
       }
@@ -208,7 +212,7 @@ function IdleUpdater({
   return null;
 }
 
-// ─── 在 Canvas 内：加载默认 VRM（独立实例），动画由 useAnimationManager 驱动 ───
+// ─── 在 Canvas 内：与主场景一致用 useGLTF 加载 VRM，Suspense 保证模型就绪后再渲染动画 ───
 function PreviewScene({
   animationUrl,
   onAnimationStatusChange,
@@ -216,109 +220,30 @@ function PreviewScene({
   animationUrl?: string;
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
 }) {
-  const [vrm, setVrm] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const vrmRef = useRef<any>(null);
   const rotatingGroupRef = useRef<any>(null);
   const preloadedUrl = useSceneStore((s) => s.preloadedPreviewModelUrl);
   const sceneModelUrl = useSceneStore((s) => s.vrmModelUrl);
-  // 用户选择的模型优先；未选择时用预加载的默认模型
   const previewModelUrl = sceneModelUrl || preloadedUrl || DEFAULT_PREVIEW_MODEL_URL;
-  const fallbackPublicDefaultModelUrl = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm';
+
+  const gltf = useGLTF(previewModelUrl, undefined, undefined, (loader: any) => {
+    loader.register((parser: any) => new VRMLoaderPlugin(parser));
+  });
+  const vrm = gltf?.userData?.vrm;
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+    if (vrm?.meta?.metaVersion === '0') {
+      VRMUtils.rotateVRM0(vrm);
+    }
+  }, [vrm]);
 
-    (async () => {
-      try {
-        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-        const { VRMLoaderPlugin, VRMUtils } = await import('@pixiv/three-vrm');
-
-        const loader = new GLTFLoader();
-        loader.register((parser: any) => new VRMLoaderPlugin(parser));
-
-        const candidateUrls = [previewModelUrl, fallbackPublicDefaultModelUrl].filter(
-          (url, idx, arr) => Boolean(url) && arr.indexOf(url) === idx
-        );
-
-        let gltf: any = null;
-        let lastError: unknown = null;
-
-        for (const candidateUrl of candidateUrls) {
-          try {
-            gltf = await new Promise<any>((resolve, reject) => {
-              loader.load(candidateUrl, resolve, undefined, reject);
-            });
-            if (gltf) break;
-          } catch (err) {
-            lastError = err;
-          }
-        }
-
-        if (!gltf) {
-          throw lastError ?? new Error('VRM load failed');
-        }
-
-        if (cancelled) return;
-
-        const loadedVrm = gltf?.userData?.vrm;
-        if (!loadedVrm?.scene) {
-          setError('VRM 未解析');
-          return;
-        }
-
-        if (loadedVrm.meta?.metaVersion === '0') {
-          VRMUtils.rotateVRM0(loadedVrm);
-        }
-
-        vrmRef.current = loadedVrm;
-        setVrm(loadedVrm);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      const toDispose = vrmRef.current;
-      vrmRef.current = null;
-      if (toDispose?.scene?.parent) toDispose.scene.parent.remove(toDispose.scene);
-      if (toDispose?.scene) {
-        toDispose.scene.traverse((obj: any) => {
-          if (obj.geometry) obj.geometry.dispose();
-          if (obj.material) {
-            const m = obj.material;
-            if (Array.isArray(m)) m.forEach((mat: any) => mat?.dispose?.());
-            else m?.dispose?.();
-          }
-        });
-      }
-    };
-  }, [previewModelUrl]);
-
+  const animationPlayingRef = useRef(false);
   useFrame((_, delta) => {
-    if (rotatingGroupRef.current) {
+    if (rotatingGroupRef.current && animationPlayingRef.current) {
       rotatingGroupRef.current.rotation.y += delta * 0.55;
     }
   });
 
-  if (error) {
-    return (
-      <group>
-        <mesh>
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial color="#333" />
-        </mesh>
-      </group>
-    );
-  }
-
-  if (loading || !vrm) {
+  if (!vrm?.scene) {
     return null;
   }
 
@@ -336,7 +261,12 @@ function PreviewScene({
         <primitive object={vrm.scene} />
       </group>
       <ambientLight intensity={cfg.ambientIntensity} />
-      <IdleUpdater vrm={vrm} animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
+      <IdleUpdater
+        vrm={vrm}
+        animationUrl={animationUrl}
+        onAnimationStatusChange={onAnimationStatusChange}
+        onAnimationPlayingRef={animationPlayingRef}
+      />
     </Stage>
   );
 }
