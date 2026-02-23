@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { subscribeWithSelector, persist } from 'zustand/middleware';
 import type { VRM } from '@pixiv/three-vrm';
 import type { CameraSettings } from '@/types/vtuber';
 import type { Object3D, Mesh, Material } from 'three';
@@ -56,6 +56,9 @@ interface SceneState {
   setVRMModel: (model: VRM, url: string) => void;
   /** 设置模型 URL（不改变模型实例，用于预加载） */
   setVRMModelUrl: (url: string) => void;
+  /** Loading 阶段预加载的引导页模型 Object URL，引导页优先用以免二次请求 */
+  preloadedPreviewModelUrl: string | null;
+  setPreloadedPreviewModelUrl: (url: string | null) => void;
   /** 设置动画 URL */
   setAnimationUrl: (url: string) => void;
   /** 设置下一个预加载动画 URL */
@@ -183,8 +186,9 @@ const defaultDebugSettings: DebugSettings = {
  * - 场景配置（相机、调试等）
  */
 export const useSceneStore = create<SceneState>()(
-  subscribeWithSelector((set, get) => ({
-  // ========== Canvas 状态 ==========
+  persist(
+    subscribeWithSelector((set, get) => ({
+      // ========== Canvas 状态 ==========
   canvasReady: false,
   setCanvasReady: (ready: boolean) => {
     set({ canvasReady: ready });
@@ -223,6 +227,13 @@ export const useSceneStore = create<SceneState>()(
 
   setVRMModelUrl: (url: string) => {
     set({ vrmModelUrl: url });
+  },
+
+  preloadedPreviewModelUrl: null,
+  setPreloadedPreviewModelUrl: (url: string | null) => {
+    const prev = get().preloadedPreviewModelUrl;
+    if (prev && prev !== url) try { URL.revokeObjectURL(prev); } catch (_) {}
+    set({ preloadedPreviewModelUrl: url });
   },
 
   setAnimationUrl: (url: string) => {
@@ -384,7 +395,26 @@ export const useSceneStore = create<SceneState>()(
   setToneMappingExposure: (v) => set({ toneMappingExposure: Math.max(0.3, Math.min(3, v)) }),
   toneMappingMode: 'reinhard',
   setToneMappingMode: (v) => set({ toneMappingMode: v }),
-  }))
+    })),
+    {
+      name: 'vtuber-scene-storage',
+      partialize: (state) => ({
+        // 仅持久化需要保存的配置，排除复杂对象和临时状态
+        vrmModelUrl: state.vrmModelUrl,
+        echuuConfig: state.echuuConfig,
+        cameraSettings: state.cameraSettings,
+        debugSettings: state.debugSettings,
+        envBackgroundIntensity: state.envBackgroundIntensity,
+        envBackgroundRotation: state.envBackgroundRotation,
+        toneMappingExposure: state.toneMappingExposure,
+        toneMappingMode: state.toneMappingMode,
+        hdrUrl: state.hdrUrl,
+        sceneFbxUrl: state.sceneFbxUrl,
+        bgmUrl: state.bgmUrl,
+        bgmVolume: state.bgmVolume,
+      }),
+    }
+  )
 );
 
 /**
