@@ -58,9 +58,13 @@ export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
 };
 
 const PreviewConfigContext = createContext<OnboardingPreviewConfig | null>(null);
+const OrbitContext = createContext<React.MutableRefObject<boolean> | null>(null);
 
 function usePreviewConfig() {
   return useContext(PreviewConfigContext) ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
+}
+function useOrbitEnabledRef() {
+  return useContext(OrbitContext);
 }
 
 /** 引导页占位区用：透明背景、播 idle 的 3D 预览。与主场景一致使用 useAnimationManager（idle 轮播 + additive 同源）。 */
@@ -226,7 +230,7 @@ function PreviewScene({
   animationUrl?: string;
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
 }) {
-  const rotatingGroupRef = useRef<any>(null);
+  const orbitEnabledRef = useOrbitEnabledRef();
   const preloadedUrl = useSceneStore((s) => s.preloadedPreviewModelUrl);
   const sceneModelUrl = useSceneStore((s) => s.vrmModelUrl);
   const previewModelUrl = sceneModelUrl || preloadedUrl || DEFAULT_PREVIEW_MODEL_URL;
@@ -242,14 +246,6 @@ function PreviewScene({
     }
   }, [vrm]);
 
-  const animationPlayingRef = useRef(false);
-  // 360° 旋转：作用于父 group，不覆盖骨骼动画；Greeting 动画在 vrm.scene 内由 mixer 驱动
-  useFrame((_, delta) => {
-    if (rotatingGroupRef.current && animationPlayingRef.current) {
-      rotatingGroupRef.current.rotation.y += delta * 0.55;
-    }
-  });
-
   if (!vrm?.scene) {
     return null;
   }
@@ -264,7 +260,7 @@ function PreviewScene({
         shadows={false}
         center
     >
-      <group ref={rotatingGroupRef} position={[0, cfg.groupPosY, 0]} scale={cfg.modelScale}>
+      <group position={[0, cfg.groupPosY, 0]} scale={cfg.modelScale}>
         <primitive object={vrm.scene} />
       </group>
       <ambientLight intensity={cfg.ambientIntensity} />
@@ -272,22 +268,34 @@ function PreviewScene({
         vrm={vrm}
         animationUrl={animationUrl}
         onAnimationStatusChange={onAnimationStatusChange}
-        onAnimationPlayingRef={animationPlayingRef}
+        onAnimationPlayingRef={orbitEnabledRef ?? undefined}
       />
     </Stage>
   );
 }
 
-// ─── 每帧应用镜头位置与旋转，覆盖 Stage 对相机的修改，保证平视/俯仰可调 ───
+// ─── 镜头控制：参考 OrbitControls，动画播放后相机环绕 360° 展示角色 ───
 function CameraController() {
   const cfg = usePreviewConfig();
   const { camera } = useThree();
-  useFrame(() => {
-    camera.position.set(cfg.cameraX, cfg.cameraY, cfg.cameraZ);
-    camera.rotation.order = 'XYZ';
-    camera.rotation.x = degToRad(cfg.cameraRotationX);
-    camera.rotation.y = degToRad(cfg.cameraRotationY);
-    camera.rotation.z = degToRad(cfg.cameraRotationZ);
+  const orbitEnabledRef = useOrbitEnabledRef();
+  const orbitAngleRef = useRef(0);
+  const radius = Math.sqrt(cfg.cameraX * cfg.cameraX + cfg.cameraZ * cfg.cameraZ) || 2.5;
+  const targetY = cfg.cameraY;
+  useFrame((_, delta) => {
+    if (orbitEnabledRef?.current) {
+      orbitAngleRef.current += delta * 0.55;
+      camera.position.x = radius * Math.sin(orbitAngleRef.current);
+      camera.position.z = radius * Math.cos(orbitAngleRef.current);
+      camera.position.y = targetY;
+      camera.lookAt(0, 0, 0);
+    } else {
+      camera.position.set(cfg.cameraX, cfg.cameraY, cfg.cameraZ);
+      camera.rotation.order = 'XYZ';
+      camera.rotation.x = degToRad(cfg.cameraRotationX);
+      camera.rotation.y = degToRad(cfg.cameraRotationY);
+      camera.rotation.z = degToRad(cfg.cameraRotationZ);
+    }
     camera.fov = cfg.fov;
     camera.updateProjectionMatrix();
   });
@@ -303,7 +311,9 @@ function PreviewCanvasInner({
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
 }) {
   const cfg = usePreviewConfig();
+  const orbitEnabledRef = useRef(false);
   return (
+    <OrbitContext.Provider value={orbitEnabledRef}>
     <Canvas
       frameloop="always"
       gl={{
@@ -338,6 +348,7 @@ function PreviewCanvasInner({
         <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
       </Suspense>
     </Canvas>
+    </OrbitContext.Provider>
   );
 }
 
