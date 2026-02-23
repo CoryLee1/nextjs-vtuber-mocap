@@ -2,6 +2,7 @@ import { S3Client, ListObjectsV2Command, HeadObjectCommand, GetObjectCommand } f
 import { VRMModel, Animation } from '@/types';
 import { ENV_CONFIG } from '../../env.config';
 import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
+import { buildCanonicalTags, normalizeGender, normalizeModelName, normalizeVoice } from '@/lib/ai-tag-taxonomy';
 
 export interface GetModelsFromS3Options {
   /** 是否检查缩略图是否真实存在（HeadObject），不存在则 thumbnail 不填且 hasThumbnail=false */
@@ -129,21 +130,36 @@ export class S3ResourceManager {
               if (!obj.Body) return;
               const body = await obj.Body.transformToByteArray();
               const json = JSON.parse(new TextDecoder().decode(body)) as {
+                name?: string;
                 gender?: string;
+                identity?: string;
+                styleTags?: string[];
                 attributes?: string[];
                 suggestedVoice?: string;
+                voiceConfidence?: number;
+                taxonomyVersion?: number;
               };
-              if (json.gender) m.gender = json.gender as 'male' | 'female' | 'neutral';
-              if (Array.isArray(json.attributes)) m.attributes = json.attributes;
-              if (json.suggestedVoice) m.suggestedVoice = json.suggestedVoice;
-              // 将 AI 打标结果并入 tags，便于模型卡片直观看到标签并支持现有搜索逻辑
-              const tagSet = new Set<string>(Array.isArray(m.tags) ? m.tags : []);
-              if (json.gender) tagSet.add(`gender:${json.gender}`);
-              if (Array.isArray(json.attributes)) {
-                json.attributes.map((a) => String(a).trim()).filter(Boolean).forEach((a) => tagSet.add(a));
-              }
-              if (json.suggestedVoice) tagSet.add(`voice:${json.suggestedVoice}`);
-              m.tags = Array.from(tagSet);
+              const normalizedGender = normalizeGender(json.gender);
+              const normalizedVoice = normalizeVoice(json.suggestedVoice);
+              const styleTags = Array.isArray(json.styleTags)
+                ? json.styleTags.map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+                : (Array.isArray(json.attributes) ? json.attributes.map((t) => String(t).trim().toLowerCase()).filter(Boolean) : []);
+              const identity = String(json.identity ?? '').trim().toLowerCase() || undefined;
+              m.name = normalizeModelName(json.name, m.name);
+              m.gender = normalizedGender;
+              m.identity = identity;
+              m.styleTags = styleTags;
+              m.attributes = styleTags;
+              m.suggestedVoice = normalizedVoice;
+              m.voiceConfidence = Number.isFinite(Number(json.voiceConfidence)) ? Number(json.voiceConfidence) : undefined;
+              m.taxonomyVersion = Number.isFinite(Number(json.taxonomyVersion)) ? Number(json.taxonomyVersion) : undefined;
+              m.tags = buildCanonicalTags({
+                gender: normalizedGender,
+                identity,
+                styleTags,
+                suggestedVoice: normalizedVoice,
+                baseTags: m.tags,
+              });
             } catch {
               // _meta.json 不存在或解析失败，忽略
             }

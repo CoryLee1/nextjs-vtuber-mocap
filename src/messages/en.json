@@ -51,7 +51,31 @@
       "uploadSuccess": "Upload Successful",
       "uploadError": "Upload Failed",
       "cloud": "Cloud",
-      "local": "Local"
+      "local": "Local",
+      "recommendedVoice": "Recommended Voice"
+    },
+    "modelTags": {
+      "gender": {
+        "male": "Male",
+        "female": "Female",
+        "nonbinary": "Nonbinary"
+      },
+      "identity": {
+        "vtuber": "VTuber",
+        "idol": "Idol",
+        "student": "Student",
+        "office_worker": "Office Worker",
+        "mage": "Mage"
+      },
+      "style": {
+        "anime": "Anime",
+        "kemonomimi": "Kemonomimi",
+        "shonen": "Shonen",
+        "seifuku": "School Uniform",
+        "ojousama": "Ojousama",
+        "cool": "Cool",
+        "cute": "Cute"
+      }
     },
     "animation": {
       "title": "Animation Library",

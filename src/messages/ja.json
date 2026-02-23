@@ -51,7 +51,31 @@
       "uploadSuccess": "アップロード成功",
       "uploadError": "アップロード失敗",
       "cloud": "クラウド",
-      "local": "ローカル"
+      "local": "ローカル",
+      "recommendedVoice": "おすすめボイス"
+    },
+    "modelTags": {
+      "gender": {
+        "male": "男性向け",
+        "female": "女性向け",
+        "nonbinary": "中性向け"
+      },
+      "identity": {
+        "vtuber": "VTuber",
+        "idol": "アイドル系",
+        "student": "学生系",
+        "office_worker": "社会人系",
+        "mage": "魔法使い系"
+      },
+      "style": {
+        "anime": "アニメ系",
+        "kemonomimi": "ケモ耳系",
+        "shonen": "少年系",
+        "seifuku": "制服系",
+        "ojousama": "お嬢様系",
+        "cool": "クール系",
+        "cute": "かわいい系"
+      }
     },
     "animation": {
       "title": "アニメーションライブラリ",

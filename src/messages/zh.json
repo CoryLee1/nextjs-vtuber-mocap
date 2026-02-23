@@ -51,7 +51,31 @@
       "uploadSuccess": "上传成功",
       "uploadError": "上传失败",
       "cloud": "云端",
-      "local": "本地"
+      "local": "本地",
+      "recommendedVoice": "推荐声线"
+    },
+    "modelTags": {
+      "gender": {
+        "male": "男性向",
+        "female": "女性向",
+        "nonbinary": "中性向"
+      },
+      "identity": {
+        "vtuber": "虚拟主播",
+        "idol": "偶像系",
+        "student": "学生系",
+        "office_worker": "职场系",
+        "mage": "法师系"
+      },
+      "style": {
+        "anime": "二次元",
+        "kemonomimi": "兽耳系",
+        "shonen": "少年系",
+        "seifuku": "制服系",
+        "ojousama": "大小姐系",
+        "cool": "冷系",
+        "cute": "可爱系"
+      }
     },
     "animation": {
       "title": "动画库",

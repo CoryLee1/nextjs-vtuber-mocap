@@ -11,9 +11,19 @@ export interface VRMModel {
   type?: string; // MIME类型
   createdAt?: string; // 创建时间
   /** 性别（供 VLM 打 tag、声音分配用） */
-  gender?: 'male' | 'female' | 'neutral';
+  gender?: 'male' | 'female' | 'nonbinary';
   /** 属性标签（如 anime, casual，供 VLM 打 tag 用） */
   attributes?: string[];
+  /** 角色身份（如 student, idol, mage） */
+  identity?: string;
+  /** 二次元风格标签（英文 canonical keys） */
+  styleTags?: string[];
+  /** 推荐 TTS 音色（Qwen TTS 音色名，由 VLM 打 tag 生成） */
+  suggestedVoice?: string;
+  /** 推荐音色置信度（0~1） */
+  voiceConfidence?: number;
+  /** 标签体系版本 */
+  taxonomyVersion?: number;
 }
 
 export interface Animation {
