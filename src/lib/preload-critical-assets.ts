@@ -58,6 +58,19 @@ async function preloadPreviewModelAndStore(
         const blob = await res.blob();
         const objectUrl = URL.createObjectURL(blob);
         useSceneStore.getState().setPreloadedPreviewModelUrl(objectUrl);
+        // Populate drei's GLTF cache with the VRM plugin so useGLTF() resolves
+        // instantly inside the Canvas (no re-parse delay on first render).
+        try {
+          const [{ useGLTF }, { VRMLoaderPlugin }] = await Promise.all([
+            import('@react-three/drei'),
+            import('@pixiv/three-vrm'),
+          ]);
+          useGLTF.preload(objectUrl, undefined, undefined, (loader: any) => {
+            loader.register((parser: any) => new VRMLoaderPlugin(parser));
+          });
+        } catch {
+          // Non-fatal — canvas will just parse on first render
+        }
         emitProgress(70);
         return;
       } catch (e) {

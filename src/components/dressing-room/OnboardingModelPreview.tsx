@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, Suspense
 import dynamic from 'next/dynamic';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stage, useFBX, useGLTF } from '@react-three/drei';
+import { Box3 } from 'three';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import {
   DEFAULT_PREVIEW_MODEL_URL,
@@ -45,13 +46,13 @@ function degToRad(deg: number) {
 
 export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
   cameraX: 0,
-  cameraY: 1.35, // 稍微降低高度，对齐身体中心
-  cameraZ: 3.2,  // 拉远距离，确保全身可见（原2.5太近）
-  cameraRotationX: -5, // 减小俯仰角，更平视
+  cameraY: 0,
+  cameraZ: 3.5,
+  cameraRotationX: 0,
   cameraRotationY: 0,
   cameraRotationZ: 0,
-  fov: 40, // 稍微减小FOV，减少透视变形
-  modelScale: 1.1,
+  fov: 40,
+  modelScale: 1.0,
   groupPosY: -1.1,
   adjustCamera: 0.5,
   stageIntensity: 2.1,
@@ -91,7 +92,6 @@ function IdleUpdater({
   onAnimationPlayingRef?: React.MutableRefObject<boolean>;
 }) {
   const requestedAnimationUrl = animationUrl || ONBOARDING_PREVIEW_LOOP_URL || IDLE_URL;
-  // onAnimationPlayingRef 保留以兼容，但 360° 旋转已改为模型旋转、始终启用
   const [effectiveAnimationUrl, setEffectiveAnimationUrl] = useState<string>(requestedAnimationUrl);
   const fallbackChainRef = useRef<string[]>([IDLE_URL, IDLE_NEXT_URL].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i));
   const fallbackLevelRef = useRef(0);
@@ -116,7 +116,7 @@ function IdleUpdater({
     IDLE_NEXT_URL,
     0.12
   );
-  // 与主场景 VRMAvatar 一致：hasMixer 时主动 switchToIdleMode 启动动画，并启用 360° 旋转
+
   useEffect(() => {
     if (!vrm?.scene || !vrm?.humanoid) return;
     const tryStart = (attempt = 1, max = 8) => {
@@ -134,7 +134,6 @@ function IdleUpdater({
     return () => clearTimeout(t);
   }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart]);
 
-  // 轮询检查动画状态：首次 500ms 后开始，每 400ms 重试，直到得到明确结果（playing/fallback/error）
   useEffect(() => {
     if (!vrm) return;
     const check = () => {
@@ -159,17 +158,16 @@ function IdleUpdater({
           });
           reportedPlayingRef.current = true;
         }
-        return true; // 已解决，停止轮询
+        return true;
       }
 
-      // 与 VRMAvatar 一致：hasMixer 时主动启动，避免漏启动
       if (state?.hasMixer && (state.currentMode !== 'idle' || !state.isPlayingIdle)) {
         switchToIdleMode();
         forceIdleRestart();
-        return false; // 继续轮询等待 animationReady
+        return false;
       }
 
-      if (state?.isLoading) return false; // 仍在加载，继续轮询
+      if (state?.isLoading) return false;
 
       const nextFallback = fallbackChainRef.current[fallbackLevelRef.current];
       if (nextFallback && effectiveAnimationUrl !== nextFallback) {
@@ -192,7 +190,7 @@ function IdleUpdater({
           reason: `all fallbacks exhausted: mapped=${state?.lastMappedTrackCount ?? 0}, raw=${state?.lastRawTrackCount ?? 0}`,
         });
       }
-      return true; // 已报告 fallback/error，停止轮询
+      return true;
     };
 
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -218,14 +216,19 @@ function IdleUpdater({
   return null;
 }
 
-// ─── 在 Canvas 内：与主场景一致用 useGLTF 加载 VRM，Suspense 保证模型就绪后再渲染动画 ───
+// ─── 在 Canvas 内：加载 VRM，自动计算包围盒适配镜头，避免头部截断 ───
 function PreviewScene({
   animationUrl,
   onAnimationStatusChange,
+  onModelReady,
 }: {
   animationUrl?: string;
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
+  onModelReady?: () => void;
 }) {
+  // All hooks MUST be called before any early return
+  const cfg = usePreviewConfig();
+  const { camera } = useThree();
   const rotatingGroupRef = useRef<any>(null);
   const preloadedUrl = useSceneStore((s) => s.preloadedPreviewModelUrl);
   const sceneModelUrl = useSceneStore((s) => s.vrmModelUrl);
@@ -242,26 +245,63 @@ function PreviewScene({
     }
   }, [vrm]);
 
-  // 360° 展示：Step1/2/3 统一沿用同一 stage 配置，不重载
+  // Auto-fit: after VRM loads, compute world-space bounding box and position camera
+  // so the full model (head-to-toe) is always visible regardless of model height.
+  useEffect(() => {
+    if (!vrm?.scene) return;
+
+    // Wait one animation frame for Stage's <Center> to apply its offset
+    const rafId = requestAnimationFrame(() => {
+      const group = rotatingGroupRef.current;
+      if (!group) return;
+
+      // Temporarily reset rotation for an axis-aligned bounding box
+      const savedRotY = group.rotation.y;
+      group.rotation.y = 0;
+
+      const box = new Box3().setFromObject(group);
+      group.rotation.y = savedRotY;
+
+      if (box.isEmpty()) return;
+
+      const height = box.max.y - box.min.y;
+      if (height < 0.1) return;
+
+      const centerY = (box.min.y + box.max.y) / 2;
+
+      // Compute camera Z so full model height + 10% padding fits in vertical FOV
+      const fovRad = degToRad(cfg.fov);
+      const paddedHalf = (height / 2) * 1.10;
+      const camZ = Math.max(paddedHalf / Math.tan(fovRad / 2), 2.0);
+
+      camera.position.set(0, centerY, camZ);
+      camera.rotation.set(0, 0, 0);
+      camera.fov = cfg.fov;
+      camera.updateProjectionMatrix();
+
+      onModelReady?.();
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [vrm, cfg.fov, camera, onModelReady]);
+
+  // 360° rotation
   useFrame((_, delta) => {
     if (rotatingGroupRef.current) {
       rotatingGroupRef.current.rotation.y += delta * 0.55;
     }
   });
 
-  if (!vrm?.scene) {
-    return null;
-  }
+  if (!vrm?.scene) return null;
 
-  const cfg = usePreviewConfig();
   return (
-      <Stage
-        preset="rembrandt"
-        intensity={cfg.stageIntensity}
-        environment="studio"
-        adjustCamera={false}
-        shadows={false}
-        center
+    <Stage
+      preset="rembrandt"
+      intensity={cfg.stageIntensity}
+      environment="studio"
+      adjustCamera={false}
+      shadows={false}
+      center
     >
       <group ref={rotatingGroupRef} position={[0, cfg.groupPosY, 0]} scale={cfg.modelScale}>
         <primitive object={vrm.scene} />
@@ -276,29 +316,15 @@ function PreviewScene({
   );
 }
 
-// ─── 镜头控制：Stage adjustCamera=false 时由此处设置固定机位 ───
-function CameraController() {
-  const cfg = usePreviewConfig();
-  const { camera } = useThree();
-  useFrame(() => {
-    camera.position.set(cfg.cameraX, cfg.cameraY, cfg.cameraZ);
-    camera.rotation.order = 'XYZ';
-    camera.rotation.x = degToRad(cfg.cameraRotationX);
-    camera.rotation.y = degToRad(cfg.cameraRotationY);
-    camera.rotation.z = degToRad(cfg.cameraRotationZ);
-    camera.fov = cfg.fov;
-    camera.updateProjectionMatrix();
-  });
-  return null;
-}
-
 // ─── 内层：仅客户端渲染的 Canvas ───
 function PreviewCanvasInner({
   animationUrl,
   onAnimationStatusChange,
+  onModelReady,
 }: {
   animationUrl?: string;
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
+  onModelReady?: () => void;
 }) {
   const cfg = usePreviewConfig();
   return (
@@ -313,7 +339,6 @@ function PreviewCanvasInner({
       }}
       camera={{
         position: [cfg.cameraX, cfg.cameraY, cfg.cameraZ],
-        rotation: [degToRad(cfg.cameraRotationX), degToRad(cfg.cameraRotationY), degToRad(cfg.cameraRotationZ)],
         fov: cfg.fov,
         near: 0.1,
         far: 30,
@@ -324,7 +349,6 @@ function PreviewCanvasInner({
       style={{ width: '100%', height: '100%', display: 'block' }}
       dpr={[1, 1.5]}
     >
-      <CameraController />
       <Suspense fallback={null}>
         {/* Step1/2/3 动画统一预加载，避免切换时 useFBX suspend 导致 Stage 重载 */}
         {ONBOARDING_PREVIEW_ANIMATION_URLS.map((url) => (
@@ -333,7 +357,11 @@ function PreviewCanvasInner({
         {PRELOAD_ANIMATION_URLS.map((url) => (
           <PreloadFbx key={url} url={url} />
         ))}
-        <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
+        <PreviewScene
+          animationUrl={animationUrl}
+          onAnimationStatusChange={onAnimationStatusChange}
+          onModelReady={onModelReady}
+        />
       </Suspense>
     </Canvas>
   );
@@ -359,10 +387,30 @@ export function OnboardingModelPreview({
   onAnimationStatusChange,
 }: OnboardingModelPreviewProps) {
   const value = previewConfig ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
+
+  // Track when the model is ready (auto-fit ran) to hide the loading spinner
+  const [modelReady, setModelReady] = useState(false);
+  const sceneModelUrl = useSceneStore((s) => s.vrmModelUrl);
+
+  // Reset loading indicator when the user selects a different model
+  useEffect(() => {
+    setModelReady(false);
+  }, [sceneModelUrl]);
+
   return (
     <PreviewConfigContext.Provider value={value}>
       <div className="absolute top-0 left-0 right-0 bottom-0 w-full h-full rounded-lg overflow-hidden bg-transparent">
-        <PreviewCanvas animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
+        {/* Spinner shown while model loads / auto-fit runs */}
+        {!modelReady && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+          </div>
+        )}
+        <PreviewCanvas
+          animationUrl={animationUrl}
+          onAnimationStatusChange={onAnimationStatusChange}
+          onModelReady={() => setModelReady(true)}
+        />
       </div>
     </PreviewConfigContext.Provider>
   );
