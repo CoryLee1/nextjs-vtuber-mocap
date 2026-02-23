@@ -35,21 +35,15 @@ const BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET || 'nextjs-vtuber-assets';
 const REGION = process.env.NEXT_PUBLIC_S3_REGION || 'us-east-2';
 const ANIM_DIR = path.join(__dirname, '..', 'public', 'models', 'animations');
 
+/**
+ * 用法：
+ *   node scripts/upload-animations-to-s3.js                    # 上传 public/models/animations 下所有 .fbx
+ *   node scripts/upload-animations-to-s3.js <本地文件路径>      # 上传指定文件到 animations/<文件名>
+ */
 async function main() {
   if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
     console.error('请在 .env 中配置 AWS_ACCESS_KEY_ID 和 AWS_SECRET_ACCESS_KEY');
     process.exit(1);
-  }
-
-  if (!fs.existsSync(ANIM_DIR)) {
-    console.error('目录不存在:', ANIM_DIR);
-    process.exit(1);
-  }
-
-  const files = fs.readdirSync(ANIM_DIR).filter((f) => f.toLowerCase().endsWith('.fbx'));
-  if (files.length === 0) {
-    console.log('未找到 .fbx 文件');
-    return;
   }
 
   const s3 = new S3Client({
@@ -60,9 +54,34 @@ async function main() {
     },
   });
 
-  console.log(`准备上传 ${files.length} 个动画到 S3 (${BUCKET}, animations/)`);
-  for (const name of files) {
-    const filePath = path.join(ANIM_DIR, name);
+  let toUpload = [];
+  const argPath = process.argv[2];
+  if (argPath) {
+    const absPath = path.resolve(argPath);
+    if (!fs.existsSync(absPath)) {
+      console.error('文件不存在:', absPath);
+      process.exit(1);
+    }
+    if (!absPath.toLowerCase().endsWith('.fbx')) {
+      console.error('仅支持 .fbx 文件');
+      process.exit(1);
+    }
+    toUpload.push({ filePath: absPath, name: path.basename(absPath) });
+  } else {
+    if (!fs.existsSync(ANIM_DIR)) {
+      console.error('目录不存在:', ANIM_DIR);
+      process.exit(1);
+    }
+    const files = fs.readdirSync(ANIM_DIR).filter((f) => f.toLowerCase().endsWith('.fbx'));
+    if (files.length === 0) {
+      console.log('未找到 .fbx 文件');
+      return;
+    }
+    toUpload = files.map((name) => ({ filePath: path.join(ANIM_DIR, name), name }));
+  }
+
+  console.log(`准备上传 ${toUpload.length} 个动画到 S3 (${BUCKET}, animations/)`);
+  for (const { filePath, name } of toUpload) {
     const body = fs.readFileSync(filePath);
     const key = `animations/${name}`;
     await s3.send(
