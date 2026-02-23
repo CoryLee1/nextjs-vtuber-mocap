@@ -3,10 +3,11 @@
 import React, { memo, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { 
-  Settings, 
-  Users, 
-  Play, 
+import {
+  Settings,
+  Users,
+  Play,
+  Square,
   CheckCircle,
   HelpCircle,
   Info,
@@ -1863,6 +1864,21 @@ export const GoLiveButton = memo(() => {
   const [backendStatus, setBackendStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
 
   const isAudience = Boolean(roomId && !ownerToken);
+  const isLive = streamState === 'performing' || streamState === 'generating_script' || streamState === 'initializing';
+  const [isStopping, setIsStopping] = useState(false);
+
+  const handleStopLive = async () => {
+    if (isStopping || !roomId || !ownerToken) return;
+    setIsStopping(true);
+    try {
+      const { stopLive } = await import('@/lib/echuu-client');
+      await stopLive(roomId, ownerToken);
+    } catch {
+      // Ignore stop errors — stream will end on its own
+    } finally {
+      setIsStopping(false);
+    }
+  };
 
   const handleGoLive = async () => {
     if (isStarting || isAudience) return;
@@ -1957,24 +1973,47 @@ export const GoLiveButton = memo(() => {
           aria-hidden
           className="absolute left-[3px] top-[5px] w-[44px] h-[44px] rounded-full bg-[#EEFF00]/35 blur-[10px] animate-pulse pointer-events-none"
         />
-        <button
-          type="button"
-          onClick={handleGoLive}
-          disabled={isStarting || isAudience}
-          title={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : undefined}
-          className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
-          style={{
-            background: 'rgba(255, 255, 255, 0.068)',
-            boxShadow:
-              '-11.15px -10.39px 48px -12px rgba(0, 0, 0, 0.15), inset 2.15px 2px 9.24px rgba(255, 255, 255, 0.126), inset 1.22px 1.13px 4.62px rgba(255, 255, 255, 0.126)',
-            backdropFilter: 'blur(7.58px)',
-          }}
-          aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
-        >
-          <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-[#EEFF00] text-[#E9E9E9]">
-            <Play className="h-3 w-3" strokeWidth={2} />
-          </span>
-        </button>
+        {isLive && !isAudience ? (
+          // Stop button — shown while stream is active
+          <button
+            type="button"
+            onClick={handleStopLive}
+            disabled={isStopping}
+            title={locale === 'zh' ? '停止直播' : 'Stop stream'}
+            className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{
+              background: 'rgba(255,60,60,0.15)',
+              boxShadow:
+                '-11.15px -10.39px 48px -12px rgba(0,0,0,0.15), inset 2.15px 2px 9.24px rgba(255,255,255,0.126)',
+              backdropFilter: 'blur(7.58px)',
+            }}
+            aria-label={locale === 'zh' ? '停止直播' : 'Stop stream'}
+          >
+            <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-red-400 text-red-400">
+              <Square className="h-3 w-3" fill="currentColor" strokeWidth={0} />
+            </span>
+          </button>
+        ) : (
+          // Go Live button — shown when idle
+          <button
+            type="button"
+            onClick={handleGoLive}
+            disabled={isStarting || isAudience}
+            title={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : undefined}
+            className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{
+              background: 'rgba(255, 255, 255, 0.068)',
+              boxShadow:
+                '-11.15px -10.39px 48px -12px rgba(0, 0, 0, 0.15), inset 2.15px 2px 9.24px rgba(255, 255, 255, 0.126), inset 1.22px 1.13px 4.62px rgba(255, 255, 255, 0.126)',
+              backdropFilter: 'blur(7.58px)',
+            }}
+            aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
+          >
+            <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-[#EEFF00] text-[#E9E9E9]">
+              <Play className="h-3 w-3" strokeWidth={2} />
+            </span>
+          </button>
+        )}
         {/* 分享直播间：始终显示，有 roomId 可点击复制/分享链接，无则禁用并提示开播后可用 */}
         <ShareRoomButton roomId={roomId} />
         {/* Stream Topic — 与侧边栏「直播主题」一致 */}

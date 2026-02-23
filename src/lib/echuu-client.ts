@@ -34,7 +34,8 @@ export async function startLive(
   roomId: string,
   ownerToken: string
 ) {
-  const res = await fetch(`${ECHUU_API_BASE}/api/start`, {
+  // Use the inline endpoint: accepts character_name/persona/background/topic + owner_token (no DB auth required)
+  const res = await fetch(`${ECHUU_API_BASE}/api/start-inline`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -50,9 +51,23 @@ export async function startLive(
   return res.json();
 }
 
+export async function stopLive(roomId: string, ownerToken: string) {
+  const res = await fetch(`${ECHUU_API_BASE}/api/stop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ room_id: roomId, owner_token: ownerToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to stop live');
+  }
+  return res.json();
+}
+
 export async function getOnlineCount(roomId: string): Promise<number> {
   if (!roomId) return 0;
   const res = await fetch(`${ECHUU_API_BASE}/api/online-count?room_id=${encodeURIComponent(roomId)}`);
+  if (!res.ok) return 0;
   const data = await res.json();
   return data.count ?? 0;
 }
@@ -63,6 +78,10 @@ export async function sendDanmaku(roomId: string, text: string, user = '观众')
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ room_id: roomId, text, user }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to send danmaku');
+  }
   return res.json();
 }
 

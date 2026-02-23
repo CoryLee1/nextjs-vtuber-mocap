@@ -258,6 +258,20 @@ function handleMessage(
 ) {
   switch (msg.type) {
     case 'system':
+      if (msg.content) console.log('[echuu ws] system:', msg.content);
+      break;
+
+    case 'reasoning':
+      set({ infoMessage: msg.content ?? '', streamState: 'generating_script' });
+      break;
+
+    case 'ready':
+      set({ infoMessage: msg.content ?? '', streamState: 'generating_script' });
+      break;
+
+    case 'finish':
+    case 'success':
+      set({ streamState: 'finished', infoMessage: msg.content ?? '', liveEndedAt: Date.now() });
       break;
 
     case 'user_count': {
@@ -289,15 +303,17 @@ function handleMessage(
       break;
 
     case 'step': {
+      // Support both flat format {"type":"step", "speech":...} and wrapped {"type":"step", "data":{...}}
+      const d = msg.data ?? msg;
       const stepEvent: EchuuStepEvent = {
-        step: msg.step ?? 0,
-        stage: msg.stage ?? '',
-        speech: msg.speech ?? '',
-        action: msg.action ?? 'continue',
-        cue: msg.cue ?? null,
-        audio_b64: msg.audio_b64 ?? null,
-        danmaku: msg.danmaku ?? null,
-        emotion_break: msg.emotion_break ?? null,
+        step: d.step ?? 0,
+        stage: d.stage ?? '',
+        speech: d.speech ?? '',
+        action: d.action ?? 'continue',
+        cue: d.cue ?? null,
+        audio_b64: d.audio_b64 ?? null,
+        danmaku: d.danmaku ?? null,
+        emotion_break: d.emotion_break ?? null,
       };
       const prev = get().stepHistory;
       const messages = get().chatMessages;
@@ -310,10 +326,13 @@ function handleMessage(
           timestamp: Date.now(),
         });
       }
+      const isFirstStep = prev.length === 0;
       set({
         currentStep: stepEvent,
         stepHistory: [...prev, stepEvent],
         chatMessages: newMessages,
+        streamState: 'performing',
+        ...(isFirstStep ? { liveStartedAt: get().liveStartedAt ?? Date.now() } : {}),
       });
       break;
     }
@@ -336,10 +355,6 @@ function handleMessage(
 
     case 'memory':
       set({ memorySnapshot: msg.memory ?? null });
-      break;
-
-    case 'success':
-      set({ streamState: 'finished', infoMessage: msg.content ?? '', liveEndedAt: Date.now() });
       break;
 
     case 'error':

@@ -106,6 +106,10 @@ Mocap data requires coordinate transformation for VRM bones:
 - shadcn/ui CSS variable-based theming
 - Custom animation utilities (`animation-delay-*`)
 
+### S3 asset paths (nextjs-vtuber-assets)
+- **Models (VRM)**: `s3://nextjs-vtuber-assets/vrm/` — use key `vrm/ModelName.vrm` with `getS3ObjectReadUrlByKey('vrm/xxx.vrm')`.
+- **Animations (FBX)**: `s3://nextjs-vtuber-assets/animations/` — use key `animations/FileName.fbx`. See `.cursor/rules/s3-asset-paths.mdc`.
+
 ## PostHog Analytics Rules
 (From `.cursor/rules/posthog-integration.mdc`)
 - Never hardcode API keys - use `.env` values
