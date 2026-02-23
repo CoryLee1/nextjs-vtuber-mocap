@@ -68,38 +68,118 @@ const IDLE_URL = IDLE_ROTATION_ANIMATIONS[0]?.url ?? getS3ObjectReadUrlByKey('an
 const IDLE_NEXT_URL = IDLE_ROTATION_ANIMATIONS[1]?.url ?? IDLE_ROTATION_ANIMATIONS[0]?.url ?? getS3ObjectReadUrlByKey('animations/Idle.fbx', { proxy: true });
 const ONBOARDING_PREVIEW_LOOP_URL = getS3ObjectReadUrlByKey('animations/Standing Greeting (1).fbx', { proxy: true });
 
+export interface OnboardingPreviewAnimationStatus {
+  phase: 'loading' | 'playing' | 'fallback' | 'error';
+  effectiveAnimationUrl: string;
+  requestedAnimationUrl: string;
+  fallbackLevel: number;
+  reason?: string;
+}
+
 // ─── 在 Canvas 内：与主场景一致用 useAnimationManager，便于统一管理 additive/状态机 ───
-function IdleUpdater({ vrm, animationUrl }: { vrm: any; animationUrl?: string }) {
-  const [effectiveAnimationUrl, setEffectiveAnimationUrl] = useState<string>(animationUrl || ONBOARDING_PREVIEW_LOOP_URL || IDLE_URL);
+function IdleUpdater({
+  vrm,
+  animationUrl,
+  onAnimationStatusChange,
+}: {
+  vrm: any;
+  animationUrl?: string;
+  onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
+}) {
+  const requestedAnimationUrl = animationUrl || ONBOARDING_PREVIEW_LOOP_URL || IDLE_URL;
+  const [effectiveAnimationUrl, setEffectiveAnimationUrl] = useState<string>(requestedAnimationUrl);
+  const fallbackChainRef = useRef<string[]>([IDLE_URL, IDLE_NEXT_URL].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i));
+  const fallbackLevelRef = useRef(0);
+  const reportedPlayingRef = useRef(false);
 
   useEffect(() => {
-    setEffectiveAnimationUrl(animationUrl || ONBOARDING_PREVIEW_LOOP_URL || IDLE_URL);
-  }, [animationUrl]);
+    fallbackLevelRef.current = 0;
+    reportedPlayingRef.current = false;
+    setEffectiveAnimationUrl(requestedAnimationUrl);
+    onAnimationStatusChange?.({
+      phase: 'loading',
+      effectiveAnimationUrl: requestedAnimationUrl,
+      requestedAnimationUrl,
+      fallbackLevel: 0,
+    });
+  }, [requestedAnimationUrl, onAnimationStatusChange]);
 
   const { updateAnimation, getAnimationState, switchToIdleMode, forceIdleRestart } = useAnimationManager(
     vrm,
     effectiveAnimationUrl,
     IDLE_NEXT_URL,
-    undefined,
-    0
+    IDLE_NEXT_URL,
+    0.12
   );
-  const switchedRef = useRef(false);
-
+  // 轮询检查动画状态：首次 500ms 后开始，每 400ms 重试，直到得到明确结果（playing/fallback/error）
   useEffect(() => {
     if (!vrm) return;
-    const t = setTimeout(() => {
+    const check = () => {
       const state = getAnimationState();
-      if (state?.hasMixer) {
+      const animationReady =
+        Boolean(state?.hasPlayableIdleAction) &&
+        Boolean(state?.idleActionRunning) &&
+        state?.currentMode === 'idle' &&
+        (state?.lastMappedTrackCount ?? 0) > 0;
+
+      if (animationReady) {
         if (state.currentMode !== 'idle') switchToIdleMode();
         forceIdleRestart();
-        switchedRef.current = true;
-      } else if (state?.error && effectiveAnimationUrl !== IDLE_URL) {
-        // 目标动画重定向失败时自动回退 Idle，避免一直 T-pose。
-        setEffectiveAnimationUrl(IDLE_URL);
+        if (!reportedPlayingRef.current) {
+          const phase = fallbackLevelRef.current > 0 ? 'fallback' : 'playing';
+          onAnimationStatusChange?.({
+            phase,
+            effectiveAnimationUrl,
+            requestedAnimationUrl,
+            fallbackLevel: fallbackLevelRef.current,
+            reason: fallbackLevelRef.current > 0 ? 'step animation unavailable, fallback applied' : undefined,
+          });
+          reportedPlayingRef.current = true;
+        }
+        return true; // 已解决，停止轮询
       }
+
+      if (state?.isLoading) return false; // 仍在加载，继续轮询
+
+      const nextFallback = fallbackChainRef.current[fallbackLevelRef.current];
+      if (nextFallback && effectiveAnimationUrl !== nextFallback) {
+        fallbackLevelRef.current += 1;
+        reportedPlayingRef.current = false;
+        setEffectiveAnimationUrl(nextFallback);
+        onAnimationStatusChange?.({
+          phase: 'fallback',
+          effectiveAnimationUrl: nextFallback,
+          requestedAnimationUrl,
+          fallbackLevel: fallbackLevelRef.current,
+          reason: `retarget failed: mapped=${state?.lastMappedTrackCount ?? 0}, raw=${state?.lastRawTrackCount ?? 0}`,
+        });
+      } else {
+        onAnimationStatusChange?.({
+          phase: 'error',
+          effectiveAnimationUrl,
+          requestedAnimationUrl,
+          fallbackLevel: fallbackLevelRef.current,
+          reason: `all fallbacks exhausted: mapped=${state?.lastMappedTrackCount ?? 0}, raw=${state?.lastRawTrackCount ?? 0}`,
+        });
+      }
+      return true; // 已报告 fallback/error，停止轮询
+    };
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const t1 = setTimeout(() => {
+      if (check()) return;
+      intervalId = setInterval(() => {
+        if (check() && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }, 400);
     }, 500);
-    return () => clearTimeout(t);
-  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart, effectiveAnimationUrl]);
+    return () => {
+      clearTimeout(t1);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart, effectiveAnimationUrl, requestedAnimationUrl, onAnimationStatusChange]);
 
   useFrame((_, delta) => {
     updateAnimation(delta);
@@ -109,7 +189,13 @@ function IdleUpdater({ vrm, animationUrl }: { vrm: any; animationUrl?: string })
 }
 
 // ─── 在 Canvas 内：加载默认 VRM（独立实例），动画由 useAnimationManager 驱动 ───
-function PreviewScene({ animationUrl }: { animationUrl?: string }) {
+function PreviewScene({
+  animationUrl,
+  onAnimationStatusChange,
+}: {
+  animationUrl?: string;
+  onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
+}) {
   const [vrm, setVrm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -230,7 +316,7 @@ function PreviewScene({ animationUrl }: { animationUrl?: string }) {
         <primitive object={vrm.scene} />
       </group>
       <ambientLight intensity={cfg.ambientIntensity} />
-      <IdleUpdater vrm={vrm} animationUrl={animationUrl} />
+      <IdleUpdater vrm={vrm} animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
     </Stage>
   );
 }
@@ -252,7 +338,13 @@ function CameraController() {
 }
 
 // ─── 内层：仅客户端渲染的 Canvas ───
-function PreviewCanvasInner({ animationUrl }: { animationUrl?: string }) {
+function PreviewCanvasInner({
+  animationUrl,
+  onAnimationStatusChange,
+}: {
+  animationUrl?: string;
+  onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
+}) {
   const cfg = usePreviewConfig();
   return (
     <Canvas
@@ -286,7 +378,7 @@ function PreviewCanvasInner({ animationUrl }: { animationUrl?: string }) {
         {PRELOAD_ANIMATION_URLS.map((url) => (
           <PreloadFbx key={url} url={url} />
         ))}
-        <PreviewScene animationUrl={animationUrl} />
+        <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
       </Suspense>
     </Canvas>
   );
@@ -302,14 +394,20 @@ interface OnboardingModelPreviewProps {
   previewConfig?: OnboardingPreviewConfig | null;
   /** 指定当前步骤预览动画；重定向失败会自动回退 Idle */
   animationUrl?: string;
+  /** 预览动画状态变更回调：用于引导页显示 Playing / Fallback 指示 */
+  onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
 }
 
-export function OnboardingModelPreview({ previewConfig = null, animationUrl }: OnboardingModelPreviewProps) {
+export function OnboardingModelPreview({
+  previewConfig = null,
+  animationUrl,
+  onAnimationStatusChange,
+}: OnboardingModelPreviewProps) {
   const value = previewConfig ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
   return (
     <PreviewConfigContext.Provider value={value}>
       <div className="absolute top-0 left-0 right-0 bottom-0 w-full h-full rounded-lg overflow-hidden bg-transparent">
-        <PreviewCanvas animationUrl={animationUrl} />
+        <PreviewCanvas animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
       </div>
     </PreviewConfigContext.Provider>
   );
