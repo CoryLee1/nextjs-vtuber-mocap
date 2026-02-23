@@ -58,14 +58,9 @@ export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
 };
 
 const PreviewConfigContext = createContext<OnboardingPreviewConfig | null>(null);
-const OrbitContext = createContext<React.MutableRefObject<boolean> | null>(null);
-const OrbitProvider = OrbitContext.Provider;
 
 function usePreviewConfig() {
   return useContext(PreviewConfigContext) ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
-}
-function useOrbitEnabledRef() {
-  return useContext(OrbitContext);
 }
 
 /** 引导页占位区用：透明背景、播 idle 的 3D 预览。与主场景一致使用 useAnimationManager（idle 轮播 + additive 同源）。 */
@@ -95,6 +90,7 @@ function IdleUpdater({
   onAnimationPlayingRef?: React.MutableRefObject<boolean>;
 }) {
   const requestedAnimationUrl = animationUrl || ONBOARDING_PREVIEW_LOOP_URL || IDLE_URL;
+  // onAnimationPlayingRef 保留以兼容，但 360° 旋转已改为模型旋转、始终启用
   const [effectiveAnimationUrl, setEffectiveAnimationUrl] = useState<string>(requestedAnimationUrl);
   const fallbackChainRef = useRef<string[]>([IDLE_URL, IDLE_NEXT_URL].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i));
   const fallbackLevelRef = useRef(0);
@@ -129,14 +125,13 @@ function IdleUpdater({
           switchToIdleMode();
           forceIdleRestart();
         }
-        onAnimationPlayingRef && (onAnimationPlayingRef.current = true);
         return;
       }
       if (attempt < max) setTimeout(() => tryStart(attempt + 1, max), 250);
     };
     const t = setTimeout(() => tryStart(), 200);
     return () => clearTimeout(t);
-  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart, onAnimationPlayingRef]);
+  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart]);
 
   // 轮询检查动画状态：首次 500ms 后开始，每 400ms 重试，直到得到明确结果（playing/fallback/error）
   useEffect(() => {
@@ -162,7 +157,6 @@ function IdleUpdater({
             reason: fallbackLevelRef.current > 0 ? 'step animation unavailable, fallback applied' : undefined,
           });
           reportedPlayingRef.current = true;
-          onAnimationPlayingRef && (onAnimationPlayingRef.current = true);
         }
         return true; // 已解决，停止轮询
       }
@@ -231,7 +225,7 @@ function PreviewScene({
   animationUrl?: string;
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
 }) {
-  const orbitEnabledRef = useOrbitEnabledRef();
+  const rotatingGroupRef = useRef<any>(null);
   const preloadedUrl = useSceneStore((s) => s.preloadedPreviewModelUrl);
   const sceneModelUrl = useSceneStore((s) => s.vrmModelUrl);
   const previewModelUrl = sceneModelUrl || preloadedUrl || DEFAULT_PREVIEW_MODEL_URL;
@@ -247,6 +241,13 @@ function PreviewScene({
     }
   }, [vrm]);
 
+  // 360° 展示：模型父 group 旋转，不依赖动画状态，始终启用
+  useFrame((_, delta) => {
+    if (rotatingGroupRef.current) {
+      rotatingGroupRef.current.rotation.y += delta * 0.55;
+    }
+  });
+
   if (!vrm?.scene) {
     return null;
   }
@@ -257,11 +258,11 @@ function PreviewScene({
         preset="rembrandt"
         intensity={cfg.stageIntensity}
         environment="studio"
-        adjustCamera={cfg.adjustCamera}
+        adjustCamera={false}
         shadows={false}
         center
     >
-      <group position={[0, cfg.groupPosY, 0]} scale={cfg.modelScale}>
+      <group ref={rotatingGroupRef} position={[0, cfg.groupPosY, 0]} scale={cfg.modelScale}>
         <primitive object={vrm.scene} />
       </group>
       <ambientLight intensity={cfg.ambientIntensity} />
@@ -269,34 +270,21 @@ function PreviewScene({
         vrm={vrm}
         animationUrl={animationUrl}
         onAnimationStatusChange={onAnimationStatusChange}
-        onAnimationPlayingRef={orbitEnabledRef ?? undefined}
       />
     </Stage>
   );
 }
 
-// ─── 镜头控制：参考 OrbitControls，动画播放后相机环绕 360° 展示角色 ───
+// ─── 镜头控制：Stage adjustCamera=false 时由此处设置固定机位 ───
 function CameraController() {
   const cfg = usePreviewConfig();
   const { camera } = useThree();
-  const orbitEnabledRef = useOrbitEnabledRef();
-  const orbitAngleRef = useRef(0);
-  const radius = Math.sqrt(cfg.cameraX * cfg.cameraX + cfg.cameraZ * cfg.cameraZ) || 2.5;
-  const targetY = cfg.cameraY;
-  useFrame((_, delta) => {
-    if (orbitEnabledRef?.current) {
-      orbitAngleRef.current += delta * 0.55;
-      camera.position.x = radius * Math.sin(orbitAngleRef.current);
-      camera.position.z = radius * Math.cos(orbitAngleRef.current);
-      camera.position.y = targetY;
-      camera.lookAt(0, 0, 0);
-    } else {
-      camera.position.set(cfg.cameraX, cfg.cameraY, cfg.cameraZ);
-      camera.rotation.order = 'XYZ';
-      camera.rotation.x = degToRad(cfg.cameraRotationX);
-      camera.rotation.y = degToRad(cfg.cameraRotationY);
-      camera.rotation.z = degToRad(cfg.cameraRotationZ);
-    }
+  useFrame(() => {
+    camera.position.set(cfg.cameraX, cfg.cameraY, cfg.cameraZ);
+    camera.rotation.order = 'XYZ';
+    camera.rotation.x = degToRad(cfg.cameraRotationX);
+    camera.rotation.y = degToRad(cfg.cameraRotationY);
+    camera.rotation.z = degToRad(cfg.cameraRotationZ);
     camera.fov = cfg.fov;
     camera.updateProjectionMatrix();
   });
@@ -312,44 +300,41 @@ function PreviewCanvasInner({
   onAnimationStatusChange?: (status: OnboardingPreviewAnimationStatus) => void;
 }) {
   const cfg = usePreviewConfig();
-  const orbitEnabledRef = useRef(false);
   return (
-    <OrbitProvider value={orbitEnabledRef}>
-      <Canvas
-        frameloop="always"
-        gl={{
-          alpha: true,
-          antialias: true,
-          powerPreference: 'low-power',
-          stencil: false,
-          depth: true,
-        }}
-        camera={{
-          position: [cfg.cameraX, cfg.cameraY, cfg.cameraZ],
-          rotation: [degToRad(cfg.cameraRotationX), degToRad(cfg.cameraRotationY), degToRad(cfg.cameraRotationZ)],
-          fov: cfg.fov,
-          near: 0.1,
-          far: 30,
-        }}
-        onCreated={({ gl }) => {
-          gl.setClearColor(0, 0, 0, 0);
-        }}
-        style={{ width: '100%', height: '100%', display: 'block' }}
-        dpr={[1, 1.5]}
-      >
-        <CameraController />
-        <Suspense fallback={null}>
-          <PreloadFbx url={ONBOARDING_PREVIEW_LOOP_URL} />
-          {animationUrl && animationUrl !== ONBOARDING_PREVIEW_LOOP_URL && (
-            <PreloadFbx url={animationUrl} />
-          )}
-          {PRELOAD_ANIMATION_URLS.map((url) => (
-            <PreloadFbx key={url} url={url} />
-          ))}
-          <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
-        </Suspense>
-      </Canvas>
-    </OrbitProvider>
+    <Canvas
+      frameloop="always"
+      gl={{
+        alpha: true,
+        antialias: true,
+        powerPreference: 'low-power',
+        stencil: false,
+        depth: true,
+      }}
+      camera={{
+        position: [cfg.cameraX, cfg.cameraY, cfg.cameraZ],
+        rotation: [degToRad(cfg.cameraRotationX), degToRad(cfg.cameraRotationY), degToRad(cfg.cameraRotationZ)],
+        fov: cfg.fov,
+        near: 0.1,
+        far: 30,
+      }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(0, 0, 0, 0);
+      }}
+      style={{ width: '100%', height: '100%', display: 'block' }}
+      dpr={[1, 1.5]}
+    >
+      <CameraController />
+      <Suspense fallback={null}>
+        <PreloadFbx url={ONBOARDING_PREVIEW_LOOP_URL} />
+        {animationUrl && animationUrl !== ONBOARDING_PREVIEW_LOOP_URL && (
+          <PreloadFbx url={animationUrl} />
+        )}
+        {PRELOAD_ANIMATION_URLS.map((url) => (
+          <PreloadFbx key={url} url={url} />
+        ))}
+        <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
+      </Suspense>
+    </Canvas>
   );
 }
 
