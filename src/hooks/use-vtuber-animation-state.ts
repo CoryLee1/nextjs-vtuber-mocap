@@ -58,24 +58,27 @@ export interface VTuberAnimationStateResult {
 export function useVTuberAnimationState(): VTuberAnimationStateResult {
   const echuuAudioPlaying = useSceneStore((s) => s.echuuAudioPlaying);
 
-  const [currentIdleUrl, setCurrentIdleUrl] = useState(() => pickRandomIdleUrl());
+  // 进入 idle 时第一个动作为 Standing Greeting，之后随机轮播
+  const [currentIdleUrl, setCurrentIdleUrl] = useState(
+    () => IDLE_ROTATION_ANIMATIONS[0]?.url ?? FALLBACK_IDLE_URL
+  );
   const [currentIdleItem, setCurrentIdleItem] = useState<AnimationItem | null>(
-    () => pickRandomIdleItem()
+    () => IDLE_ROTATION_ANIMATIONS[0] ?? null
   );
 
   const state: VTuberAnimationState = echuuAudioPlaying ? 'speaking' : 'idle';
 
-  // 进入 idle 时先随机选一个；之后每隔 IDLE_ROTATE_SEC 秒再随机换下一个
+  // 进入 idle 时先播第一个（Standing Greeting）；之后每隔 IDLE_ROTATE_SEC 秒随机换下一个
   useEffect(() => {
     if (echuuAudioPlaying) return;
 
-    const next = () => {
+    setCurrentIdleUrl(IDLE_ROTATION_ANIMATIONS[0]?.url ?? FALLBACK_IDLE_URL);
+    setCurrentIdleItem(IDLE_ROTATION_ANIMATIONS[0] ?? null);
+
+    const t = window.setInterval(() => {
       setCurrentIdleUrl(pickRandomIdleUrl());
       setCurrentIdleItem(pickRandomIdleItem());
-    };
-
-    next(); // 刚进入 idle 时立即随机一个
-    const t = window.setInterval(next, IDLE_ROTATE_SEC * 1000);
+    }, IDLE_ROTATE_SEC * 1000);
     return () => clearInterval(t);
   }, [echuuAudioPlaying]);
 

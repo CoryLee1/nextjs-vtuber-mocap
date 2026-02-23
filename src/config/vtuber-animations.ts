@@ -66,8 +66,9 @@ const _config = buildConfig();
 /** 待机动画列表（idle 组，全量） */
 export const IDLE_ANIMATIONS: AnimationItem[] = _config.idle;
 
-/** 状态机 idle 随机轮播只用这 4 个 */
+/** 状态机 idle 随机轮播：第一个为 Standing Greeting，其余轮播 */
 const IDLE_ROTATION_FILENAMES = [
+  'Standing Greeting (1).fbx',
   'Idle.fbx',
   'Disappointed.fbx',
   'Bashful.fbx',
