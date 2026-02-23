@@ -8,6 +8,7 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import {
   DEFAULT_PREVIEW_MODEL_URL,
   IDLE_ROTATION_ANIMATIONS,
+  ONBOARDING_PREVIEW_ANIMATION_URLS,
   PRELOAD_ANIMATION_URLS,
 } from '@/config/vtuber-animations';
 import { useAnimationManager } from '@/lib/animation-manager';
@@ -241,7 +242,7 @@ function PreviewScene({
     }
   }, [vrm]);
 
-  // 360° 展示：模型父 group 旋转，不依赖动画状态，始终启用
+  // 360° 展示：Step1/2/3 统一沿用同一 stage 配置，不重载
   useFrame((_, delta) => {
     if (rotatingGroupRef.current) {
       rotatingGroupRef.current.rotation.y += delta * 0.55;
@@ -325,10 +326,10 @@ function PreviewCanvasInner({
     >
       <CameraController />
       <Suspense fallback={null}>
-        <PreloadFbx url={ONBOARDING_PREVIEW_LOOP_URL} />
-        {animationUrl && animationUrl !== ONBOARDING_PREVIEW_LOOP_URL && (
-          <PreloadFbx url={animationUrl} />
-        )}
+        {/* Step1/2/3 动画统一预加载，避免切换时 useFBX suspend 导致 Stage 重载 */}
+        {ONBOARDING_PREVIEW_ANIMATION_URLS.map((url) => (
+          <PreloadFbx key={url} url={url} />
+        ))}
         {PRELOAD_ANIMATION_URLS.map((url) => (
           <PreloadFbx key={url} url={url} />
         ))}
@@ -344,7 +345,7 @@ const PreviewCanvas = dynamic(
 );
 
 interface OnboardingModelPreviewProps {
-  /** 镜头/场景调试参数，不传则用默认；与引导页 ?previewDebug=1 面板联动 */
+  /** 镜头/场景调试参数，不传则用默认；与引导页 ?previewDebug=1 面板联动；Step1/2/3 统一沿用 */
   previewConfig?: OnboardingPreviewConfig | null;
   /** 指定当前步骤预览动画；重定向失败会自动回退 Idle */
   animationUrl?: string;

@@ -14,10 +14,15 @@ import {
   Users, 
   Settings,
   Loader2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
+import { useSceneStore } from '@/hooks/use-scene-store';
+import { aiSuggest } from '@/lib/echuu-client';
+import { ECHUU_AGENT_TTS_VOICES } from '@/lib/ai-tag-taxonomy';
 import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 import {
   OnboardingModelPreview,
@@ -71,8 +76,20 @@ const VROID_STUDIO_URL = 'https://vroid.com/en/studio';
 const STEP1_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Standing Greeting (1).fbx', { proxy: true });
 const STEP2_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Thinking.fbx', { proxy: true });
 
+const PRESET_TOPICS = [
+  "Just Chatting: Let's talk about life!",
+  "Singing Stream: Karaoke Night 🎤",
+  "Gaming: Minecraft Hardcore",
+  "Reaction: Watching funny videos",
+  "Study with Me: Pomodoro 25/5",
+  "Late Night Talks: Chill vibes 🌙",
+];
+
 export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onStep1Upload }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
+  const echuuConfig = useSceneStore((s) => s.echuuConfig);
+  const setEchuuConfig = useSceneStore((s) => s.setEchuuConfig);
+  const vrmModelUrl = useSceneStore((s) => s.vrmModelUrl);
   const searchParams = useSearchParams();
   const showPreviewDebug = searchParams.get('previewDebug') === '1' || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');
   const [previewConfig, setPreviewConfig] = useState<OnboardingPreviewConfig>(DEFAULT_ONBOARDING_PREVIEW_CONFIG);
@@ -81,6 +98,16 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
   const [s3Models, setS3Models] = useState<VRMModel[]>([]);
   const [s3Loading, setS3Loading] = useState(false);
   const [s3Error, setS3Error] = useState(false);
+  
+  // Step 2 Persona State
+  const [nameDraft, setNameDraft] = useState(echuuConfig.characterName || 'Cathy');
+  const [voiceDraft, setVoiceDraft] = useState(echuuConfig.voice || 'Cherry');
+  const [personaDraft, setPersonaDraft] = useState(echuuConfig.persona || '');
+  const [backgroundDraft, setBackgroundDraft] = useState(echuuConfig.background || '');
+  const [topicDraft, setTopicDraft] = useState(echuuConfig.topic || '');
+  const [aiWritingField, setAiWritingField] = useState<'persona' | 'background' | 'topic' | null>(null);
+  const [topicPresetsOpen, setTopicPresetsOpen] = useState(false);
+
   const currentStep = steps[activeStep];
   const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
   const previewAnimationUrl = currentStep.id === 1
@@ -121,6 +148,23 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
   }, [currentStep.id]);
 
   const handleNext = () => {
+    // Step 2 离开时保存人设草稿到全局配置
+    if (activeStep === 1) {
+      setEchuuConfig({
+        characterName: nameDraft,
+        voice: voiceDraft,
+        persona: personaDraft,
+        background: backgroundDraft,
+      });
+    }
+    
+    // Step 3 完成时保存 Topic
+    if (activeStep === 2) {
+      setEchuuConfig({
+        topic: topicDraft,
+      });
+    }
+
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
     } else {
@@ -220,43 +264,36 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
             })}
           </div>
 
-          <Button
-            onClick={handleNext}
-            className="w-full rounded-xl bg-[#ef0] text-black hover:bg-[#d4e600] font-bold mb-4 shadow-lg shadow-[#ef0]/10"
-          >
-            {activeStep === steps.length - 1 ? '完成' : 'Next Step'}
-            <ChevronRight className="h-4 w-4 ml-2" />
-          </Button>
-
-          {/* 操作按钮 */}
-          <div className="flex space-x-4 mt-auto">
+          {/* 上一步：仅在非第一步显示，放在 Next Step 上方 */}
+          {activeStep > 0 && (
             <Button
               onClick={handleBack}
-              disabled={activeStep === 0}
-              variant="outline"
-              className="rounded-xl text-white border-white/10 hover:bg-white/5 disabled:opacity-20"
+              variant="ghost"
+              className="w-full text-white/50 hover:text-white hover:bg-white/5 mb-2 justify-start px-0"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               上一步
             </Button>
-            
-            <Button
-              onClick={handleNext}
-              className="rounded-xl bg-[#ef0] text-black hover:bg-[#d4e600] font-bold px-8 shadow-lg shadow-[#ef0]/10"
-            >
-              {activeStep === steps.length - 1 ? '完成' : '下一步'}
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
+          )}
+
+          <Button
+            onClick={handleNext}
+            className="w-full rounded-xl bg-[#ef0] text-black hover:bg-[#d4e600] font-bold shadow-lg shadow-[#ef0]/10"
+          >
+            {activeStep === steps.length - 1 ? '完成' : 'Next Step'}
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
 
         {/* 2. 中间：模型展示区 (自适应撑满，高度限制 700px) */}
+        {/* Step1/2/3 统一沿用同一 stage，不重载；Step1 配置为基准，后续可微调 */}
         <div className="flex-1 h-[785px] relative px-4 flex items-center justify-center overflow-hidden">
-          {(currentStep.id === 1 || currentStep.id === 2) && (
-            <div className="w-full h-full">
-              <OnboardingModelPreview previewConfig={previewConfig} animationUrl={previewAnimationUrl} />
-            </div>
-          )}
+          <div className="w-full h-full">
+            <OnboardingModelPreview
+              previewConfig={previewConfig}
+              animationUrl={previewAnimationUrl}
+            />
+          </div>
         </div>
 
         {/* 3. 右侧：内容/资源库 */}
@@ -275,7 +312,17 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                   <p className="text-blue-200 mb-4 text-sm">
                     {currentStep.content}
                   </p>
-                  <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                  <div className="mt-6 flex flex-wrap gap-3 justify-center items-center">
+                    {activeStep > 0 && (
+                      <Button
+                        onClick={handleBack}
+                        variant="outline"
+                        className="border-white/30 text-white hover:bg-white/10 shrink-0"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        上一步
+                      </Button>
+                    )}
                     {currentStep.id === 1 && (onStep1Select || onStep1Upload) ? (
                       <>
                         {onStep1Select && (
@@ -310,41 +357,221 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
               </CardContent>
             </Card>
 
-            {/* S3 模型列表预览 */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {currentStep.id === 1 ? (
-                s3Loading ? (
-                  <div className="col-span-2 aspect-square max-h-40 bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-white/50 animate-spin" />
+            {/* S3 模型列表预览 / Step 2 人设配置 */}
+            <div className="mb-6">
+              {activeStep === 0 ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {s3Loading ? (
+                    <div className="col-span-2 aspect-square max-h-40 bg-white/10 rounded-lg border border-white/20 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 text-white/50 animate-spin" />
+                    </div>
+                  ) : s3Models.length > 0 ? (
+                    s3Models.slice(0, 4).map((model) => {
+                      const thumbSrc = model.thumbnail || `/api/vrm-thumbnail?url=${encodeURIComponent(model.url)}`;
+                      const placeholderSrc = '/images/placeholder-model.svg';
+                      const isSelected = vrmModelUrl === model.url;
+                      return (
+                        <div 
+                          key={model.id} 
+                          onClick={() => useSceneStore.getState().setVrmModelUrl(model.url)}
+                          className={`aspect-square bg-white/10 rounded-lg border ${isSelected ? 'border-[#ef0] ring-1 ring-[#ef0]' : 'border-white/20'} flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-white/40 transition-all`}
+                        >
+                          <img
+                            src={thumbSrc}
+                            alt={model.name}
+                            className="w-full h-full object-cover bg-white/5"
+                            onError={(e) => {
+                              const el = e.currentTarget;
+                              if (el.src !== placeholderSrc) el.src = placeholderSrc;
+                            }}
+                          />
+                          <span className="text-[10px] text-white/80 truncate w-full px-2 text-center mt-1">
+                            {model.name}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : null}
+                </div>
+              ) : activeStep === 1 ? (
+                <div className="space-y-4">
+                  {/* Name Input */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-medium ml-1">NAME</label>
+                    <input
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors"
+                      placeholder="e.g. Cathy"
+                    />
                   </div>
-                ) : s3Models.length > 0 ? (
-                  s3Models.slice(0, 4).map((model) => {
-                    const thumbSrc = model.thumbnail || `/api/vrm-thumbnail?url=${encodeURIComponent(model.url)}`;
-                    const placeholderSrc = '/images/placeholder-model.svg';
-                    return (
-                      <div key={model.id} className="aspect-square bg-white/10 rounded-lg border border-white/20 flex flex-col items-center justify-center overflow-hidden">
-                        <img
-                          src={thumbSrc}
-                          alt={model.name}
-                          className="w-full h-full object-cover bg-white/5"
-                          onError={(e) => {
-                            const el = e.currentTarget;
-                            if (el.src !== placeholderSrc) el.src = placeholderSrc;
-                          }}
-                        />
-                        <span className="text-[10px] text-white/80 truncate w-full px-2 text-center mt-1">
-                          {model.name}
-                        </span>
+
+                  {/* Voice Select */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-medium ml-1">VOICE</label>
+                    <select
+                      value={voiceDraft}
+                      onChange={(e) => setVoiceDraft(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors appearance-none"
+                    >
+                      {ECHUU_AGENT_TTS_VOICES.map((v) => (
+                        <option key={v} value={v} className="bg-black text-white">
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Persona Input with AI */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-xs text-white/60 font-medium">PERSONA</label>
+                      <button
+                        onClick={async () => {
+                          if (aiWritingField === 'persona') return;
+                          setAiWritingField('persona');
+                          try {
+                            const res = await aiSuggest({
+                              field: 'persona',
+                              context: { characterName: nameDraft || 'Vtuber', modelName: vrmModelUrl || 'Avatar' }
+                            });
+                            if (res) setPersonaDraft(res);
+                          } catch (e) {
+                            console.error(e);
+                          } finally {
+                            setAiWritingField(null);
+                          }
+                        }}
+                        disabled={!!aiWritingField}
+                        className="text-[10px] text-[#ef0] hover:text-[#d4e600] flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {aiWritingField === 'persona' ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        AI Write
+                      </button>
+                    </div>
+                    <textarea
+                      value={personaDraft}
+                      onChange={(e) => setPersonaDraft(e.target.value)}
+                      className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#ef0]/50 transition-colors resize-none"
+                      placeholder="Describe personality, catchphrases..."
+                    />
+                  </div>
+
+                  {/* Background Input with AI */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-xs text-white/60 font-medium">BACKGROUND</label>
+                      <button
+                        onClick={async () => {
+                          if (aiWritingField === 'background') return;
+                          setAiWritingField('background');
+                          try {
+                            const res = await aiSuggest({
+                              field: 'background',
+                              context: { characterName: nameDraft || 'Vtuber', modelName: vrmModelUrl || 'Avatar' }
+                            });
+                            if (res) setBackgroundDraft(res);
+                          } catch (e) {
+                            console.error(e);
+                          } finally {
+                            setAiWritingField(null);
+                          }
+                        }}
+                        disabled={!!aiWritingField}
+                        className="text-[10px] text-[#ef0] hover:text-[#d4e600] flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {aiWritingField === 'background' ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        AI Write
+                      </button>
+                    </div>
+                    <textarea
+                      value={backgroundDraft}
+                      onChange={(e) => setBackgroundDraft(e.target.value)}
+                      className="w-full h-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#ef0]/50 transition-colors resize-none"
+                      placeholder="Lore, origin story..."
+                    />
+                  </div>
+                </div>
+              ) : activeStep === 2 ? (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-xs text-white/60 font-medium">STREAM TOPIC</label>
+                      <button
+                        onClick={async () => {
+                          if (aiWritingField === 'topic') return;
+                          setAiWritingField('topic');
+                          try {
+                            const res = await aiSuggest({
+                              field: 'topic',
+                              context: { characterName: nameDraft, modelName: vrmModelUrl, language: locale }
+                            });
+                            if (res) setTopicDraft(res);
+                          } catch (e) {
+                            console.error(e);
+                          } finally {
+                            setAiWritingField(null);
+                          }
+                        }}
+                        disabled={!!aiWritingField}
+                        className="text-[10px] text-[#ef0] hover:text-[#d4e600] flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {aiWritingField === 'topic' ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        AI Idea
+                      </button>
+                    </div>
+                    <textarea
+                      value={topicDraft}
+                      onChange={(e) => setTopicDraft(e.target.value)}
+                      className="w-full h-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors resize-none"
+                      placeholder="What are we doing today?"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setTopicPresetsOpen(!topicPresetsOpen)}
+                      className="flex items-center text-xs text-white/60 hover:text-white mb-2 transition-colors"
+                    >
+                      <ChevronRight className={`h-3 w-3 mr-1 transition-transform ${topicPresetsOpen ? 'rotate-90' : ''}`} />
+                      Choose from Presets
+                    </button>
+                    
+                    {topicPresetsOpen && (
+                      <div className="grid grid-cols-1 gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                        {PRESET_TOPICS.map((topic) => (
+                          <button
+                            key={topic}
+                            onClick={() => setTopicDraft(topic)}
+                            className="text-left text-xs text-white/80 px-3 py-2 rounded bg-white/5 hover:bg-white/10 hover:text-[#ef0] transition-all truncate border border-transparent hover:border-[#ef0]/20"
+                          >
+                            {topic}
+                          </button>
+                        ))}
                       </div>
-                    );
-                  })
-                ) : null
-              ) : (
-                [1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-square bg-white/5 rounded-lg border border-white/10 flex items-center justify-center">
-                    <span className="text-xs text-white/10">—</span>
+                    )}
                   </div>
-                ))
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="aspect-square bg-white/5 rounded-lg border border-white/10 flex items-center justify-center">
+                      <span className="text-xs text-white/10">—</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
