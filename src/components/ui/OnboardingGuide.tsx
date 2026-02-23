@@ -14,15 +14,20 @@ import {
   Users, 
   Settings,
   Loader2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Feather
 } from 'lucide-react';
 import { useI18n } from '@/hooks/use-i18n';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
+import { useSceneStore } from '@/hooks/use-scene-store';
+import { aiSuggest } from '@/lib/echuu-client';
+import { ECHUU_AGENT_TTS_VOICES } from '@/lib/ai-tag-taxonomy';
 import {
   OnboardingModelPreview,
   DEFAULT_ONBOARDING_PREVIEW_CONFIG,
   type OnboardingPreviewConfig,
+  type OnboardingPreviewAnimationStatus,
 } from '@/components/dressing-room/OnboardingModelPreview';
 import type { VRMModel } from '@/types';
 
@@ -73,6 +78,9 @@ const STEP2_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Thinking
 
 export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onStep1Upload }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
+  const echuuConfig = useSceneStore((s) => s.echuuConfig);
+  const setEchuuConfig = useSceneStore((s) => s.setEchuuConfig);
+  const vrmModelUrl = useSceneStore((s) => s.vrmModelUrl);
   const searchParams = useSearchParams();
   const showPreviewDebug = searchParams.get('previewDebug') === '1' || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');
   const [previewConfig, setPreviewConfig] = useState<OnboardingPreviewConfig>(DEFAULT_ONBOARDING_PREVIEW_CONFIG);
@@ -81,6 +89,12 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
   const [s3Models, setS3Models] = useState<VRMModel[]>([]);
   const [s3Loading, setS3Loading] = useState(false);
   const [s3Error, setS3Error] = useState(false);
+  const [nameDraft, setNameDraft] = useState(echuuConfig.characterName || 'Cathy');
+  const [voiceDraft, setVoiceDraft] = useState(echuuConfig.voice || 'Cherry');
+  const [personaDraft, setPersonaDraft] = useState(echuuConfig.persona || '');
+  const [backgroundDraft, setBackgroundDraft] = useState(echuuConfig.background || '');
+  const [aiWritingField, setAiWritingField] = useState<'persona' | 'background' | null>(null);
+  const [previewAnimationStatus, setPreviewAnimationStatus] = useState<OnboardingPreviewAnimationStatus | null>(null);
   const currentStep = steps[activeStep];
   const actionHref = currentStep.id === 1 ? `/${locale}` : (currentStep.actionHref ?? null);
   const previewAnimationUrl = currentStep.id === 1
@@ -93,9 +107,9 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
     setPreviewConfig((c) => ({ ...c, [key]: value }));
   };
 
-  // 步骤 1 时展示 S3 模型列表：优先用 Loading 阶段预拉的缓存
+  // 步骤 1/2 都需要模型元数据：用于预览与 Step2 默认值推断
   useEffect(() => {
-    if (currentStep.id !== 1) return;
+    if (currentStep.id !== 1 && currentStep.id !== 2) return;
     const store = useS3ResourcesStore.getState();
     if (store.modelsLoaded) {
       setS3Models(store.s3Models);
@@ -119,6 +133,50 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
       })
       .finally(() => setS3Loading(false));
   }, [currentStep.id]);
+
+  useEffect(() => {
+    const selectedModel = s3Models.find((m) => m.url === vrmModelUrl || m.name === echuuConfig.modelName) || s3Models[0];
+    if (!selectedModel) return;
+    const genderTag = (selectedModel.tags || []).find((tag) => tag.startsWith('gender:'));
+    const styleTags = (selectedModel.tags || []).filter((tag) => !tag.startsWith('gender:') && !tag.startsWith('identity:') && !tag.startsWith('voice:'));
+    const inferredName = selectedModel.name || nameDraft || 'Cathy';
+    const inferredVoice = selectedModel.suggestedVoice || voiceDraft || 'Cherry';
+    const inferredPersona = personaDraft || `A ${genderTag ? genderTag.replace('gender:', '') : 'anime'} VTuber with ${styleTags.slice(0, 2).join(', ') || 'playful charm'}.`;
+    const inferredBackground = backgroundDraft || `Born in a neon virtual city, ${inferredName} streams with a warm and curious vibe.`;
+    setNameDraft(inferredName);
+    setVoiceDraft(inferredVoice);
+    setPersonaDraft(inferredPersona);
+    setBackgroundDraft(inferredBackground);
+  }, [s3Models, vrmModelUrl, echuuConfig.modelName]);
+
+  useEffect(() => {
+    setEchuuConfig({
+      characterName: nameDraft || echuuConfig.characterName,
+      voice: voiceDraft || echuuConfig.voice,
+      persona: personaDraft || echuuConfig.persona,
+      background: backgroundDraft || echuuConfig.background,
+    });
+  }, [nameDraft, voiceDraft, personaDraft, backgroundDraft, setEchuuConfig]);
+
+  const handleAiRewrite = async (field: 'persona' | 'background') => {
+    setAiWritingField(field);
+    try {
+      const suggestion = await aiSuggest({
+        field,
+        context: {
+          characterName: nameDraft,
+          modelName: echuuConfig.modelName,
+          language: locale,
+        },
+      });
+      if (field === 'persona') setPersonaDraft(suggestion || personaDraft);
+      if (field === 'background') setBackgroundDraft(suggestion || backgroundDraft);
+    } catch {
+      // ignore, keep current draft
+    } finally {
+      setAiWritingField(null);
+    }
+  };
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
@@ -254,7 +312,29 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
         <div className="flex-1 h-[785px] relative px-4 flex items-center justify-center overflow-hidden">
           {(currentStep.id === 1 || currentStep.id === 2) && (
             <div className="w-full h-full">
-              <OnboardingModelPreview previewConfig={previewConfig} animationUrl={previewAnimationUrl} />
+              <OnboardingModelPreview
+                previewConfig={previewConfig}
+                stepId={currentStep.id}
+                animationUrl={previewAnimationUrl}
+                onAnimationStatusChange={setPreviewAnimationStatus}
+              />
+            </div>
+          )}
+          {showPreviewDebug && previewAnimationStatus && (
+            <div className="absolute top-3 right-3 z-20 rounded-md bg-black/60 border border-white/20 px-3 py-2 text-[11px] text-white/90 backdrop-blur">
+              <div>
+                <span className="text-white/60">State:</span>{' '}
+                {previewAnimationStatus.phase === 'fallback' ? 'Fallback' : previewAnimationStatus.phase}
+              </div>
+              <div>
+                <span className="text-white/60">Mapped:</span>{' '}
+                {previewAnimationStatus.fallbackLevel > 0 ? 'degraded' : 'ok'}
+              </div>
+              {previewAnimationStatus.reason ? (
+                <div className="mt-1 max-w-[280px] text-white/60 truncate" title={previewAnimationStatus.reason}>
+                  {previewAnimationStatus.reason}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -296,6 +376,67 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                           </Button>
                         )}
                       </>
+                    ) : currentStep.id === 2 ? (
+                      <div className="w-full text-left space-y-3">
+                        <div>
+                          <label className="text-xs text-white/70">名称</label>
+                          <input
+                            value={nameDraft}
+                            onChange={(e) => setNameDraft(e.target.value)}
+                            className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/70">声音</label>
+                          <select
+                            value={voiceDraft}
+                            onChange={(e) => setVoiceDraft(e.target.value)}
+                            className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-white text-sm"
+                          >
+                            {ECHUU_AGENT_TTS_VOICES.map((voice) => (
+                              <option key={voice} value={voice} className="text-black">
+                                {voice}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs text-white/70">人设</label>
+                            <button
+                              type="button"
+                              title="AI 续写人设"
+                              onClick={() => handleAiRewrite('persona')}
+                              className="text-[#ef0] hover:text-[#d4e600]"
+                            >
+                              {aiWritingField === 'persona' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Feather className="h-4 w-4" />}
+                            </button>
+                          </div>
+                          <textarea
+                            value={personaDraft}
+                            onChange={(e) => setPersonaDraft(e.target.value)}
+                            className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-white text-sm min-h-[80px]"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs text-white/70">背景</label>
+                            <button
+                              type="button"
+                              title="AI 续写背景"
+                              onClick={() => handleAiRewrite('background')}
+                              className="text-[#ef0] hover:text-[#d4e600]"
+                            >
+                              {aiWritingField === 'background' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Feather className="h-4 w-4" />}
+                            </button>
+                          </div>
+                          <textarea
+                            value={backgroundDraft}
+                            onChange={(e) => setBackgroundDraft(e.target.value)}
+                            className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-white text-sm min-h-[80px]"
+                          />
+                        </div>
+                      </div>
                     ) : (
                       actionHref && (
                         <Link href={actionHref}>

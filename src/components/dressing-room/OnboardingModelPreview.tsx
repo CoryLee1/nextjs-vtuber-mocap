@@ -36,6 +36,8 @@ export interface OnboardingPreviewConfig {
   adjustCamera: number;
   stageIntensity: number;
   ambientIntensity: number;
+  /** Step2 人设页：不 360 旋转，相机拉近 */
+  enableRotation?: boolean;
 }
 
 function degToRad(deg: number) {
@@ -55,6 +57,14 @@ export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
   adjustCamera: 0.5,
   stageIntensity: 2.1,
   ambientIntensity: 1.5,
+  enableRotation: true,
+};
+
+/** Step2 人设页：不旋转，相机拉近 */
+const STEP2_PREVIEW_CONFIG_OVERRIDE: Partial<OnboardingPreviewConfig> = {
+  cameraZ: 1.6,
+  cameraY: 1.3,
+  enableRotation: false,
 };
 
 const PreviewConfigContext = createContext<OnboardingPreviewConfig | null>(null);
@@ -241,9 +251,10 @@ function PreviewScene({
     }
   }, [vrm]);
 
-  // 360° 展示：模型父 group 旋转，不依赖动画状态，始终启用
+  const cfg = usePreviewConfig();
+  // 360° 展示：Step1 旋转，Step2 人设页不旋转
   useFrame((_, delta) => {
-    if (rotatingGroupRef.current) {
+    if (cfg.enableRotation !== false && rotatingGroupRef.current) {
       rotatingGroupRef.current.rotation.y += delta * 0.55;
     }
   });
@@ -251,8 +262,6 @@ function PreviewScene({
   if (!vrm?.scene) {
     return null;
   }
-
-  const cfg = usePreviewConfig();
   return (
       <Stage
         preset="rembrandt"
@@ -346,6 +355,8 @@ const PreviewCanvas = dynamic(
 interface OnboardingModelPreviewProps {
   /** 镜头/场景调试参数，不传则用默认；与引导页 ?previewDebug=1 面板联动 */
   previewConfig?: OnboardingPreviewConfig | null;
+  /** 当前步骤 id：Step2 人设页不 360 旋转、相机拉近 */
+  stepId?: number;
   /** 指定当前步骤预览动画；重定向失败会自动回退 Idle */
   animationUrl?: string;
   /** 预览动画状态变更回调：用于引导页显示 Playing / Fallback 指示 */
@@ -354,10 +365,12 @@ interface OnboardingModelPreviewProps {
 
 export function OnboardingModelPreview({
   previewConfig = null,
+  stepId,
   animationUrl,
   onAnimationStatusChange,
 }: OnboardingModelPreviewProps) {
-  const value = previewConfig ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
+  const base = previewConfig ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
+  const value = stepId === 2 ? { ...base, ...STEP2_PREVIEW_CONFIG_OVERRIDE } : base;
   return (
     <PreviewConfigContext.Provider value={value}>
       <div className="absolute top-0 left-0 right-0 bottom-0 w-full h-full rounded-lg overflow-hidden bg-transparent">
