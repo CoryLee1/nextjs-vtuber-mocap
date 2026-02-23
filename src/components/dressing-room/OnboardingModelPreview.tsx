@@ -59,6 +59,7 @@ export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
 
 const PreviewConfigContext = createContext<OnboardingPreviewConfig | null>(null);
 const OrbitContext = createContext<React.MutableRefObject<boolean> | null>(null);
+const OrbitProvider = OrbitContext.Provider;
 
 function usePreviewConfig() {
   return useContext(PreviewConfigContext) ?? DEFAULT_ONBOARDING_PREVIEW_CONFIG;
@@ -313,42 +314,42 @@ function PreviewCanvasInner({
   const cfg = usePreviewConfig();
   const orbitEnabledRef = useRef(false);
   return (
-    <OrbitContext.Provider value={orbitEnabledRef}>
-    <Canvas
-      frameloop="always"
-      gl={{
-        alpha: true,
-        antialias: true,
-        powerPreference: 'low-power',
-        stencil: false,
-        depth: true,
-      }}
-      camera={{
-        position: [cfg.cameraX, cfg.cameraY, cfg.cameraZ],
-        rotation: [degToRad(cfg.cameraRotationX), degToRad(cfg.cameraRotationY), degToRad(cfg.cameraRotationZ)],
-        fov: cfg.fov,
-        near: 0.1,
-        far: 30,
-      }}
-      onCreated={({ gl }) => {
-        gl.setClearColor(0, 0, 0, 0);
-      }}
-      style={{ width: '100%', height: '100%', display: 'block' }}
-      dpr={[1, 1.5]}
-    >
-      <CameraController />
-      <Suspense fallback={null}>
-        <PreloadFbx url={ONBOARDING_PREVIEW_LOOP_URL} />
-        {animationUrl && animationUrl !== ONBOARDING_PREVIEW_LOOP_URL && (
-          <PreloadFbx url={animationUrl} />
-        )}
-        {PRELOAD_ANIMATION_URLS.map((url) => (
-          <PreloadFbx key={url} url={url} />
-        ))}
-        <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
-      </Suspense>
-    </Canvas>
-    </OrbitContext.Provider>
+    <OrbitProvider value={orbitEnabledRef}>
+      <Canvas
+        frameloop="always"
+        gl={{
+          alpha: true,
+          antialias: true,
+          powerPreference: 'low-power',
+          stencil: false,
+          depth: true,
+        }}
+        camera={{
+          position: [cfg.cameraX, cfg.cameraY, cfg.cameraZ],
+          rotation: [degToRad(cfg.cameraRotationX), degToRad(cfg.cameraRotationY), degToRad(cfg.cameraRotationZ)],
+          fov: cfg.fov,
+          near: 0.1,
+          far: 30,
+        }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(0, 0, 0, 0);
+        }}
+        style={{ width: '100%', height: '100%', display: 'block' }}
+        dpr={[1, 1.5]}
+      >
+        <CameraController />
+        <Suspense fallback={null}>
+          <PreloadFbx url={ONBOARDING_PREVIEW_LOOP_URL} />
+          {animationUrl && animationUrl !== ONBOARDING_PREVIEW_LOOP_URL && (
+            <PreloadFbx url={animationUrl} />
+          )}
+          {PRELOAD_ANIMATION_URLS.map((url) => (
+            <PreloadFbx key={url} url={url} />
+          ))}
+          <PreviewScene animationUrl={animationUrl} onAnimationStatusChange={onAnimationStatusChange} />
+        </Suspense>
+      </Canvas>
+    </OrbitProvider>
   );
 }
 
