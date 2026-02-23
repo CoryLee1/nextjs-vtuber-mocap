@@ -336,6 +336,8 @@ ActionButtonStack.displayName = 'ActionButtonStack';
 // 4.4 打开分享链接时：URL 带 room_id 则自动进入该直播间（观众）
 function useRoomIdFromUrl() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname() || '/zh';
   const { setRoom, connect, ownerToken } = useEchuuWebSocket();
   const appliedRef = useRef(false);
   useEffect(() => {
@@ -344,9 +346,35 @@ function useRoomIdFromUrl() {
     if (!urlRoomId) return;
     if (ownerToken) return;
     appliedRef.current = true;
-    setRoom(urlRoomId, null);
-    connect(urlRoomId);
-  }, [searchParams, setRoom, connect, ownerToken]);
+    let cancelled = false;
+    (async () => {
+      const { checkRoomExists, createRoom } = await import('@/lib/echuu-client');
+      const exists = await checkRoomExists(urlRoomId);
+      if (cancelled) return;
+      if (exists) {
+        setRoom(urlRoomId, null);
+        connect(urlRoomId);
+        return;
+      }
+
+      // room 失效时自动重建，避免 WS 4004 无限重连
+      try {
+        const room = await createRoom();
+        if (cancelled || !room?.room_id) return;
+        setRoom(room.room_id, room.owner_token ?? null);
+        connect(room.room_id);
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.set('room_id', room.room_id);
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      } catch {
+        // ignore and keep current state
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setRoom, connect, ownerToken, router, pathname]);
 }
 
 // 4.4.1 房主开播或进入房间后，把 room_id 同步到地址栏，这样分享/复制链接会带房间号

@@ -71,6 +71,19 @@ export async function getStatus(roomId: string) {
   return res.json();
 }
 
+/** 检查 room 是否存在且可访问（HTTP 200） */
+export async function checkRoomExists(roomId: string): Promise<boolean> {
+  if (!roomId) return false;
+  try {
+    const res = await fetch(`${ECHUU_API_BASE}/api/status?room_id=${encodeURIComponent(roomId)}`, {
+      method: 'GET',
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function getHistory() {
   const res = await fetch(`${ECHUU_API_BASE}/api/history`);
   return res.json();

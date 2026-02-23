@@ -6,6 +6,12 @@ function getEchuuWsBase(): string {
   const api = process.env?.NEXT_PUBLIC_ECHUU_API_URL || 'http://localhost:8000';
   return api.replace(/^http/, 'ws') + '/ws';
 }
+
+function getEchuuApiBase(): string {
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_ECHUU_API_URL)
+    return process.env.NEXT_PUBLIC_ECHUU_API_URL;
+  return 'http://localhost:8000';
+}
 const MAX_RECONNECT_ATTEMPTS = 8;
 const BASE_RECONNECT_DELAY_MS = 800;
 
@@ -169,9 +175,14 @@ export const useEchuuWebSocket = create<EchuuState>((set, get) => ({
       });
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       const { manualClose } = get();
       set({ connectionState: 'disconnected', ws: null });
+      if (!manualClose && event?.code === 4004) {
+        // room 不存在：自动重建并重连（同时会触发 URL 同步逻辑替换无效 room_id）
+        recoverMissingRoom(set, get);
+        return;
+      }
       if (!manualClose) {
         scheduleReconnect(set, get);
       }
@@ -368,7 +379,7 @@ function scheduleReconnect(
   const nextAttempt = reconnectAttempt + 1;
   const jitter = Math.random() * 250;
   const delay = Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempt) + jitter, 15000);
-  const roomId = get().roomId;
+  const { roomId } = get();
 
   const timer = setTimeout(() => {
     set({ reconnectTimer: null });
@@ -376,4 +387,32 @@ function scheduleReconnect(
   }, delay);
 
   set({ reconnectAttempt: nextAttempt, reconnectTimer: timer });
+}
+
+async function recoverMissingRoom(
+  set: (partial: Partial<EchuuState>) => void,
+  get: () => EchuuState
+) {
+  try {
+    const base = getEchuuApiBase();
+    const res = await fetch(`${base}/api/room`, { method: 'POST' });
+    if (!res.ok) {
+      scheduleReconnect(set, get);
+      return;
+    }
+    const room = await res.json() as { room_id?: string; owner_token?: string };
+    if (!room?.room_id) {
+      scheduleReconnect(set, get);
+      return;
+    }
+    set({
+      roomId: room.room_id,
+      ownerToken: room.owner_token ?? null,
+      reconnectAttempt: 0,
+      errorMessage: '',
+    });
+    get().connect(room.room_id);
+  } catch {
+    scheduleReconnect(set, get);
+  }
 }
