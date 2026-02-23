@@ -111,6 +111,19 @@ function IdleUpdater({
     IDLE_NEXT_URL,
     0.12
   );
+  // 与主场景 VRMAvatar 一致：hasMixer 时主动 switchToIdleMode 启动动画，避免 T 字模
+  useEffect(() => {
+    if (!vrm?.scene || !vrm?.humanoid) return;
+    const t = setTimeout(() => {
+      const state = getAnimationState();
+      if (state?.hasMixer && (state.currentMode !== 'idle' || !state.isPlayingIdle)) {
+        switchToIdleMode();
+        forceIdleRestart();
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart]);
+
   // 轮询检查动画状态：首次 500ms 后开始，每 400ms 重试，直到得到明确结果（playing/fallback/error）
   useEffect(() => {
     if (!vrm) return;
@@ -137,6 +150,13 @@ function IdleUpdater({
           reportedPlayingRef.current = true;
         }
         return true; // 已解决，停止轮询
+      }
+
+      // 与 VRMAvatar 一致：hasMixer 时主动启动，避免漏启动
+      if (state?.hasMixer && (state.currentMode !== 'idle' || !state.isPlayingIdle)) {
+        switchToIdleMode();
+        forceIdleRestart();
+        return false; // 继续轮询等待 animationReady
       }
 
       if (state?.isLoading) return false; // 仍在加载，继续轮询
