@@ -67,8 +67,7 @@ export default function HomePageClient() {
       });
   }, []);
 
-  // Loading 期间仅预拉“首屏关键素材”（默认模型 + 默认动画 + 背景）
-  // 不阻塞于 /api/s3/resources（该接口依赖 ListBucket，当前 IAM 会 AccessDenied）。
+  // Loading 期间预拉首屏关键素材（默认模型 + 默认动画 + 背景）+ S3 模型/动画列表
   useEffect(() => {
     let cancelled = false;
 
@@ -89,10 +88,10 @@ export default function HomePageClient() {
     };
   }, []);
 
-  // 进入主界面后再后台尝试拉取资源列表（不影响首屏与引导）
+  // 若 loading 内 S3 未拉取成功（如 IAM 曾 Deny），进入主界面后再试一次
   useEffect(() => {
     if (isLoading) return;
-    useS3ResourcesStore.getState().loadAll().catch(() => {});
+    useS3ResourcesStore.getState().loadAll({ checkThumbnails: true }).catch(() => {});
   }, [isLoading]);
 
   // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom
@@ -139,7 +138,15 @@ export default function HomePageClient() {
         <ModelManager
           onClose={() => setShowModelManager(false)}
           onSelect={(model: any) => {
-            useSceneStore.getState().setVRMModelUrl(model?.url ?? null);
+            const url = model?.url ?? '';
+            const name = model?.name ?? '';
+            useSceneStore.getState().setVRMModelUrl(url);
+            // 保持角色配置与当前主场景选模一致，避免后续流程读取到旧模型信息
+            useSceneStore.getState().setEchuuConfig({
+              modelUrl: url,
+              modelName: name,
+            });
+            if (url) useSceneStore.getState().setPreloadedPreviewModelUrl(null);
             setShowModelManager(false);
           }}
           initialOpenUpload={openUploadOnMount}

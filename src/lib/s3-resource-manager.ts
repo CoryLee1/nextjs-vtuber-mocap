@@ -1,4 +1,4 @@
-import { S3Client, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { VRMModel, Animation } from '@/types';
 import { ENV_CONFIG } from '../../env.config';
 import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
@@ -114,6 +114,41 @@ export class S3ResourceManager {
             hasThumbnail,
           });
         }
+
+        // 合并 vrm/xxx_meta.json（gender、attributes、suggestedVoice）
+        await Promise.all(
+          vrmModels.map(async (m) => {
+            const modelName = m.name;
+            const metaKey = `vrm/${modelName}_meta.json`;
+            try {
+              const getCmd = new GetObjectCommand({
+                Bucket: this.s3Config.bucketName,
+                Key: metaKey,
+              });
+              const obj = await s3Client.send(getCmd);
+              if (!obj.Body) return;
+              const body = await obj.Body.transformToByteArray();
+              const json = JSON.parse(new TextDecoder().decode(body)) as {
+                gender?: string;
+                attributes?: string[];
+                suggestedVoice?: string;
+              };
+              if (json.gender) m.gender = json.gender as 'male' | 'female' | 'neutral';
+              if (Array.isArray(json.attributes)) m.attributes = json.attributes;
+              if (json.suggestedVoice) m.suggestedVoice = json.suggestedVoice;
+              // 将 AI 打标结果并入 tags，便于模型卡片直观看到标签并支持现有搜索逻辑
+              const tagSet = new Set<string>(Array.isArray(m.tags) ? m.tags : []);
+              if (json.gender) tagSet.add(`gender:${json.gender}`);
+              if (Array.isArray(json.attributes)) {
+                json.attributes.map((a) => String(a).trim()).filter(Boolean).forEach((a) => tagSet.add(a));
+              }
+              if (json.suggestedVoice) tagSet.add(`voice:${json.suggestedVoice}`);
+              m.tags = Array.from(tagSet);
+            } catch {
+              // _meta.json 不存在或解析失败，忽略
+            }
+          })
+        );
       }
 
       return vrmModels;
