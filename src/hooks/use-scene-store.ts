@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
 import type { VRM } from '@pixiv/three-vrm';
 import type { CameraSettings } from '@/types/vtuber';
-import type { Object3D, Mesh, Material } from 'three';
 import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
 import { DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
 
@@ -249,14 +248,16 @@ export const useSceneStore = create<SceneState>()(
     
     if (vrmModel) {
       try {
-        // 1. 从父节点移除场景
-        if (vrmModel.scene && vrmModel.scene.parent) {
-          vrmModel.scene.parent.remove(vrmModel.scene);
-        }
+        // 重要：不要在这里 remove/dispose three 对象。
+        // 原因：VRM 由 useGLTF(@react-three/drei) 缓存复用；手动 dispose/remove
+        // 会把缓存里的 scene/材质/贴图也一起清理掉，导致后续同 URL 的模型“永远显示不出来”。
+        //
+        // 这里仅做“逻辑层清理”：停止动画/断开引用，让 React Three Fiber 在卸载时处理资源生命周期。
+        console.groupCollapsed('[disposeCurrentVRM] clearing VRM instance (no three dispose)');
+        console.trace();
+        console.groupEnd();
 
-        // 2. 停止所有动画
-        // 注意：VRM 的动画管理器需要单独处理
-        // 尝试停止动画管理器的动作
+        // 停止动画（如果有 mixer）
         const { animationManagerRef } = get();
         if (animationManagerRef) {
           // 尝试切换到mocap模式来停止动画（如果方法存在）
@@ -268,39 +269,6 @@ export const useSceneStore = create<SceneState>()(
             animationManagerRef.mixer.stopAllAction();
           }
         }
-
-        // 3. 释放 VRM 资源
-        // 注意：VRM 类型可能没有 dispose 方法，需要检查实际实现
-        if ('dispose' in vrmModel && typeof (vrmModel as any).dispose === 'function') {
-          (vrmModel as any).dispose();
-        }
-
-        // 4. 清理几何体和材质
-        vrmModel.scene.traverse((object: Object3D) => {
-          const mesh = object as Mesh;
-          if (mesh.geometry) {
-            mesh.geometry.dispose();
-          }
-          if (mesh.material) {
-            if (Array.isArray(mesh.material)) {
-              mesh.material.forEach((mat) => {
-                const material = mat as Material & { map?: any };
-                if (material.map) {
-                  material.map.dispose();
-                }
-                material.dispose();
-              });
-            } else {
-              const material = mesh.material as Material & { map?: any };
-              if (material.map) {
-                material.map.dispose();
-              }
-              material.dispose();
-            }
-          }
-        });
-
-        console.log('VRM 模型资源已释放');
       } catch (error) {
         console.error('释放 VRM 模型资源时出错:', error);
       }
@@ -308,7 +276,6 @@ export const useSceneStore = create<SceneState>()(
 
     set({
       vrmModel: null,
-      vrmModelUrl: null,
     });
   },
 
