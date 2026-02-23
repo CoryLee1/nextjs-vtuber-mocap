@@ -64,25 +64,40 @@ export class S3ResourceManager {
       const vrmModels: VRMModelFromS3[] = [];
 
       if (vrmResponse.Contents) {
-        for (const object of vrmResponse.Contents) {
-          if (!object.Key || !object.Key.endsWith('.vrm')) continue;
+        const vrmObjects = vrmResponse.Contents.filter(
+          (o) => o.Key && o.Key.endsWith('.vrm')
+        ) as { Key: string; Size?: number; LastModified?: Date }[];
+
+        let hasThumbnailMap: Record<string, boolean> = {};
+        if (checkThumbnails && vrmObjects.length > 0) {
+          const headResults = await Promise.all(
+            vrmObjects.map(async (object) => {
+              const key = object.Key;
+              const modelName = key.split('/').pop()?.replace(/\.vrm$/i, '') ?? '';
+              const thumbnailKey = `vrm/${modelName}_thumb.png`;
+              try {
+                await s3Client.send(new HeadObjectCommand({
+                  Bucket: this.s3Config.bucketName,
+                  Key: thumbnailKey,
+                }));
+                return { key, hasThumbnail: true };
+              } catch {
+                return { key, hasThumbnail: false };
+              }
+            })
+          );
+          headResults.forEach((r) => {
+            hasThumbnailMap[r.key] = r.hasThumbnail;
+          });
+        }
+
+        for (const object of vrmObjects) {
           const key = object.Key;
           const fileName = key.split('/').pop() || '';
           const modelName = fileName.replace(/\.vrm$/i, '');
           const thumbnailKey = `vrm/${modelName}_thumb.png`;
           const thumbnailUrl = getS3ObjectReadUrlByKey(thumbnailKey);
-
-          let hasThumbnail = true;
-          if (checkThumbnails) {
-            try {
-              await s3Client.send(new HeadObjectCommand({
-                Bucket: this.s3Config.bucketName,
-                Key: thumbnailKey,
-              }));
-            } catch {
-              hasThumbnail = false;
-            }
-          }
+          const hasThumbnail = checkThumbnails ? (hasThumbnailMap[key] ?? true) : true;
 
           vrmModels.push({
             id: `s3-${key}`,

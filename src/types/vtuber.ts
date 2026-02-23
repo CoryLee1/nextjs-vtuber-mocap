@@ -10,6 +10,10 @@ export interface VRMModel {
   size?: number; // 文件大小（字节）
   type?: string; // MIME类型
   createdAt?: string; // 创建时间
+  /** 性别（供 VLM 打 tag、声音分配用） */
+  gender?: 'male' | 'female' | 'neutral';
+  /** 属性标签（如 anime, casual，供 VLM 打 tag 用） */
+  attributes?: string[];
 }
 
 export interface Animation {

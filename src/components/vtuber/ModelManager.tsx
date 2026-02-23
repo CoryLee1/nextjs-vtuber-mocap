@@ -247,7 +247,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
       const loadModels = async () => {
         try {
           const localModels = await getModels(undefined) || [];
-          const s3Response = await fetch('/api/s3/resources?type=models');
+          const s3Response = await fetch('/api/s3/resources?type=models&checkThumbs=1');
           let s3Models = [];
           
           if (s3Response.ok) {
@@ -542,7 +542,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
                     <CardContent className="p-4">
                       {/* 缩略图：优先客户端生成的，再 thumbnail，再 /api/vrm-thumbnail；失败则尝试客户端生成证件照 */}
                       <div className="aspect-square bg-sky-50 rounded-lg mb-3 flex items-center justify-center border border-sky-100 overflow-hidden">
-                        {(clientThumbnails[model.id] || model.thumbnail || model.url?.startsWith('http')) ? (
+                        {(clientThumbnails[model.id] || model.thumbnail || model.url) ? (
                           <>
                             <img
                               src={
