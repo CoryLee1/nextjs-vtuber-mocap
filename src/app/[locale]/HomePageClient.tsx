@@ -23,6 +23,12 @@ export default function HomePageClient() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const canvasReady = useSceneStore((s) => s.canvasReady);
+  const setIsOnboardingActive = useSceneStore((s) => s.setIsOnboardingActive);
+
+  // 同步引导页显示状态到 store，供主场景暂停渲染 VRMAvatar，避免两个 Canvas 争用同一 Three.js 对象
+  useEffect(() => {
+    setIsOnboardingActive(showOnboarding);
+  }, [showOnboarding, setIsOnboardingActive]);
   const { status } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -283,8 +289,8 @@ export default function HomePageClient() {
       {/* 3. 新手引导：等 3D 画布和 UI 就绪后再显示，避免人物/界面未加载完就出现步骤 */}
       {showOnboarding && !isLoading && canvasReady && (
         <OnboardingGuide
-          onComplete={() => setShowOnboarding(false)}
-          onSkip={() => setShowOnboarding(false)}
+          onComplete={() => { setShowOnboarding(false); setIsOnboardingActive(false); }}
+          onSkip={() => { setShowOnboarding(false); setIsOnboardingActive(false); }}
           onStep1Select={() => {
             setOpenUploadOnMount(false);
             setShowModelManager(true);

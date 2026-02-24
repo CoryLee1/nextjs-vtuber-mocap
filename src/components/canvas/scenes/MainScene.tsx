@@ -183,6 +183,7 @@ export const MainScene: React.FC = () => {
   // 从 store 读取状态和更新方法
   const {
     vrmModelUrl,
+    preloadedPreviewModelUrl,
     animationUrl,
     nextAnimationUrl,
     cameraSettings,
@@ -193,6 +194,7 @@ export const MainScene: React.FC = () => {
     hdrUrl,
     envBackgroundIntensity,
     envBackgroundRotation,
+    isOnboardingActive,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
@@ -241,6 +243,17 @@ export const MainScene: React.FC = () => {
   const defaultModelUrl = DEFAULT_PREVIEW_MODEL_URL;
   const defaultAnimationUrl = DEFAULT_IDLE_URL;
 
+  // DEBUG: 诊断模型 URL 解析
+  const resolvedModelUrl = vrmModelUrl || preloadedPreviewModelUrl || defaultModelUrl;
+  useEffect(() => {
+    console.log('[MainScene] Model URL resolution:', {
+      vrmModelUrl,
+      preloadedPreviewModelUrl: preloadedPreviewModelUrl ? '(blob)' : null,
+      defaultModelUrl,
+      resolved: resolvedModelUrl?.substring(0, 80),
+    });
+  }, [vrmModelUrl, preloadedPreviewModelUrl, resolvedModelUrl]);
+
   const envUrl = hdrUrl || DEFAULT_ENV_BACKGROUND_URL;
   const useHdrEnv = isHdrEnvUrl(envUrl);
 
@@ -287,51 +300,53 @@ export const MainScene: React.FC = () => {
         ))}
       </Suspense>
 
-      {/* VRM 角色 */}
-      <group position-y={0}>
-        <ModelErrorBoundary onError={(e) => console.error(e)}>
-          <Suspense fallback={<LoadingIndicator />}>
-            <VRMAvatar
-              ref={vrmRef}
-            modelUrl={vrmModelUrl || defaultModelUrl}
-            animationUrl={animationUrl || defaultAnimationUrl}
-            nextAnimationUrl={nextAnimationUrl}
-            scale={1}
-            position={[0, 0, 0]}
-            showBones={debugSettings.showBones}
-            showDebug={debugSettings.showDebug}
-            testSettings={debugSettings}
-            showArmAxes={debugSettings.showArmAxes}
-            axisSettings={debugSettings.axisSettings || {}}
-            debugAxisConfig={debugSettings.debugAxisConfig}
-            handDebugAxisConfig={debugSettings.handDebugAxisConfig}
-            onAxisChange={(config) => {
-              updateDebugSettings({
-                debugAxisConfig: config,
-              });
-            }}
-            onHandAxisChange={(config) => {
-              updateDebugSettings({
-                handDebugAxisConfig: config,
-              });
-            }}
-            onRiggedPoseUpdate={(pose: any) => {
-              // 可以在这里处理 riggedPose 更新
-            }}
-            onRiggedHandUpdate={(leftHand: any, rightHand: any) => {
-              // 可以在这里处理 riggedHand 更新
-            }}
-            onAnimationManagerRef={setAnimationManagerRef}
-            onHandDetectionStateRef={setHandDetectionStateRef}
-            onMocapStatusUpdate={(status: any) => {
-              // 可以在这里处理 mocap 状态更新
-            }}
-            echuuCue={echuuCue}
-            echuuAudioPlaying={echuuAudioPlaying}
-            />
-          </Suspense>
-        </ModelErrorBoundary>
-      </group>
+      {/* VRM 角色：引导页显示时暂停渲染，避免两个 Canvas 争用同一 Three.js 对象 */}
+      {!isOnboardingActive && (
+        <group position-y={0}>
+          <ModelErrorBoundary onError={(e) => console.error(e)}>
+            <Suspense fallback={<LoadingIndicator />}>
+              <VRMAvatar
+                ref={vrmRef}
+                modelUrl={vrmModelUrl || preloadedPreviewModelUrl || defaultModelUrl}
+                animationUrl={animationUrl || defaultAnimationUrl}
+                nextAnimationUrl={nextAnimationUrl}
+                scale={1}
+                position={[0, 0, 0]}
+                showBones={debugSettings.showBones}
+                showDebug={debugSettings.showDebug}
+                testSettings={debugSettings}
+                showArmAxes={debugSettings.showArmAxes}
+                axisSettings={debugSettings.axisSettings || {}}
+                debugAxisConfig={debugSettings.debugAxisConfig}
+                handDebugAxisConfig={debugSettings.handDebugAxisConfig}
+                onAxisChange={(config) => {
+                  updateDebugSettings({
+                    debugAxisConfig: config,
+                  });
+                }}
+                onHandAxisChange={(config) => {
+                  updateDebugSettings({
+                    handDebugAxisConfig: config,
+                  });
+                }}
+                onRiggedPoseUpdate={(pose: any) => {
+                  // 可以在这里处理 riggedPose 更新
+                }}
+                onRiggedHandUpdate={(leftHand: any, rightHand: any) => {
+                  // 可以在这里处理 riggedHand 更新
+                }}
+                onAnimationManagerRef={setAnimationManagerRef}
+                onHandDetectionStateRef={setHandDetectionStateRef}
+                onMocapStatusUpdate={(status: any) => {
+                  // 可以在这里处理 mocap 状态更新
+                }}
+                echuuCue={echuuCue}
+                echuuAudioPlaying={echuuAudioPlaying}
+              />
+            </Suspense>
+          </ModelErrorBoundary>
+        </group>
+      )}
       
       {/* 后期处理已暂时禁用，避免 postprocessing addPass 时 alpha 为 null 报错 */}
     </>

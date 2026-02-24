@@ -38,6 +38,9 @@ interface SceneState {
   /** 当前激活的场景 */
   activeScene: SceneType;
   setScene: (scene: SceneType) => void;
+  /** 引导页是否正在显示（非持久化）：为 true 时主场景不渲染 VRMAvatar，避免两个 Canvas 争用同一 Three.js 对象 */
+  isOnboardingActive: boolean;
+  setIsOnboardingActive: (v: boolean) => void;
 
   // ========== VRM 模型缓存 ==========
   /** 缓存的 VRM 模型实例 */
@@ -202,6 +205,8 @@ export const useSceneStore = create<SceneState>()(
   setScene: (scene: SceneType) => {
     set({ activeScene: scene });
   },
+  isOnboardingActive: false,
+  setIsOnboardingActive: (v: boolean) => set({ isOnboardingActive: v }),
 
   // ========== VRM 模型缓存 ==========
   vrmModel: null,
