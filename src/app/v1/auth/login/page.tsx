@@ -15,6 +15,7 @@ export default function V1Login() {
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [waking, setWaking] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   // 检测 OAuth 回调错误（通常是 Neon 冷启动导致 DB 连接失败）
   const urlError = searchParams?.get('error');
@@ -79,11 +80,26 @@ export default function V1Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            
+            {/* Terms and Privacy Checkbox */}
+            <div className="flex items-start gap-2 pt-1">
+              <input 
+                type="checkbox" 
+                id="terms-agreement"
+                className="mt-1 w-4 h-4 rounded border-gray-600 bg-black/50 text-[#EEFF00] focus:ring-[#EEFF00] focus:ring-offset-black"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />
+              <label htmlFor="terms-agreement" className="text-xs text-white/70 leading-tight select-none cursor-pointer">
+                I agree to the <Link href="/legal/terms" className="text-[#EEFF00] hover:underline" target="_blank">User Agreement</Link> and <Link href="/legal/privacy" className="text-[#EEFF00] hover:underline" target="_blank">Privacy Policy</Link>.
+              </label>
+            </div>
+
             {error && (
               <div className="text-xs text-red-400 font-bold">{error}</div>
             )}
             <AuthButton
-              disabled={loading}
+              disabled={loading || !agreed}
               onClick={async () => {
                 setLoading(true);
                 setError(null);
@@ -118,7 +134,7 @@ export default function V1Login() {
           <SocialButton 
             icon="/v1-assets/fills/774627be89a12b5733ec566d9e28cb7cbdead78d.png" 
             label="Google Authentication" 
-            disabled={!googleEnabled}
+            disabled={!googleEnabled || !agreed}
             onClick={() => signIn('google', { callbackUrl: '/zh' })}
           />
           {!googleEnabled && (

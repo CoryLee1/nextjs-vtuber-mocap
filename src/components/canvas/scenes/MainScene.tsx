@@ -15,7 +15,6 @@ const PreloadFbx = memo(({ url }: { url: string }) => {
   return null;
 });
 PreloadFbx.displayName = 'PreloadFbx';
-import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
 import { CameraController } from '@/components/dressing-room/CameraController';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
