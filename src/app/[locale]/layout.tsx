@@ -19,20 +19,20 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://echuu.xyz';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Echuu | AI VTuber 动捕直播',
+    default: 'Echuu: AI Vtubing',
     template: '%s | Echuu',
   },
-  description: 'Echuu 是 AI 驱动的 VTuber 动捕直播平台。用摄像头驱动 3D 虚拟形象，一键开播，与观众实时互动。',
-  keywords: 'Echuu, AI VTuber, 虚拟主播, 动捕, 动作捕捉, 直播, VRM, 3D 形象',
+  description: 'Echuu! 你的 AI 虚拟主播出道神器！✨ 只要一个摄像头，捏好的 VRM 崽崽就能动起来～ 0门槛一键开播，和大家贴贴互动！快来开启你的异世界直播之旅吧！(≧∇≦)/',
+  keywords: 'Echuu, AI VTuber, 虚拟主播, 动捕, 动作捕捉, 直播, VRM, 3D 形象, 二次元, 虚拟出道',
   authors: [{ name: 'Echuu' }],
   creator: 'Echuu',
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
     url: SITE_URL,
-    siteName: 'Echuu',
-    title: 'Echuu | AI VTuber 动捕直播',
-    description: 'AI 驱动的 VTuber 动捕直播平台，摄像头驱动 3D 形象，一键开播。',
+    siteName: 'Echuu: AI Vtubing',
+    title: 'Echuu: AI Vtubing',
+    description: 'Echuu! 你的 AI 虚拟主播出道神器！✨ 只要一个摄像头，捏好的 VRM 崽崽就能动起来～ 0门槛一键开播，和大家贴贴互动！',
     images: [
       {
         url: '/logo.svg',
@@ -44,8 +44,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Echuu | AI VTuber 动捕直播',
-    description: 'AI 驱动的 VTuber 动捕直播平台，摄像头驱动 3D 形象，一键开播。',
+    title: 'Echuu: AI Vtubing',
+    description: 'Echuu! 你的 AI 虚拟主播出道神器！✨ 只要一个摄像头，捏好的 VRM 崽崽就能动起来～ 0门槛一键开播，和大家贴贴互动！',
     images: ['/logo.svg'],
   },
   icons: {

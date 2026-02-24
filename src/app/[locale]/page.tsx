@@ -13,8 +13,8 @@ export async function generateMetadata({
   const roomId = typeof resolved?.room_id === 'string' ? resolved.room_id.trim() : undefined;
   if (!roomId) return {};
 
-  const title = 'Echuu 直播间 | AI VTuber 动捕直播';
-  const description = '正在直播中，点击进入观看 AI VTuber 动捕直播。';
+  const title = 'Echuu: AI Vtubing';
+  const description = 'Echuu! 你的 AI 虚拟主播出道神器！✨ 只要一个摄像头，捏好的 VRM 崽崽就能动起来～ 0门槛一键开播，和大家贴贴互动！';
   const ogImage = `${SITE_URL}/logo.svg`;
 
   return {
@@ -23,7 +23,7 @@ export async function generateMetadata({
     openGraph: {
       type: 'website',
       url: `${SITE_URL}?room_id=${encodeURIComponent(roomId)}`,
-      siteName: 'Echuu',
+      siteName: 'Echuu: AI Vtubing',
       title,
       description,
       images: [{ url: ogImage, width: 512, height: 512, alt: 'Echuu' }],

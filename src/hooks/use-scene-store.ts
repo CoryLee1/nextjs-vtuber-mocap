@@ -153,6 +153,18 @@ interface SceneState {
   /** 色调映射模式：aces=电影感易发灰，linear=最鲜艳，reinhard=折中 */
   toneMappingMode: 'aces' | 'linear' | 'reinhard';
   setToneMappingMode: (v: 'aces' | 'linear' | 'reinhard') => void;
+  /** 泛光强度 (0-2) */
+  bloomIntensity: number;
+  setBloomIntensity: (v: number) => void;
+  /** 泛光阈值 (0-1.5) */
+  bloomThreshold: number;
+  setBloomThreshold: (v: number) => void;
+  /** 亮度 (-0.5 - 0.5) */
+  brightness: number;
+  setBrightness: (v: number) => void;
+  /** 对比度 (-0.5 - 0.5) */
+  contrast: number;
+  setContrast: (v: number) => void;
 }
 
 /**
@@ -367,6 +379,14 @@ export const useSceneStore = create<SceneState>()(
   setToneMappingExposure: (v) => set({ toneMappingExposure: Math.max(0.3, Math.min(3, v)) }),
   toneMappingMode: 'reinhard',
   setToneMappingMode: (v) => set({ toneMappingMode: v }),
+  bloomIntensity: 0.4,
+  setBloomIntensity: (v) => set({ bloomIntensity: v }),
+  bloomThreshold: 0.85,
+  setBloomThreshold: (v) => set({ bloomThreshold: v }),
+  brightness: 0,
+  setBrightness: (v) => set({ brightness: v }),
+  contrast: 0,
+  setContrast: (v) => set({ contrast: v }),
     })),
     {
       name: 'vtuber-scene-storage',
@@ -380,6 +400,10 @@ export const useSceneStore = create<SceneState>()(
         envBackgroundRotation: state.envBackgroundRotation,
         toneMappingExposure: state.toneMappingExposure,
         toneMappingMode: state.toneMappingMode,
+        bloomIntensity: state.bloomIntensity,
+        bloomThreshold: state.bloomThreshold,
+        brightness: state.brightness,
+        contrast: state.contrast,
         hdrUrl: state.hdrUrl,
         sceneFbxUrl: state.sceneFbxUrl,
         bgmUrl: state.bgmUrl,

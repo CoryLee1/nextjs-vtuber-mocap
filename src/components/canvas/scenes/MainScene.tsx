@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect, useRef, Suspense, memo, useLayoutEffect } from 'react';
-import { Grid, Environment, useFBX, useTexture, Cloud, Clouds } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
+import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles } from '@react-three/drei';
+import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
+import { EffectComposer, Bloom, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 
 /** 预加载单个 FBX，填满 useLoader 缓存，切换动画时无需再等 */
 const PreloadFbx = memo(({ url }: { url: string }) => {
@@ -199,6 +201,11 @@ export const MainScene: React.FC = () => {
     setAnimationManagerRef,
     setHandDetectionStateRef,
     updateDebugSettings,
+    bloomIntensity,
+    bloomThreshold,
+    brightness,
+    contrast,
+    toneMappingMode,
   } = useSceneStore();
   
   // PERF: 更新头部位置（用于 Autofocus）- 使用 ref 避免重渲染
@@ -348,7 +355,22 @@ export const MainScene: React.FC = () => {
         </group>
       )}
       
-      {/* 后期处理已暂时禁用，避免 postprocessing addPass 时 alpha 为 null 报错 */}
+      {/* 后期处理与特效 */}
+      <Sparkles count={50} scale={5} size={2} speed={0.4} opacity={0.5} />
+      
+      <EffectComposer disableNormalPass>
+        <Bloom 
+          luminanceThreshold={bloomThreshold} 
+          mipmapBlur 
+          intensity={bloomIntensity} 
+          radius={0.6}
+        />
+        <BrightnessContrast
+          brightness={brightness}
+          contrast={contrast}
+        />
+        <ToneMapping mode={ToneMappingMode.REINHARD} />
+      </EffectComposer>
     </>
   );
 };

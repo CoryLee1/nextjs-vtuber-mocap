@@ -34,8 +34,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import {
-  Dialog,
+import { Sparkles, Environment } from '@react-three/drei';
+import { EffectComposer, Bloom, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -480,7 +481,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, brightness, setBrightness, contrast, setContrast, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -576,6 +577,10 @@ export const StreamRoomSidebar = memo(({
         if (typeof parsed.envBackgroundRotation === 'number') setEnvBackgroundRotation(parsed.envBackgroundRotation);
         if (typeof parsed.toneMappingExposure === 'number') setToneMappingExposure(parsed.toneMappingExposure);
         if (['aces', 'linear', 'reinhard'].includes(parsed.toneMappingMode)) setToneMappingMode(parsed.toneMappingMode);
+        if (typeof parsed.bloomIntensity === 'number') setBloomIntensity(parsed.bloomIntensity);
+        if (typeof parsed.bloomThreshold === 'number') setBloomThreshold(parsed.bloomThreshold);
+        if (typeof parsed.brightness === 'number') setBrightness(parsed.brightness);
+        if (typeof parsed.contrast === 'number') setContrast(parsed.contrast);
       } catch {
         // ignore invalid storage
       }
@@ -706,7 +711,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, brightness, contrast })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1272,6 +1277,65 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{Math.round(envBackgroundRotation)}°</span>
               </div>
+
+              {/* Bloom Settings */}
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '泛光强度 (Bloom)' : 'Bloom Intensity'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  value={bloomIntensity}
+                  onValueChange={setBloomIntensity}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomIntensity.toFixed(2)}</span>
+              </div>
+              
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '泛光阈值 (Threshold)' : 'Bloom Threshold'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={0}
+                  max={1.5}
+                  step={0.05}
+                  value={bloomThreshold}
+                  onValueChange={setBloomThreshold}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomThreshold.toFixed(2)}</span>
+              </div>
+
+              {/* Color Correction Settings */}
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '亮度 (Brightness)' : 'Brightness'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={-0.5}
+                  max={0.5}
+                  step={0.01}
+                  value={brightness}
+                  onValueChange={setBrightness}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{brightness.toFixed(2)}</span>
+              </div>
+
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '对比度 (Contrast)' : 'Contrast'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={-0.5}
+                  max={0.5}
+                  step={0.01}
+                  value={contrast}
+                  onValueChange={setContrast}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{contrast.toFixed(2)}</span>
+              </div>
+
               <label className="text-[12px] text-slate-500">{locale === 'zh' ? '整体曝光' : 'Exposure'}</label>
               <div className="flex items-center gap-2">
                 <Slider

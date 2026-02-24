@@ -14,15 +14,22 @@ const REGION = process.env.NEXT_PUBLIC_S3_REGION || 'us-east-2';
 const DEFAULT_DASHSCOPE_BASE = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 const DEFAULT_VL_MODEL = 'qwen-vl-max-latest';
 
-const PROMPT = `你是一个 VRM 虚拟角色分析助手。请分析这张头像缩略图，返回 JSON，格式严格为：
-{"name":"模型展示名","gender":"male|female|nonbinary","identity":"职业或身份","styleTags":["标签1","标签2"],"suggestedVoice":"音色名","voiceConfidence":0.0}
-- name: 为角色自动取名（英文，简短，不要文件名样式）
-- gender: 角色性别，仅 male/female/nonbinary
-- identity: 职业或身份（如 student、idol、mage、office_worker 等）
-- styleTags: 2-6 个二次元风格英文标签（如 anime、kemonomimi、shonen、ojousama、seifuku、cool）
-- suggestedVoice: 从以下 Qwen TTS 音色中选最匹配的：${ECHUU_AGENT_TTS_VOICES.join(',')}
-- voiceConfidence: 0~1 的置信度（可选）
-只返回 JSON，不要其他文字。`;
+const PROMPT = `你是一个资深二次元角色鉴赏家/AI 助手。请用最地道的 ACGN (Anime, Comic, Game, Novel) 术语分析这张 VRM 模型的头像缩略图。
+请返回 JSON，格式严格如下：
+{"name":"英文角色名","gender":"male|female|nonbinary","identity":"二次元萌属性/职业","styleTags":["tag1","tag2"],"suggestedVoice":"音色名","voiceConfidence":0.0}
+
+详细要求：
+- name: 为角色取一个好听的英文名（或是日文罗马音），要符合二次元轻小说或动漫角色的命名风格，拒绝 generic name。
+- gender: 角色性别，仅限 male/female/nonbinary。
+- identity: 角色的核心身份或萌属性（如 magical_girl, student_council_president, isekai_hero, shrine_maiden, cyber_ninja 等）。
+- styleTags: 2-6 个最能描述其“萌点”的英文标签。请优先使用 Danbooru/Pixiv 风格的通用 tag，例如：
+  - 外貌/属性: nekomimi (猫耳), megane (眼镜), twintails (双马尾), ahoge (呆毛), heterochromia (异色瞳), zettai_ryouiki (绝对领域)
+  - 风格/气质: tsundere (傲娇), kuudere (三无), yandere (病娇), genki (元气), chuunibyou (中二病), yamato_nadeshiko (大和抚子)
+  - 服装: seifuku (制服), maid (女仆), gothic_lolita (哥特萝莉), techwear (机能风), kimono (和服)
+- suggestedVoice: 从以下 Qwen TTS 音色中选最匹配的一个（根据角色的气质，比如傲娇选 Cherry/Vivian，御姐选 Serena/Maia，元气选 Momo/Bella，少年选 Ethan/Ryan，温柔选 Ono Anna/Sohee）：${ECHUU_AGENT_TTS_VOICES.join(',')}
+- voiceConfidence: 0~1 的置信度。
+
+只返回 JSON，不要包含 markdown 格式或其他文字。`;
 
 interface TagResult {
   s3Key: string;
