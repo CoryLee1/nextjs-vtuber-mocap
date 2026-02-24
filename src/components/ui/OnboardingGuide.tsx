@@ -23,6 +23,7 @@ import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { aiSuggest } from '@/lib/echuu-client';
 import { ECHUU_AGENT_TTS_VOICES } from '@/lib/ai-tag-taxonomy';
+import { TTS_VOICES } from '@/config/tts-voices';
 import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 import {
   OnboardingModelPreview,
@@ -414,7 +415,21 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                       onChange={(e) => setVoiceDraft(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors appearance-none"
                     >
-                      {ECHUU_AGENT_TTS_VOICES.map((v) => (
+                      {/* 优先显示 curated TTS_VOICES，如果 voiceDraft 不在其中，也会通过 ECHUU_AGENT_TTS_VOICES 兜底（这里先合并） */}
+                      {TTS_VOICES.map((v) => {
+                        const genderLabel = v.gender === 'female' 
+                          ? (locale === 'zh' ? '女' : 'F') 
+                          : (locale === 'zh' ? '男' : 'M');
+                        const trait = locale === 'zh' ? v.traitZh : v.traitEn;
+                        const label = locale === 'zh' ? v.labelZh : v.labelEn;
+                        return (
+                          <option key={v.value} value={v.value} className="bg-black text-white">
+                            {label} ({genderLabel}) - {trait}
+                          </option>
+                        );
+                      })}
+                      {/* 显示 TTS_VOICES 中没有但 ECHUU_AGENT_TTS_VOICES 中有的音色 */}
+                      {ECHUU_AGENT_TTS_VOICES.filter(v => !TTS_VOICES.some(tv => tv.value === v)).map((v) => (
                         <option key={v} value={v} className="bg-black text-white">
                           {v}
                         </option>
