@@ -20,7 +20,9 @@ import {
   Film,
   Copy,
   ExternalLink,
-  QrCode
+  QrCode,
+  Heart,
+  Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,6 +40,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
@@ -158,6 +161,7 @@ export const PowerToggle = memo(({
   const { locale } = useI18n();
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [angelCount, setAngelCount] = useState<number | null>(null);
+  const [likeCount, setLikeCount] = useState(0);
 
   // 有 roomId 连直播间，无则连大厅 lobby，以便始终显示 ONLINE（全站在线）；切换目标时先断再连
   useEffect(() => {
@@ -219,6 +223,67 @@ export const PowerToggle = memo(({
             {angelCount === null ? '—' : angelCount.toLocaleString()}
           </span>
         </div>
+
+        {/* Like Button */}
+        <button
+          onClick={() => setLikeCount((c) => c + 1)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-300 shadow-xl bg-white dark:bg-slate-900 border-pink-500 text-pink-500 hover:scale-105 active:scale-95"
+          title={locale === 'zh' ? '点赞' : 'Like'}
+        >
+          <Heart className="w-4 h-4 fill-current" />
+          <span className="text-xs font-black tabular-nums">{likeCount > 0 ? likeCount : (locale === 'zh' ? '点赞' : 'LIKE')}</span>
+        </button>
+
+        {/* Contact Button */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-300 shadow-xl bg-white dark:bg-slate-900 border-purple-500 text-purple-500 hover:scale-105 active:scale-95"
+              title={locale === 'zh' ? '联系我们' : 'Contact'}
+            >
+              <Mail className="w-4 h-4" />
+              <span className="text-xs font-black uppercase tracking-widest">
+                {locale === 'zh' ? '联系' : 'CONTACT'}
+              </span>
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{locale === 'zh' ? '联系我们' : 'Contact Us'}</DialogTitle>
+              <DialogDescription>
+                {locale === 'zh' ? '如有商务合作或反馈，请联系以下邮箱：' : 'For business inquiries or feedback, please contact:'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
+                <span className="text-sm font-medium break-all">cory@anngel.live</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    navigator.clipboard.writeText('cory@anngel.live');
+                    toast({ title: locale === 'zh' ? '已复制' : 'Copied' });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
+                <span className="text-sm font-medium break-all">cory958014884@gmail.com</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    navigator.clipboard.writeText('cory958014884@gmail.com');
+                    toast({ title: locale === 'zh' ? '已复制' : 'Copied' });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Profile button (only shows when logged-in) */}
         <ProfileButton />
