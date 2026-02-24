@@ -37,14 +37,7 @@ import { Slider } from '@/components/ui/slider';
 import { Sparkles, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import * as DialogUI from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
@@ -212,8 +205,8 @@ export const PowerToggle = memo(({
         </button>
 
         {/* Contact Button */}
-        <Dialog>
-          <DialogTrigger asChild>
+        <DialogUI.Dialog>
+          <DialogUI.DialogTrigger asChild>
             <button
               className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-300 shadow-xl bg-white dark:bg-slate-900 border-purple-500 text-purple-500 hover:scale-105 active:scale-95"
               title={locale === 'zh' ? '联系我们' : 'Contact'}
@@ -223,14 +216,14 @@ export const PowerToggle = memo(({
                 {locale === 'zh' ? '联系' : 'CONTACT'}
               </span>
             </button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{locale === 'zh' ? '联系我们' : 'Contact Us'}</DialogTitle>
-              <DialogDescription>
+          </DialogUI.DialogTrigger>
+          <DialogUI.DialogContent className="sm:max-w-md">
+            <DialogUI.DialogHeader>
+              <DialogUI.DialogTitle>{locale === 'zh' ? '联系我们' : 'Contact Us'}</DialogUI.DialogTitle>
+              <DialogUI.DialogDescription>
                 {locale === 'zh' ? '如有商务合作或反馈，请联系以下邮箱：' : 'For business inquiries or feedback, please contact:'}
-              </DialogDescription>
-            </DialogHeader>
+              </DialogUI.DialogDescription>
+            </DialogUI.DialogHeader>
             <div className="flex flex-col gap-4 py-4">
               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
                 <span className="text-sm font-medium break-all">cory@anngel.live</span>
@@ -259,8 +252,8 @@ export const PowerToggle = memo(({
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DialogUI.DialogContent>
+        </DialogUI.Dialog>
 
         {/* Profile button (only shows when logged-in) */}
         <ProfileButton />
@@ -1814,16 +1807,16 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
         <Share2 className="w-4 h-4" />
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[760px]">
-          <DialogHeader>
-            <DialogTitle>{locale === 'zh' ? '分享直播间' : 'Share Live Room'}</DialogTitle>
-            <DialogDescription>
+      <DialogUI.Dialog open={open} onOpenChange={setOpen}>
+        <DialogUI.DialogContent className="max-w-[760px]">
+          <DialogUI.DialogHeader>
+            <DialogUI.DialogTitle>{locale === 'zh' ? '分享直播间' : 'Share Live Room'}</DialogUI.DialogTitle>
+            <DialogUI.DialogDescription>
               {locale === 'zh'
                 ? '支持 X、Reddit，及微信/小红书/B站二维码分享。'
                 : 'Share to X, Reddit, and QR-based channels (WeChat, RED, Bilibili).'}
-            </DialogDescription>
-          </DialogHeader>
+            </DialogUI.DialogDescription>
+          </DialogUI.DialogHeader>
 
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4">
             <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900 space-y-3">
@@ -1949,8 +1942,8 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
               </button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DialogUI.DialogContent>
+      </DialogUI.Dialog>
     </>
   );
 });
