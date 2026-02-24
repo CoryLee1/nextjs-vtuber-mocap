@@ -38,6 +38,7 @@ import { Sparkles, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import {
+  Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
