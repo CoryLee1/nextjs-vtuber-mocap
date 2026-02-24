@@ -183,7 +183,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-hidden">
+    <div className="fixed inset-0 bg-black z-50 overflow-hidden flex flex-col">
       {/* 背景装饰 - 使用加载页的天空图作为暗纹 */}
       <div className="absolute inset-0 opacity-10 blur-xl">
         <img src="/images/loading/sky.png" alt="" className="w-full h-full object-cover animate-[spin_240s_linear_infinite]" />
@@ -212,7 +212,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
         </div>
       </div>
 
-      <div className="relative z-10 flex h-full pt-20 items-center px-12">
+      <div className="relative z-10 flex flex-1 min-h-0 py-4 items-center px-12">
         {/* 1. 左侧：步骤指示器与导航 */}
         <div className="w-[280px] flex flex-col justify-start pt-0 pr-6 border-r border-white/5 h-[784px]">
           <div className="mb-8">
