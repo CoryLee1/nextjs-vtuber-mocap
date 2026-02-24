@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { extractVrmThumbnail } from '@/lib/vrm-thumbnail'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'
@@ -87,6 +88,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await s3Client.send(command)
 
     console.log('文件上传成功:', { fileName, size: file.size })
+
+    // VRM 上传成功后自动从文件中解析缩略图并写入 S3（vrm/xxx_thumb.png）
+    const isVrm = /^vrm\/.+\\.vrm$/i.test(fileName)
+    if (isVrm && bytes.byteLength > 0) {
+      try {
+        const thumb = extractVrmThumbnail(bytes)
+        if (thumb && thumb.data.byteLength > 0) {
+          const thumbKey = fileName.replace(/\.vrm$/i, '_thumb.png')
+          await s3Client.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: thumbKey,
+            Body: Buffer.from(thumb.data),
+            ContentType: thumb.mimeType || 'image/png',
+          }))
+          console.log('VRM 缩略图已自动保存:', thumbKey)
+        }
+      } catch (thumbErr) {
+        console.warn('VRM 缩略图自动保存失败（不影响主文件）:', thumbErr)
+      }
+    }
 
     return NextResponse.json({
       success: true,

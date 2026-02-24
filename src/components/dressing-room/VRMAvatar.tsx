@@ -124,10 +124,23 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         console.error('VRMAvatar: 模型加载错误', errors);
     }
 
+    // DEBUG: 诊断 useGLTF 结果
+    if (process.env.NODE_ENV === 'development') {
+        console.log('[VRMAvatar] useGLTF result:', {
+            modelUrl: modelUrl?.substring(0, 80),
+            hasScene: !!scene,
+            sceneChildren: scene?.children?.length,
+            hasVrm: !!userData?.vrm,
+            hasHumanoid: !!userData?.vrm?.humanoid,
+            errors,
+            isLoading,
+        });
+    }
+
     // 优先使用缓存的模型（如果 URL 匹配），否则使用新加载的模型
     // 注意：cachedVRMModel 是模型实例，userData?.vrm 是当前加载的模型
-    const vrm = (cachedVRMModel && cachedVRMModelUrl === modelUrl) 
-        ? cachedVRMModel 
+    const vrm = (cachedVRMModel && cachedVRMModelUrl === modelUrl)
+        ? cachedVRMModel
         : userData?.vrm;
 
     // 当新模型加载完成时，缓存到 store

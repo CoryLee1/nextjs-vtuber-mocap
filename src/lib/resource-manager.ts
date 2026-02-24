@@ -13,8 +13,8 @@ const RESOURCE_CONFIG = {
       {
         id: 'avatar-sample-a',
         name: 'Avatar Sample A',
-        url: getS3ObjectReadUrlByKey('AvatarSample_A.vrm'),
-        thumbnail: undefined as string | undefined, // 使用 /api/vrm-thumbnail?url=... 或占位
+        url: getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm'),
+        thumbnail: getS3ObjectReadUrlByKey('vrm/AvatarSample_A_thumb.png'),
         category: 'anime',
         tags: ['female', 'long-hair'],
         size: '15MB'
@@ -22,8 +22,8 @@ const RESOURCE_CONFIG = {
       {
         id: 'avatar-sample-c',
         name: 'Avatar Sample C',
-        url: getS3ObjectReadUrlByKey('AvatarSample_C.vrm'),
-        thumbnail: undefined as string | undefined,
+        url: getS3ObjectReadUrlByKey('vrm/AvatarSample_C.vrm'),
+        thumbnail: getS3ObjectReadUrlByKey('vrm/AvatarSample_C_thumb.png'),
         category: 'anime',
         tags: ['female', 'short-hair'],
         size: '14MB'
@@ -31,26 +31,28 @@ const RESOURCE_CONFIG = {
       {
         id: 'avatar-sample-h',
         name: 'Avatar Sample H',
-        url: getS3ObjectReadUrlByKey('AvatarSample_H.vrm'),
-        thumbnail: undefined as string | undefined,
+        url: getS3ObjectReadUrlByKey('vrm/AvatarSample_H.vrm'),
+        thumbnail: getS3ObjectReadUrlByKey('vrm/AvatarSample_H_thumb.png'),
         category: 'anime',
         tags: ['female', 'long-hair'],
-        size: '19MB'
+        size: '19MB',
+        s3Key: 'vrm/AvatarSample_H.vrm',
       },
       {
         id: 'avatar-sample-m',
         name: 'Avatar Sample M',
-        url: getS3ObjectReadUrlByKey('AvatarSample_M.vrm'),
-        thumbnail: undefined as string | undefined,
+        url: getS3ObjectReadUrlByKey('vrm/AvatarSample_M.vrm'),
+        thumbnail: getS3ObjectReadUrlByKey('vrm/AvatarSample_M_thumb.png'),
         category: 'anime',
         tags: ['male', 'short-hair'],
-        size: '20MB'
+        size: '20MB',
+        s3Key: 'vrm/AvatarSample_M.vrm',
       },
       {
         id: 'avatar-sample-z',
         name: 'Avatar Sample Z',
-        url: getS3ObjectReadUrlByKey('AvatarSample_Z.vrm'),
-        thumbnail: undefined as string | undefined,
+        url: getS3ObjectReadUrlByKey('vrm/AvatarSample_Z.vrm'),
+        thumbnail: getS3ObjectReadUrlByKey('vrm/AvatarSample_Z_thumb.png'),
         category: 'anime',
         tags: ['male', 'long-hair'],
         size: '17MB'

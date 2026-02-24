@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf .next node_modules/.cache",
-    "clean:win": "rmdir /s /q .next 2>nul & rmdir /s /q node_modules\\.cache 2>nul & echo Cache cleared"
+    "clean:win": "rmdir /s /q .next 2>nul & rmdir /s /q node_modules\\.cache 2>nul & echo Cache cleared",
+    "backfill-thumbnails": "echo 正在打开浏览器，请确保 npm run dev 已启动 && start http://localhost:3000/zh/backfill-thumbnails && timeout /t 3 /nobreak >nul && echo 已在浏览器打开补全页面，请保持标签页打开直至完成"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.859.0",

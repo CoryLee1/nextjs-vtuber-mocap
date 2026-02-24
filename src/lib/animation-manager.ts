@@ -237,7 +237,7 @@ function autoMapBoneToVrm(rawName: string): string | null {
  *  3. 臀部位移：motionHipsHeight = Mixamo hips.position.y，缩放 vrmHipsHeight/motionHipsHeight；VRM 0.x 时 position x/z 取反
  *  4. 跳过 .scale，避免比例错乱
  */
-function remapAnimationToVrm(vrm, fbxScene) {
+export function remapAnimationToVrm(vrm, fbxScene) {
     if (!vrm?.humanoid || !fbxScene?.animations?.length) {
         console.warn('AnimationManager: missing vrm.humanoid or fbxScene.animations');
         return null;
@@ -565,6 +565,9 @@ export const useAnimationManager = (
     const transitionTimeRef = useRef(0);
     const hasMixerRef = useRef(false);
     const animationModeRef = useRef('idle'); // 'idle' | 'mocap'
+    const lastMappedTrackCountRef = useRef(0);
+    const lastRawTrackCountRef = useRef(0);
+    const hasPlayableIdleActionRef = useRef(false);
     
     // ✅ 使用 VRM UUID 追踪模型变化（更可靠）
     const vrmIdRef = useRef<string>('');
@@ -577,6 +580,10 @@ export const useAnimationManager = (
         isPlayingIdle: false,
         isTransitioning: false,
         hasMixer: false,
+        hasPlayableIdleAction: false,
+        idleActionRunning: false,
+        lastMappedTrackCount: 0,
+        lastRawTrackCount: 0,
         currentMode: 'idle',
         isLoading: false,
         error: null
@@ -724,6 +731,7 @@ export const useAnimationManager = (
         }
 
         try {
+            lastRawTrackCountRef.current = fbxScene.animations[0]?.tracks?.length ?? 0;
             console.log('AnimationManager: 开始重新映射动画', {
                 animationUrl: safeAnimationUrl,
                 animationsCount: fbxScene.animations?.length || 0
@@ -732,6 +740,7 @@ export const useAnimationManager = (
             const remappedClip = remapAnimationToVrm(vrm, fbxScene);
 
             if (remappedClip) {
+                lastMappedTrackCountRef.current = remappedClip.tracks.length;
                 console.log('AnimationManager: 动画重新映射成功', {
                     clipName: remappedClip.name,
                     duration: remappedClip.duration,
@@ -739,9 +748,11 @@ export const useAnimationManager = (
                 });
                 return remappedClip;
             }
+            lastMappedTrackCountRef.current = 0;
             idleClipFailureReasonRef.current = '重定向为 0 条（FBX 骨骼名与 VRM 不匹配，请查看上方 track 列表）';
             console.warn('AnimationManager: 重新映射返回null');
         } catch (error) {
+            lastMappedTrackCountRef.current = 0;
             idleClipFailureReasonRef.current = `重定向异常: ${error instanceof Error ? error.message : String(error)}`;
             console.error('AnimationManager: 重新映射失败', error);
         }
@@ -770,6 +781,7 @@ export const useAnimationManager = (
     useEffect(() => {
         if (!vrm || !idleClip) {
             additiveActionRef.current = null;
+            hasPlayableIdleActionRef.current = false;
             if (mixerRef.current) {
                 mixerRef.current.stopAllAction();
                 mixerRef.current = null;
@@ -786,6 +798,10 @@ export const useAnimationManager = (
                 ...prev,
                 hasMixer: false,
                 isPlayingIdle: false,
+                hasPlayableIdleAction: false,
+                idleActionRunning: false,
+                lastMappedTrackCount: lastMappedTrackCountRef.current,
+                lastRawTrackCount: lastRawTrackCountRef.current,
                 isLoading: false,
                 error: errMsg
             }));
@@ -893,6 +909,7 @@ export const useAnimationManager = (
             idleActionRef.current = idleAction;
             currentActionRef.current = idleAction;
             animationModeRef.current = 'idle';
+            hasPlayableIdleActionRef.current = true;
 
             if (additiveActionRef.current) {
                 additiveActionRef.current.stop();
@@ -912,6 +929,10 @@ export const useAnimationManager = (
                 isPlayingIdle: true,
                 isTransitioning: useCrossFade,
                 hasMixer: true,
+                hasPlayableIdleAction: true,
+                idleActionRunning: idleAction.isRunning?.() ?? true,
+                lastMappedTrackCount: lastMappedTrackCountRef.current,
+                lastRawTrackCount: lastRawTrackCountRef.current,
                 currentMode: 'idle',
                 isLoading: false,
                 error: null
@@ -939,6 +960,10 @@ export const useAnimationManager = (
                 ...prev,
                 hasMixer: false,
                 isPlayingIdle: false,
+                hasPlayableIdleAction: false,
+                idleActionRunning: false,
+                lastMappedTrackCount: lastMappedTrackCountRef.current,
+                lastRawTrackCount: lastRawTrackCountRef.current,
                 isLoading: false,
                 error: error instanceof Error ? error.message : String(error)
             }));
@@ -979,6 +1004,7 @@ export const useAnimationManager = (
                 ...prev,
                 currentMode: 'mocap',
                 isPlayingIdle: false,
+                idleActionRunning: false,
                 isTransitioning: false
             }));
             
@@ -1012,6 +1038,7 @@ export const useAnimationManager = (
                 ...prev,
                 currentMode: 'idle',
                 isPlayingIdle: true,
+                idleActionRunning: idleActionRef.current?.isRunning?.() ?? true,
                 isTransitioning: false
             }));
             
@@ -1039,7 +1066,8 @@ export const useAnimationManager = (
             setAnimationState(prev => ({
                 ...prev,
                 currentTime,
-                isPlayingIdle: isRunning
+                isPlayingIdle: isRunning,
+                idleActionRunning: isRunning
             }));
         } catch (error) {
             console.warn('AnimationManager: 动画更新错误', error);
@@ -1090,6 +1118,10 @@ export const useAnimationManager = (
             isTransitioning: isTransitioningRef.current,
             blendFactor: transitionTimeRef.current,
             hasMixer: hasMixerRef.current,
+            hasPlayableIdleAction: hasPlayableIdleActionRef.current,
+            idleActionRunning: idleActionRef.current?.isRunning?.() ?? false,
+            lastMappedTrackCount: lastMappedTrackCountRef.current,
+            lastRawTrackCount: lastRawTrackCountRef.current,
             currentMode: animationModeRef.current
         };
     };

@@ -1,0 +1,26 @@
+---
+description: S3 桶内模型与动画路径约定，写 key 或文档时请遵守
+globs: src/**/*.ts, src/**/*.tsx, docs/**/*
+alwaysApply: true
+---
+
+# S3 资源路径约定
+
+桶名：`nextjs-vtuber-assets`（或环境变量 `NEXT_PUBLIC_S3_BUCKET`）。
+
+## 路径规范
+
+- **模型（VRM）**：`vrm/` 前缀  
+  - 完整 S3 路径：`s3://nextjs-vtuber-assets/vrm/`  
+  - 代码里用 key 时：`vrm/模型名.vrm`（例如 `vrm/AvatarSample_A.vrm`）。  
+  - 通过 `getS3ObjectReadUrlByKey('vrm/xxx.vrm')` 或 API `/api/s3/read-object?key=vrm/xxx.vrm` 访问。
+
+- **动画（FBX）**：`animations/` 前缀  
+  - 完整 S3 路径：`s3://nextjs-vtuber-assets/animations/`  
+  - 代码里用 key 时：`animations/文件名.fbx`（例如 `animations/Idle.fbx`）。  
+  - 通过 `getS3ObjectReadUrlByKey('animations/Idle.fbx')` 或 API `/api/s3/read-object?key=animations/Idle.fbx` 访问。
+
+## 注意
+
+- 新增默认模型或动画时，key 必须带对应前缀（`vrm/` 或 `animations/`）。
+- 历史兼容：API 仍允许根目录 `AvatarSample_*.vrm`，但新资源请放在 `vrm/` 下。

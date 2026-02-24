@@ -78,30 +78,47 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       credentials: { accessKeyId, secretAccessKey },
     });
 
+    // S3 key 格式回退：部分上传/存储用 + 表示空格，先试原始 key，失败再试 space↔+ 变体
+    let resolvedKey = key;
     try {
-      // 先探测服务端凭证是否具备对象读取权限，避免返回“必然 403”的签名 URL。
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      resolvedKey = key;
     } catch {
-      // key 含空格、括号等需编码，否则 Location 头 URL 无效
-      const encodedPath = key.split('/').map(encodeURIComponent).join('/');
-      const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
-      const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
-      fallbackResponse.headers.set('Cache-Control', 'no-store');
-      fallbackResponse.headers.set('x-s3-read-fallback', 'public-url');
-      return fallbackResponse;
+      const keyWithPlus = key.replace(/ /g, '+');
+      const keyWithSpaces = key.replace(/\+/g, ' ');
+      const alternates = keyWithPlus !== key ? [keyWithPlus] : keyWithSpaces !== key ? [keyWithSpaces] : [];
+      let found = false;
+      for (const alt of alternates) {
+        try {
+          await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: alt }));
+          resolvedKey = alt;
+          found = true;
+          break;
+        } catch {
+          /* try next */
+        }
+      }
+      if (!found) {
+        const encodedPath = key.split('/').map(encodeURIComponent).join('/');
+        const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
+        const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
+        fallbackResponse.headers.set('Cache-Control', 'no-store');
+        fallbackResponse.headers.set('x-s3-read-fallback', 'public-url');
+        return fallbackResponse;
+      }
     }
 
     // 图片类 key 或 ?proxy=1 时直接代理返回 body（补全缩略图等需同源拉取 VRM，避免 302 跨域）
     const proxyMode = request.nextUrl.searchParams.get('proxy') === '1';
-    if (isImageKey(key) || proxyMode) {
-      const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+    if (isImageKey(resolvedKey) || proxyMode) {
+      const getCmd = new GetObjectCommand({ Bucket: bucket, Key: resolvedKey });
       const obj = await s3Client.send(getCmd);
       if (!obj.Body) {
         return NextResponse.json({ success: false, message: 'Empty object' }, { status: 404 });
       }
       const body = await obj.Body.transformToByteArray();
-      const contentType = obj.ContentType || (key.endsWith('.vrm') ? 'model/vrm' : contentTypeFromKey(key));
-      const isThumbKey = THUMB_SUFFIX_RE.test(key);
+      const contentType = obj.ContentType || (resolvedKey.endsWith('.vrm') ? 'model/vrm' : contentTypeFromKey(resolvedKey));
+      const isThumbKey = THUMB_SUFFIX_RE.test(resolvedKey);
       return new NextResponse(body, {
         headers: {
           'Content-Type': contentType,
@@ -113,7 +130,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const signedUrl = await getSignedUrl(
       s3Client,
-      new GetObjectCommand({ Bucket: bucket, Key: key }),
+      new GetObjectCommand({ Bucket: bucket, Key: resolvedKey }),
       { expiresIn: 300 }
     );
 
