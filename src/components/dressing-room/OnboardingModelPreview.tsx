@@ -112,9 +112,7 @@ function IdleUpdater({
   const { updateAnimation, getAnimationState, switchToIdleMode, forceIdleRestart } = useAnimationManager(
     vrm,
     effectiveAnimationUrl,
-    IDLE_NEXT_URL,
-    IDLE_NEXT_URL,
-    0.12
+    IDLE_NEXT_URL
   );
 
   useEffect(() => {
@@ -132,7 +130,7 @@ function IdleUpdater({
     };
     const t = setTimeout(() => tryStart(), 200);
     return () => clearTimeout(t);
-  }, [vrm, getAnimationState, switchToIdleMode, forceIdleRestart]);
+  }, [vrm, effectiveAnimationUrl, getAnimationState, switchToIdleMode, forceIdleRestart]);
 
   useEffect(() => {
     if (!vrm) return;
@@ -211,6 +209,11 @@ function IdleUpdater({
 
   useFrame((_, delta) => {
     updateAnimation(delta);
+    // vrm.update() propagates normalized bone changes (from the mixer) to the actual
+    // mesh skeleton. Without this, AnimationMixer writes to normalized nodes but the
+    // visible mesh stays in T-pose. VRMAvatar normally calls this, but it is not
+    // rendered during onboarding (isOnboardingActive guard), so we call it here.
+    vrm?.update?.(delta);
   });
 
   return null;
