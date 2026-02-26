@@ -1,15 +1,13 @@
 'use client';
 
 import React, { useEffect, useRef, Suspense, memo, useLayoutEffect } from 'react';
-import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles } from '@react-three/drei';
+import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles, Trail } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
 import { EffectComposer, Bloom, BrightnessContrast, ToneMapping, HueSaturation } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
-import { VFXParticles, vfxStore, RenderMode } from 'wawa-vfx';
-
 /** 预加载单个 FBX，填满 useLoader 缓存，切换动画时无需再等 */
 const PreloadFbx = memo(({ url }: { url: string }) => {
   useFBX(url);
@@ -21,67 +19,57 @@ import { CameraController } from '@/components/dressing-room/CameraController';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { usePerformance } from '@/hooks/use-performance';
+import { TheatreCamera, TheatreSequenceController } from './TheatreCamera';
 
-// ─── Hand Trail Effect ──────────────────────────────────────────────────────
-// Emits particles at wrist bone world positions each frame when hands are moving.
-// Uses wawa-vfx vfxStore directly (no useVFX hook needed in this version).
+// ─── Hand Trail Effect (drei Trail) ─────────────────────────────────────────
+// A small invisible mesh tracked to each wrist bone, wrapped in drei <Trail>.
+// Trail draws a ribbon of geometry along the path the mesh has traveled.
 const _tmpHandVec = new Vector3();
 
-const HandTrailEffect = memo(({ vrm }: { vrm: any }) => {
-  const prevLeftRef = useRef<Vector3 | null>(null);
-  const prevRightRef = useRef<Vector3 | null>(null);
-
+/** Moves an invisible mesh to follow a VRM bone every frame, then Trail does the rest. */
+function HandBoneMesh({
+  vrm,
+  side,
+  color,
+}: {
+  vrm: any;
+  side: 'leftHand' | 'rightHand';
+  color: string;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
   useFrame(() => {
-    if (!vrm?.humanoid) return;
-
-    const getWristNode = (side: 'leftHand' | 'rightHand') => {
-      return vrm.humanoid.humanBones?.[side]?.node
-        ?? (typeof vrm.humanoid.getNormalizedBoneNode === 'function'
-          ? vrm.humanoid.getNormalizedBoneNode(side)
-          : null);
-    };
-
-    const emitTrail = (
-      bone: any,
-      name: string,
-      prevRef: React.MutableRefObject<Vector3 | null>,
-      color: string
-    ) => {
-      if (!bone) return;
-      bone.getWorldPosition(_tmpHandVec);
-      const pos: [number, number, number] = [_tmpHandVec.x, _tmpHandVec.y, _tmpHandVec.z];
-
-      if (prevRef.current) {
-        const dx = pos[0] - prevRef.current.x;
-        const dy = pos[1] - prevRef.current.y;
-        const dz = pos[2] - prevRef.current.z;
-        const speed = Math.sqrt(dx * dx + dy * dy + dz * dz) * 60; // approx m/s at 60fps
-        if (speed > 0.4) {
-          const { emit } = vfxStore.getState();
-          emit(name, 3, () => ({
-            position: pos,
-            direction: [dx * 60, dy * 60, dz * 60] as [number, number, number],
-            scale: [1, 1, 1],
-            rotation: [0, 0, 0],
-            rotationSpeed: [0, 0, 0],
-            lifetime: [0.12, 0.28],
-            colorStart: color,
-            colorEnd: '#ffffff',
-            speed: [0.01] as [number],
-          }));
-        }
-      }
-
-      if (!prevRef.current) prevRef.current = new Vector3();
-      prevRef.current.set(pos[0], pos[1], pos[2]);
-    };
-
-    emitTrail(getWristNode('leftHand'), 'leftHandTrail', prevLeftRef, '#7dd3fc');
-    emitTrail(getWristNode('rightHand'), 'rightHandTrail', prevRightRef, '#c4b5fd');
+    if (!vrm?.humanoid || !meshRef.current) return;
+    const bone =
+      vrm.humanoid.humanBones?.[side]?.node ??
+      (typeof vrm.humanoid.getNormalizedBoneNode === 'function'
+        ? vrm.humanoid.getNormalizedBoneNode(side)
+        : null);
+    if (!bone) return;
+    bone.getWorldPosition(_tmpHandVec);
+    meshRef.current.position.copy(_tmpHandVec);
   });
 
-  return null;
-});
+  return (
+    <Trail
+      width={0.06}
+      length={12}
+      color={color}
+      attenuation={(t) => t * t}
+    >
+      <mesh ref={meshRef} visible={false}>
+        <sphereGeometry args={[0.01, 4, 4]} />
+        <meshBasicMaterial />
+      </mesh>
+    </Trail>
+  );
+}
+
+const HandTrailEffect = memo(({ vrm }: { vrm: any }) => (
+  <>
+    <HandBoneMesh vrm={vrm} side="leftHand" color="#7dd3fc" />
+    <HandBoneMesh vrm={vrm} side="rightHand" color="#c4b5fd" />
+  </>
+));
 HandTrailEffect.displayName = 'HandTrailEffect';
 
 // 加载占位：单朵 drei 粒子云（替代原蓝色球）
@@ -271,6 +259,7 @@ export const MainScene: React.FC = () => {
     hue,
     toneMappingMode,
     handTrailEnabled,
+    theatreCameraActive,
   } = useSceneStore();
   
   // PERF: 更新头部位置（用于 Autofocus）- 使用 ref 避免重渲染
@@ -346,15 +335,20 @@ export const MainScene: React.FC = () => {
         </Suspense>
       )}
 
-      {/* 相机控制器 */}
-      <CameraController
-        vrmRef={vrmRef}
-        enableAutoTrack={cameraSettings.enableAutoTrack}
-        enableUserControl={cameraSettings.enableUserControl}
-        showHint={cameraSettings.showHint}
-        useGameStyle={cameraSettings.useGameStyle}
-        cameraSettings={cameraSettings}
-      />
+      {/* 相机控制器：Theatre 激活时由 TheatreCamera 接管，否则用 OrbitControls */}
+      {!theatreCameraActive && (
+        <CameraController
+          vrmRef={vrmRef}
+          enableAutoTrack={cameraSettings.enableAutoTrack}
+          enableUserControl={cameraSettings.enableUserControl}
+          showHint={cameraSettings.showHint}
+          useGameStyle={cameraSettings.useGameStyle}
+          cameraSettings={cameraSettings}
+        />
+      )}
+      {/* Theatre.js 相机（序列播放时 makeDefault=true 接管相机） */}
+      <TheatreCamera />
+      <TheatreSequenceController />
 
       {/* 优化的光照系统 */}
       <Lighting />
@@ -371,40 +365,6 @@ export const MainScene: React.FC = () => {
           <PreloadFbx key={url} url={url} />
         ))}
       </Suspense>
-
-      {/* 手部轨迹粒子系统 */}
-      {handTrailEnabled && (
-        <>
-          <VFXParticles
-            name="leftHandTrail"
-            settings={{
-              nbParticles: 2000,
-              renderMode: RenderMode.StretchBillboard,
-              stretchScale: 4,
-              fadeAlpha: [0, 0.8],
-              fadeSize: [0.05, 0.85],
-              intensity: 2.5,
-              gravity: [0, 0.2, 0],
-              appearance: 1, // AppearanceMode.Circular
-              blendingMode: 2 as any, // AdditiveBlending
-            }}
-          />
-          <VFXParticles
-            name="rightHandTrail"
-            settings={{
-              nbParticles: 2000,
-              renderMode: RenderMode.StretchBillboard,
-              stretchScale: 4,
-              fadeAlpha: [0, 0.8],
-              fadeSize: [0.05, 0.85],
-              intensity: 2.5,
-              gravity: [0, 0.2, 0],
-              appearance: 1, // AppearanceMode.Circular
-              blendingMode: 2 as any, // AdditiveBlending
-            }}
-          />
-        </>
-      )}
 
       {/* VRM 角色：引导页显示时暂停渲染，避免两个 Canvas 争用同一 Three.js 对象 */}
       {!isOnboardingActive && (

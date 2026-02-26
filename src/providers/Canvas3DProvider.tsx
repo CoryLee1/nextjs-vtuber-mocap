@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { usePerformance } from '@/hooks/use-performance';
 import { SceneManager } from '@/components/canvas/SceneManager';
+import { TheatreCameraProvider } from '@/components/canvas/scenes/TheatreCamera';
 
 /** 捕获 Canvas/WebGL 创建错误，避免白屏 */
 class CanvasErrorBoundary extends React.Component<
@@ -167,6 +168,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               }
             }}
           >
+            <TheatreCameraProvider>
             <Suspense fallback={null}>
               {/* 场景管理器 - 根据 activeScene 渲染不同场景 */}
               <SceneManager />
@@ -181,6 +183,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               {/* 预加载所有资源 */}
               <Preload all />
             </Suspense>
+            </TheatreCameraProvider>
           </Canvas>
           </CanvasErrorBoundary>
         </div>

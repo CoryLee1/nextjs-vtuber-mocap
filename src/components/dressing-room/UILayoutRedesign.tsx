@@ -450,7 +450,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -1348,7 +1348,36 @@ export const StreamRoomSidebar = memo(({
                 </button>
               </div>
 
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '整体曝光' : 'Exposure'}</label>
+              {/* Theatre.js 相机编排 */}
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '相机编排 (Theatre.js)' : 'Camera Choreography'}</p>
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? '接管相机' : 'Theatre Camera'}</label>
+                  <button
+                    type="button"
+                    onClick={() => setTheatreCameraActive(!theatreCameraActive)}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${theatreCameraActive ? 'bg-violet-500' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${theatreCameraActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+                {theatreCameraActive && (
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTheatreSequencePlaying(!theatreSequencePlaying)}
+                      className={`flex-1 h-8 rounded-lg text-xs font-semibold transition-colors ${theatreSequencePlaying ? 'bg-red-500 text-white' : 'bg-violet-500 text-white hover:bg-violet-600'}`}
+                    >
+                      {theatreSequencePlaying ? (locale === 'zh' ? '⏹ 停止' : '⏹ Stop') : (locale === 'zh' ? '▶ 播放序列' : '▶ Play Sequence')}
+                    </button>
+                  </div>
+                )}
+                {process.env.NODE_ENV === 'development' && (
+                  <p className="text-[10px] text-slate-400 mt-1">{locale === 'zh' ? '开发模式：Alt+\\ 打开 Studio 编辑器' : 'Dev: Alt+\\ to open Studio editor'}</p>
+                )}
+              </div>
+
+              <label className="text-[12px] text-slate-500 mt-2">{locale === 'zh' ? '整体曝光' : 'Exposure'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0.3}

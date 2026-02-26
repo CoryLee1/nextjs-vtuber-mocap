@@ -174,6 +174,12 @@ interface SceneState {
   /** 手部轨迹特效开关 */
   handTrailEnabled: boolean;
   setHandTrailEnabled: (v: boolean) => void;
+  /** Theatre.js 相机是否激活（取代 OrbitControls） */
+  theatreCameraActive: boolean;
+  setTheatreCameraActive: (v: boolean) => void;
+  /** Theatre.js 序列播放状态 */
+  theatreSequencePlaying: boolean;
+  setTheatreSequencePlaying: (v: boolean) => void;
 }
 
 /**
@@ -402,6 +408,10 @@ export const useSceneStore = create<SceneState>()(
   setHue: (v) => set({ hue: v }),
   handTrailEnabled: false,
   setHandTrailEnabled: (v) => set({ handTrailEnabled: v }),
+  theatreCameraActive: false,
+  setTheatreCameraActive: (v) => set({ theatreCameraActive: v }),
+  theatreSequencePlaying: false,
+  setTheatreSequencePlaying: (v) => set({ theatreSequencePlaying: v }),
     })),
     {
       name: 'vtuber-scene-storage',
