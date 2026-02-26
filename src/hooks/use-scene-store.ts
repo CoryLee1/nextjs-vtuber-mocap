@@ -165,6 +165,15 @@ interface SceneState {
   /** 对比度 (-0.5 - 0.5) */
   contrast: number;
   setContrast: (v: number) => void;
+  /** 饱和度 (-1 to 1, 0=原始) */
+  saturation: number;
+  setSaturation: (v: number) => void;
+  /** 色相偏移 (-Math.PI to Math.PI) */
+  hue: number;
+  setHue: (v: number) => void;
+  /** 手部轨迹特效开关 */
+  handTrailEnabled: boolean;
+  setHandTrailEnabled: (v: boolean) => void;
 }
 
 /**
@@ -387,6 +396,12 @@ export const useSceneStore = create<SceneState>()(
   setBrightness: (v) => set({ brightness: v }),
   contrast: 0,
   setContrast: (v) => set({ contrast: v }),
+  saturation: 0,
+  setSaturation: (v) => set({ saturation: Math.max(-1, Math.min(1, v)) }),
+  hue: 0,
+  setHue: (v) => set({ hue: v }),
+  handTrailEnabled: false,
+  setHandTrailEnabled: (v) => set({ handTrailEnabled: v }),
     })),
     {
       name: 'vtuber-scene-storage',
@@ -404,6 +419,9 @@ export const useSceneStore = create<SceneState>()(
         bloomThreshold: state.bloomThreshold,
         brightness: state.brightness,
         contrast: state.contrast,
+        saturation: state.saturation,
+        hue: state.hue,
+        handTrailEnabled: state.handTrailEnabled,
         hdrUrl: state.hdrUrl,
         sceneFbxUrl: state.sceneFbxUrl,
         bgmUrl: state.bgmUrl,

@@ -7,12 +7,12 @@
 /** OrbitControls 相关默认（与 store cameraSettings 配合，这里只放 drei 直接用的） */
 export const ORBIT_CONTROLS_DEFAULTS = {
   enableDamping: true,
-  dampingFactor: 0.01,
+  dampingFactor: 0.07,   // was 0.01 (5× below default → vertical drag felt stuck); 0.07 = snappy + smooth
   minDistance: 0.5,
   maxDistance: 10,
-  enablePan: false,
-  minPolarAngle: Math.PI / 6,      // 30°
-  maxPolarAngle: (Math.PI * 5) / 6, // 150°
+  enablePan: true,       // allow right-drag/two-finger to pan vertically
+  minPolarAngle: Math.PI / 8,       // ~22° from top
+  maxPolarAngle: (Math.PI * 7) / 8, // ~157° from top (slightly below feet)
   autoRotate: false,
   autoRotateSpeed: 0.3,
 } as const;

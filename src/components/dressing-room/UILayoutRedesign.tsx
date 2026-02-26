@@ -450,7 +450,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, brightness, setBrightness, contrast, setContrast, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -550,6 +550,9 @@ export const StreamRoomSidebar = memo(({
         if (typeof parsed.bloomThreshold === 'number') setBloomThreshold(parsed.bloomThreshold);
         if (typeof parsed.brightness === 'number') setBrightness(parsed.brightness);
         if (typeof parsed.contrast === 'number') setContrast(parsed.contrast);
+        if (typeof parsed.saturation === 'number') setSaturation(parsed.saturation);
+        if (typeof parsed.hue === 'number') setHue(parsed.hue);
+        if (typeof parsed.handTrailEnabled === 'boolean') setHandTrailEnabled(parsed.handTrailEnabled);
       } catch {
         // ignore invalid storage
       }
@@ -680,7 +683,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, brightness, contrast })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, brightness, contrast, saturation, hue, handTrailEnabled })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1303,6 +1306,46 @@ export const StreamRoomSidebar = memo(({
                   className="flex-1"
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{contrast.toFixed(2)}</span>
+              </div>
+
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '饱和度 (Saturation)' : 'Saturation'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={-1}
+                  max={1}
+                  step={0.02}
+                  value={saturation}
+                  onValueChange={setSaturation}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{saturation.toFixed(2)}</span>
+              </div>
+
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色相 (Hue)' : 'Hue'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={-3.14}
+                  max={3.14}
+                  step={0.05}
+                  value={hue}
+                  onValueChange={setHue}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{(hue * (180 / Math.PI)).toFixed(0)}°</span>
+              </div>
+
+              {/* 手部轨迹特效 */}
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-[12px] text-slate-500">{locale === 'zh' ? '手部轨迹特效' : 'Hand Trail VFX'}</label>
+                <button
+                  type="button"
+                  onClick={() => setHandTrailEnabled(!handTrailEnabled)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${handTrailEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${handTrailEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
               </div>
 
               <label className="text-[12px] text-slate-500">{locale === 'zh' ? '整体曝光' : 'Exposure'}</label>
