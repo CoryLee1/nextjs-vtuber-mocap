@@ -113,10 +113,11 @@ export class S3Uploader {
             try {
               const response = JSON.parse(xhr.responseText);
               if (response.success) {
-                const fileUrl = getS3ObjectReadUrlByKey(fileName);
+                const serverFileName = response?.data?.fileName || fileName;
+                const fileUrl = response?.data?.url || getS3ObjectReadUrlByKey(serverFileName);
                 resolve({
                   url: fileUrl,
-                  fileName: fileName,
+                  fileName: serverFileName,
                   originalName: file.name,
                   size: file.size,
                   type: fileType
@@ -191,9 +192,12 @@ export class S3Uploader {
       throw new Error(data.message || '缩略图上传失败');
     }
 
+    const serverFileName = data?.data?.fileName || fileName;
+    const serverUrl = data?.data?.url || getS3ObjectReadUrlByKey(serverFileName);
+
     return {
-      url: getS3ObjectReadUrlByKey(fileName),
-      fileName,
+      url: serverUrl,
+      fileName: serverFileName,
     };
   }
 

@@ -2,7 +2,7 @@
  * Loading 期间预加载首屏/场景相关资源，进入主界面时已进缓存。
  * 与 MainScene 默认环境、引导页预览、状态机动画保持一致。
  * 引导页模型会转为 Object URL 写入 store，引导页直接使用、无需二次请求。
- * S3 模型/动画列表在 loading 内请求并写入 s3-resources-store，避免进入引导页后再发请求。
+ * 注意：S3 列表请求需登录，已移到 HomePageClient 在 authenticated 后触发。
  */
 import {
   DEFAULT_PREVIEW_MODEL_URL,
@@ -10,7 +10,6 @@ import {
   PRELOAD_ANIMATION_URLS,
 } from '@/config/vtuber-animations';
 import { useSceneStore } from '@/hooks/use-scene-store';
-import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 
 /** 默认环境/背景图（与 MainScene DEFAULT_ENV_BACKGROUND_URL 一致） */
 const DEFAULT_ENV_BACKGROUND_URL = '/images/sky (3).png';
@@ -124,13 +123,6 @@ export async function preloadCriticalAssets(options?: PreloadOptions): Promise<v
       .filter((url, i, arr) => arr.indexOf(url) === i)
       .map((url) => fetchAndCache(url).catch(() => {}))
   ).finally(() => emitProgress(95));
-
-  // S3 列表与首屏资源并行拉取；不阻塞 Loading 结束
-  // 进入主界面后 HomePageClient 会再 loadAll(checkThumbnails: true) 做二次校准
-  void useS3ResourcesStore
-    .getState()
-    .loadAll({ checkThumbnails: false })
-    .catch(() => {});
 
   // 仅等待首屏核心资源：背景图 + 默认模型 + 少量 FBX
   await Promise.allSettled([imagePreload, modelPreload, fbxPreloads]);

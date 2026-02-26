@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { AssetStatus, AssetVisibility } from '@prisma/client'
 import { PresignedUrlRequest, PresignedUrlResponse, ApiResponse } from '@/types'
+import { prisma } from '@/lib/prisma'
+import { getSessionUserId } from '@/lib/server-session'
+import { buildUserScopedS3Key } from '@/lib/s3-asset-policy'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<PresignedUrlResponse>>> {
   try {
+    const userId = await getSessionUserId();
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Unauthorized',
+            code: 'UNAUTHORIZED',
+          },
+        },
+        { status: 401 }
+      );
+    }
+
     const body: PresignedUrlRequest = await request.json()
     const { fileName, fileType, contentType } = body
 
@@ -67,6 +85,31 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       )
     }
 
+    const keyInfo = buildUserScopedS3Key(userId, fileName, fileName);
+    const scopedKey = keyInfo.key;
+
+    await prisma.asset.upsert({
+      where: { s3Key: scopedKey },
+      update: {
+        type: keyInfo.assetType,
+        displayName: keyInfo.displayName,
+        mimeType: contentType || fileType,
+        status: AssetStatus.UPLOADING,
+        ownerUserId: userId,
+        visibility: AssetVisibility.PRIVATE,
+        errorCode: null,
+      },
+      create: {
+        s3Key: scopedKey,
+        type: keyInfo.assetType,
+        displayName: keyInfo.displayName,
+        mimeType: contentType || fileType,
+        status: AssetStatus.UPLOADING,
+        ownerUserId: userId,
+        visibility: AssetVisibility.PRIVATE,
+      },
+    });
+
     // 创建 S3 客户端
     const s3Client = new S3Client({
       region: region || 'us-east-2',
@@ -79,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     // 创建 PutObject 命令
     const command = new PutObjectCommand({
       Bucket: bucketName,
-      Key: fileName,
+      Key: scopedKey,
       ContentType: contentType || fileType,
     })
 
@@ -91,9 +134,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     const response: PresignedUrlResponse = {
       url,
       expiresIn: 900,
+      fields: {
+        key: scopedKey,
+      },
     }
 
-    console.log('预签名URL生成成功:', { fileName, url: url.substring(0, 50) + '...' })
+    console.log('预签名URL生成成功:', { fileName: scopedKey, url: url.substring(0, 50) + '...' })
 
     return NextResponse.json({
       success: true,

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { prisma } from '@/lib/prisma';
+import { getSessionUserId } from '@/lib/server-session';
+import { isAssetReadableByUser } from '@/lib/s3-asset-policy';
 
 export const dynamic = 'force-dynamic';
 
 const FALLBACK_BUCKET = 'nextjs-vtuber-assets';
 const FALLBACK_REGION = 'us-east-2';
-const FALLBACK_PUBLIC_BASE = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com';
 
 const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif)$/i;
 const THUMB_SUFFIX_RE = /_thumb\.(png|jpe?g|webp)$/i;
@@ -21,6 +23,8 @@ function normalizeKey(raw: string): string {
 
 function isAllowedKey(key: string): boolean {
   if (!key || key.includes('..')) return false;
+  const userScoped = /^user\/[^/]+\/(vrm|animations|bgm|hdr|scene)\/.+$/i.test(key);
+  if (userScoped) return true;
   // 仅允许读取常用资源前缀与历史根目录默认模型
   return (
     key.startsWith('vrm/') ||
@@ -57,14 +61,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: false, message: 'Invalid key' }, { status: 400 });
     }
 
+    const userId = await getSessionUserId();
+
+    // 先查 assets 索引再授权；不存在即拒绝。
+    let asset = await prisma.asset.findUnique({ where: { s3Key: key } });
+    if (!asset && THUMB_SUFFIX_RE.test(key)) {
+      const vrmKey = key.replace(/_thumb\.(png|jpe?g|webp)$/i, '.vrm');
+      asset = await prisma.asset.findUnique({ where: { s3Key: vrmKey } });
+    }
+
+    if (asset) {
+      if (!isAssetReadableByUser(asset, userId)) {
+        if (!userId) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+        return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+      }
+    } else {
+      return NextResponse.json({ success: false, message: 'Asset not found' }, { status: 404 });
+    }
+
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
     const bucket = process.env.NEXT_PUBLIC_S3_BUCKET || FALLBACK_BUCKET;
     const region = process.env.NEXT_PUBLIC_S3_REGION || FALLBACK_REGION;
-    const envPublicBase = process.env.NEXT_PUBLIC_S3_BASE_URL;
-    const publicBase = envPublicBase && !envPublicBase.includes('your-bucket')
-      ? envPublicBase
-      : FALLBACK_PUBLIC_BASE;
 
     if (!accessKeyId || !secretAccessKey) {
       return NextResponse.json(
@@ -99,12 +119,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
       }
       if (!found) {
-        const encodedPath = key.split('/').map(encodeURIComponent).join('/');
-        const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
-        const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
-        fallbackResponse.headers.set('Cache-Control', 'no-store');
-        fallbackResponse.headers.set('x-s3-read-fallback', 'public-url');
-        return fallbackResponse;
+        return NextResponse.json({ success: false, message: 'Object not found' }, { status: 404 });
       }
     }
 

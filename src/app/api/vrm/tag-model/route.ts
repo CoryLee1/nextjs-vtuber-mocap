@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { DEFAULT_TTS_VOICE, ECHUU_AGENT_TTS_VOICES, normalizeGender, normalizeModelName, normalizeVoice } from '@/lib/ai-tag-taxonomy';
+import { prisma } from '@/lib/prisma';
+import { getSessionUserId } from '@/lib/server-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,15 +61,8 @@ function getS3Client() {
 }
 
 function s3KeyToModelName(key: string): string {
-  return key.replace(/^vrm\//, '').replace(/\.vrm$/i, '');
-}
-
-function modelNameToThumbKey(modelName: string): string {
-  return `vrm/${modelName}_thumb.png`;
-}
-
-function modelNameToMetaKey(modelName: string): string {
-  return `vrm/${modelName}_meta.json`;
+  const filename = key.split('/').pop() || key;
+  return filename.replace(/\.vrm$/i, '');
 }
 
 function parseTagResponse(
@@ -136,6 +131,11 @@ function extractAssistantText(content: unknown): string | null {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ ok: 0, fail: 0, results: [], error: 'Unauthorized' }, { status: 401 });
+  }
+
   const apiKey = process.env.DASHSCOPE_API_KEY;
   const dashscopeBase = process.env.DASHSCOPE_BASE_URL || DEFAULT_DASHSCOPE_BASE;
   const vlModel = process.env.DASHSCOPE_VL_MODEL || DEFAULT_VL_MODEL;
@@ -153,7 +153,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const keys: string[] = [];
   if (body.s3Key && typeof body.s3Key === 'string') keys.push(body.s3Key);
   if (Array.isArray(body.s3Keys)) keys.push(...body.s3Keys.filter((k): k is string => typeof k === 'string'));
-  const uniqueKeys = [...new Set(keys)].filter((k) => k && k.startsWith('vrm/') && k.toLowerCase().endsWith('.vrm'));
+  const uniqueKeys = [...new Set(keys)].filter(
+    (k) =>
+      k &&
+      (k.startsWith('vrm/') || /^user\/[^/]+\/vrm\/.+$/i.test(k)) &&
+      k.toLowerCase().endsWith('.vrm')
+  );
 
   if (uniqueKeys.length === 0) {
     return NextResponse.json({ ok: 0, fail: 0, results: [], error: 'Missing s3Key or s3Keys' }, { status: 400 });
@@ -166,10 +171,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   for (const s3Key of uniqueKeys) {
     const modelName = s3KeyToModelName(s3Key);
-    const thumbKey = modelNameToThumbKey(modelName);
-    const metaKey = modelNameToMetaKey(modelName);
+    const thumbKey = s3Key.replace(/\.vrm$/i, '_thumb.png');
+    const metaKey = s3Key.replace(/\.vrm$/i, '_meta.json');
 
     try {
+      const asset = await prisma.asset.findUnique({ where: { s3Key } });
+      if (!asset) {
+        results.push({ s3Key, ok: false, error: 'Asset not found' });
+        fail++;
+        continue;
+      }
+      if (asset.ownerUserId !== userId) {
+        results.push({ s3Key, ok: false, error: 'Forbidden' });
+        fail++;
+        continue;
+      }
+
       // 1. 检查缩略图是否存在
       try {
         await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: thumbKey }));

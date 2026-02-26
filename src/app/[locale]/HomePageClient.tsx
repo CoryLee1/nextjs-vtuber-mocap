@@ -96,9 +96,9 @@ export default function HomePageClient() {
 
   // 若 loading 内 S3 未拉取成功（如 IAM 曾 Deny），进入主界面后再试一次
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || status !== 'authenticated') return;
     useS3ResourcesStore.getState().loadAll({ checkThumbnails: true }).catch(() => {});
-  }, [isLoading]);
+  }, [isLoading, status]);
 
   // 登录后即分配直播间链接（不依赖 Go Live）：URL 无 room_id 且当前无房间时自动 createRoom
   useEffect(() => {

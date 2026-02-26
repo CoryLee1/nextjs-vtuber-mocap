@@ -8,6 +8,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { extractVrmThumbnail } from '@/lib/vrm-thumbnail';
+import { prisma } from '@/lib/prisma';
+import { getSessionUserId } from '@/lib/server-session';
+import { isAssetReadableByUser } from '@/lib/s3-asset-policy';
 
 const S3_BASE = process.env.NEXT_PUBLIC_S3_BASE_URL || 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com';
 const BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET || 'nextjs-vtuber-assets';
@@ -53,10 +56,20 @@ function getVrmS3KeyFromUrl(url: string): string | null {
     const u = new URL(url);
     if (u.searchParams.has('key')) {
       const key = decodeURIComponent(u.searchParams.get('key') || '');
-      if (key.startsWith('vrm/') && key.toLowerCase().endsWith('.vrm')) return key;
+      if (
+        (key.startsWith('vrm/') || /^user\/[^/]+\/vrm\/.+$/i.test(key)) &&
+        key.toLowerCase().endsWith('.vrm')
+      ) {
+        return key;
+      }
     }
     const path = u.pathname.replace(/^\/+/, '');
-    if (path.startsWith('vrm/') && path.toLowerCase().endsWith('.vrm')) return path;
+    if (
+      (path.startsWith('vrm/') || /^user\/[^/]+\/vrm\/.+$/i.test(path)) &&
+      path.toLowerCase().endsWith('.vrm')
+    ) {
+      return path;
+    }
     return null;
   } catch {
     return null;
@@ -77,6 +90,11 @@ function isOurS3OrReadObject(url: string): boolean {
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = request.nextUrl.searchParams.get('url');
   if (!url) {
     return NextResponse.json({ error: 'Invalid or disallowed url' }, { status: 400 });
@@ -86,9 +104,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid or disallowed url' }, { status: 400 });
   }
 
+  const vrmKey = getVrmS3KeyFromUrl(absoluteUrl);
+  if (vrmKey) {
+    const asset = await prisma.asset.findUnique({ where: { s3Key: vrmKey } });
+    if (asset) {
+      if (!isAssetReadableByUser(asset, userId)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    } else {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+  }
+
   try {
     const res = await fetch(absoluteUrl, {
-      headers: { 'User-Agent': 'Echuu-VRM-Thumbnail/1' },
+      headers: {
+        'User-Agent': 'Echuu-VRM-Thumbnail/1',
+        Cookie: request.headers.get('cookie') || '',
+      },
       signal: AbortSignal.timeout(60000), // VRM 可能较大，60s 超时
     });
     if (!res.ok) {

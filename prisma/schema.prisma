@@ -19,6 +19,7 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  assets        Asset[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -65,3 +66,44 @@ model SiteViewCounter {
   count Int    @default(0)
 }
 
+enum AssetType {
+  VRM
+  ANIMATION
+  BGM
+  HDR
+  SCENE
+}
+
+enum AssetStatus {
+  UPLOADING
+  READY
+  FAILED
+  MISSING
+}
+
+enum AssetVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Asset {
+  id          String          @id @default(uuid())
+  type        AssetType
+  s3Key       String          @unique @map("s3_key")
+  displayName String          @map("display_name")
+  mimeType    String?         @map("mime_type")
+  sizeBytes   Int?            @map("size_bytes")
+  status      AssetStatus     @default(READY)
+  ownerUserId String?         @map("owner_user_id")
+  visibility  AssetVisibility @default(PRIVATE)
+  errorCode   String?         @map("error_code")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  ownerUser User? @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, type, status])
+  @@index([visibility, type, status])
+  @@index([type, status, createdAt])
+  @@map("assets")
+}
