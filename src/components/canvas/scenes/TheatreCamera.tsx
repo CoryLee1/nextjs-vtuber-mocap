@@ -5,8 +5,8 @@
  *
  * 用法：
  *   <TheatreCameraProvider sheet={sheet}>
- *     {/* 包裹 MainScene 内容 *\/}
- *   <\/TheatreCameraProvider>
+ *     {/* 包裹 MainScene 内容 */}
+ *   </TheatreCameraProvider>
  *
  * 在 <TheatreCameraProvider> 内部：
  *   - 开发模式：自动加载 Studio 编辑器（Alt+\ 切换显示）
@@ -30,7 +30,11 @@ let _sheet: ReturnType<ReturnType<typeof getProject>['sheet']> | null = null;
 
 function getOrCreateSheet() {
   if (!_project) {
-    _project = getProject('EchuuCamera');
+    // Pass { state: {} } to suppress the production-only warning:
+    // "config.state is empty" is thrown when @theatre/studio is absent and
+    // no saved state JSON is provided. An explicit empty state object tells
+    // Theatre the project has no choreography data (correct for production).
+    _project = getProject('EchuuCamera', { state: {} });
   }
   if (!_sheet) {
     _sheet = _project.sheet('MainCamera');

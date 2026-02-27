@@ -417,7 +417,9 @@ export const useSceneStore = create<SceneState>()(
       name: 'vtuber-scene-storage',
       partialize: (state) => ({
         // 仅持久化需要保存的配置，排除复杂对象和临时状态
-        vrmModelUrl: state.vrmModelUrl,
+        // Blob URLs are session-scoped; they become invalid after page reload.
+        // Persist null so the app falls back to the default model on next load.
+        vrmModelUrl: state.vrmModelUrl?.startsWith('blob:') ? null : state.vrmModelUrl,
         echuuConfig: state.echuuConfig,
         cameraSettings: state.cameraSettings,
         debugSettings: state.debugSettings,
