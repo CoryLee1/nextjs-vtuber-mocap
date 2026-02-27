@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+    }
+
     // 检查所有环境变量
     const envVars = {
       AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,

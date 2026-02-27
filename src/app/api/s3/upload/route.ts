@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { extractVrmThumbnail } from '@/lib/vrm-thumbnail'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+    }
+    const userId = (session.user as any)?.id as string | undefined
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     const fileName = formData.get('fileName') as string
@@ -88,6 +97,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await s3Client.send(command)
 
     console.log('文件上传成功:', { fileName, size: file.size })
+
+    // 写入 assets 记录
+    const assetTypeMap: Record<string, string> = {
+      'vrm/': 'VRM', 'animations/': 'ANIMATION', 'bgm/': 'BGM', 'hdr/': 'HDR', 'scene/': 'SCENE',
+    }
+    const assetType = Object.entries(assetTypeMap).find(([p]) => fileName.startsWith(p))?.[1] ?? 'OTHER'
+    await prisma.asset.upsert({
+      where: { s3Key: fileName },
+      update: { status: 'ACTIVE', userId: userId ?? null },
+      create: { s3Key: fileName, assetType: assetType as any, status: 'ACTIVE', visibility: 'PRIVATE', userId: userId ?? null },
+    })
 
     // VRM 上传成功后自动从文件中解析缩略图并写入 S3（vrm/xxx_thumb.png）
     const isVrm = /^vrm\/.+\\.vrm$/i.test(fileName)

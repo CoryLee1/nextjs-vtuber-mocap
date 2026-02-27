@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import s3ResourceManager from '@/lib/s3-resource-manager'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') // 'models' or 'animations'
 

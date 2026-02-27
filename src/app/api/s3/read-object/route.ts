@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +58,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const key = normalizeKey(keyParam);
     if (!isAllowedKey(key)) {
       return NextResponse.json({ success: false, message: 'Invalid key' }, { status: 400 });
+    }
+
+    // Asset visibility check
+    const asset = await prisma.asset.findUnique({ where: { s3Key: key } });
+    if (!asset || asset.status !== 'ACTIVE') {
+      return NextResponse.json({ success: false, message: 'Resource not found' }, { status: 404 });
+    }
+    if (asset.visibility === 'PRIVATE') {
+      const session = await getServerSession(authOptions);
+      const userId = (session?.user as any)?.id;
+      if (!session || asset.userId !== userId) {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;

@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { PresignedUrlRequest, PresignedUrlResponse, ApiResponse } from '@/types'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // 告诉Next.js这是一个动态路由
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<PresignedUrlResponse>>> {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' } as any, { status: 401 })
+    }
+
     const body: PresignedUrlRequest = await request.json()
     const { fileName, fileType, contentType } = body
 
