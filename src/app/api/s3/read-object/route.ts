@@ -219,8 +219,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return new NextResponse(body, {
         headers: {
           'Content-Type': contentType,
-          // _thumb 图片会被同名覆盖上传，需禁用缓存避免看到旧图
-          'Cache-Control': proxyMode || isThumbKey ? 'no-store' : 'public, max-age=86400',
+          // _thumb 图片会被同名覆盖上传，需禁用缓存避免看到旧图；
+          // VRM/FBX 等大资产走 proxy 时也应缓存（immutable=内容不变），否则每次刷新重下 20-40MB
+          'Cache-Control': isThumbKey ? 'no-store' : 'public, max-age=86400, immutable',
         },
       });
     }
