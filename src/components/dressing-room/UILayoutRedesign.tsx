@@ -450,7 +450,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, bloomLuminanceSmoothing, setBloomLuminanceSmoothing, composerResolutionScale, setComposerResolutionScale, vignetteEnabled, setVignetteEnabled, vignetteOffset, setVignetteOffset, vignetteDarkness, setVignetteDarkness, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, bloomLuminanceSmoothing, setBloomLuminanceSmoothing, composerResolutionScale, setComposerResolutionScale, vignetteEnabled, setVignetteEnabled, vignetteOffset, setVignetteOffset, vignetteDarkness, setVignetteDarkness, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -560,6 +560,8 @@ export const StreamRoomSidebar = memo(({
         if (typeof parsed.saturation === 'number') setSaturation(parsed.saturation);
         if (typeof parsed.hue === 'number') setHue(parsed.hue);
         if (typeof parsed.handTrailEnabled === 'boolean') setHandTrailEnabled(parsed.handTrailEnabled);
+        if (typeof parsed.avatarPositionY === 'number') setAvatarPositionY(parsed.avatarPositionY);
+        if (typeof parsed.avatarGizmoEnabled === 'boolean') setAvatarGizmoEnabled(parsed.avatarGizmoEnabled);
       } catch {
         // ignore invalid storage
       }
@@ -690,7 +692,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, bloomLuminanceSmoothing, composerResolutionScale, vignetteEnabled, vignetteOffset, vignetteDarkness, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, bloomLuminanceSmoothing, composerResolutionScale, vignetteEnabled, vignetteOffset, vignetteDarkness, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled, avatarPositionY, avatarGizmoEnabled })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1255,6 +1257,31 @@ export const StreamRoomSidebar = memo(({
                   className="flex-1"
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{Math.round(envBackgroundRotation)}°</span>
+              </div>
+
+              {/* 角色位置：主场景高度 + Gizmo 拖拽 */}
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '角色高度 (Y)' : 'Avatar Height (Y)'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={-0.5}
+                  max={1.5}
+                  step={0.05}
+                  value={avatarPositionY}
+                  onValueChange={setAvatarPositionY}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{avatarPositionY.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'Gizmo 拖拽调整位置' : 'Gizmo Move Avatar'}</label>
+                <button
+                  type="button"
+                  onClick={() => setAvatarGizmoEnabled(!avatarGizmoEnabled)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${avatarGizmoEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${avatarGizmoEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
               </div>
 
               {/* Bloom Settings */}

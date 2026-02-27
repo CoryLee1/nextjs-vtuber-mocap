@@ -222,6 +222,12 @@ interface SceneState {
   /** Theatre.js 序列播放状态 */
   theatreSequencePlaying: boolean;
   setTheatreSequencePlaying: (v: boolean) => void;
+  /** 角色整体高度偏移 (Y)，主场景用，默认 0.35 避免贴地 */
+  avatarPositionY: number;
+  setAvatarPositionY: (v: number) => void;
+  /** 是否显示 Gizmo 拖拽调整角色位置（主场景） */
+  avatarGizmoEnabled: boolean;
+  setAvatarGizmoEnabled: (v: boolean) => void;
 }
 
 /**
@@ -451,11 +457,11 @@ export const useSceneStore = create<SceneState>()(
   sceneFbxUrl: null,
   setHdrUrl: (url) => set({ hdrUrl: url }),
   setSceneFbxUrl: (url) => set({ sceneFbxUrl: url }),
-  envBackgroundIntensity: 1.1,
+  envBackgroundIntensity: 1.25,
   setEnvBackgroundIntensity: (v) => set({ envBackgroundIntensity: Math.max(0.1, Math.min(3, v)) }),
   envBackgroundRotation: 0,
   setEnvBackgroundRotation: (v) => set({ envBackgroundRotation: ((v % 360) + 360) % 360 }),
-  toneMappingExposure: 1.3,
+  toneMappingExposure: 1.45,
   setToneMappingExposure: (v) => set({ toneMappingExposure: Math.max(0.3, Math.min(3, v)) }),
   toneMappingMode: 'reinhard',
   setToneMappingMode: (v) => set({ toneMappingMode: v }),
@@ -477,11 +483,11 @@ export const useSceneStore = create<SceneState>()(
   setChromaticEnabled: (v) => set({ chromaticEnabled: v }),
   chromaticOffset: 0.002,
   setChromaticOffset: (v) => set({ chromaticOffset: Math.max(0, Math.min(0.1, v)) }),
-  brightness: 0.06,
+  brightness: 0.12,
   setBrightness: (v) => set({ brightness: v }),
-  contrast: 0.1,
+  contrast: 0.18,
   setContrast: (v) => set({ contrast: v }),
-  saturation: 0.5,
+  saturation: 0.45,
   setSaturation: (v) => set({ saturation: Math.max(-1, Math.min(1, v)) }),
   hue: (3 * Math.PI) / 180,
   setHue: (v) => set({ hue: v }),
@@ -501,6 +507,10 @@ export const useSceneStore = create<SceneState>()(
   setTheatreCameraActive: (v) => set({ theatreCameraActive: v }),
   theatreSequencePlaying: false,
   setTheatreSequencePlaying: (v) => set({ theatreSequencePlaying: v }),
+  avatarPositionY: 0.35,
+  setAvatarPositionY: (v) => set({ avatarPositionY: v }),
+  avatarGizmoEnabled: false,
+  setAvatarGizmoEnabled: (v) => set({ avatarGizmoEnabled: v }),
     })),
     {
       name: 'vtuber-scene-storage',
@@ -539,6 +549,8 @@ export const useSceneStore = create<SceneState>()(
         sceneFbxUrl: state.sceneFbxUrl,
         bgmUrl: state.bgmUrl,
         bgmVolume: state.bgmVolume,
+        avatarPositionY: state.avatarPositionY,
+        avatarGizmoEnabled: state.avatarGizmoEnabled,
       }),
     }
   )

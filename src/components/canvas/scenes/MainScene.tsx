@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense, memo, useLayoutEffect, useMemo } from 'react';
-import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles, Trail } from '@react-three/drei';
+import React, { useEffect, useRef, useState, Suspense, memo, useLayoutEffect, useMemo } from 'react';
+import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles, Trail, TransformControls } from '@react-three/drei';
 import { useThree, useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
@@ -241,6 +241,8 @@ class ModelErrorBoundary extends React.Component<
  */
 export const MainScene: React.FC = () => {
   const vrmRef = useRef<any>(null);
+  const avatarGroupRef = useRef<THREE.Group | null>(null);
+  const [avatarGroupMounted, setAvatarGroupMounted] = useState(false);
   // PERF: 使用 useRef 替代 useState，避免每帧触发重渲染
   const headPositionRef = useRef<[number, number, number]>([0, 1.2, 0]);
   const headPositionVec3Ref = useRef(new Vector3(0, 1.2, 0));
@@ -287,6 +289,10 @@ export const MainScene: React.FC = () => {
     lutIntensity,
     handTrailEnabled,
     theatreCameraActive,
+    avatarPositionY,
+    setAvatarPositionY,
+    avatarGizmoEnabled,
+    setAvatarGizmoEnabled,
   } = useSceneStore();
 
   const chromaticOffsetVec = useMemo(
@@ -331,6 +337,23 @@ export const MainScene: React.FC = () => {
       setVrmRef(null);
     };
   }, [setVrmRef]);
+
+  // 开启 Gizmo 时用 store 的 Y 初始化角色组位置（含从持久化恢复时）
+  useEffect(() => {
+    if (avatarGizmoEnabled && avatarGroupRef.current) {
+      avatarGroupRef.current.position.set(0, avatarPositionY, 0);
+    }
+  }, [avatarGizmoEnabled, avatarGroupMounted, avatarPositionY]);
+
+  // Gizmo 拖拽时把角色组 Y 同步回 store
+  useFrame(() => {
+    if (avatarGizmoEnabled && avatarGroupRef.current) {
+      const y = avatarGroupRef.current.position.y;
+      if (Math.abs(y - avatarPositionY) > 1e-5) {
+        setAvatarPositionY(y);
+      }
+    }
+  });
 
   // 默认模型 URL
   const defaultModelUrl = DEFAULT_PREVIEW_MODEL_URL;
@@ -398,12 +421,19 @@ export const MainScene: React.FC = () => {
         ))}
       </Suspense>
 
-      {/* VRM 角色：引导页显示时暂停渲染，避免两个 Canvas 争用同一 Three.js 对象 */}
+      {/* VRM 角色：引导页显示时暂停渲染，避免两个 Canvas 争用同一 Three.js 对象；支持角色高度与 Gizmo 拖拽 */}
       {!isOnboardingActive && (
-        <group position-y={0}>
-          <ModelErrorBoundary onError={(e) => console.error(e)}>
-            <Suspense fallback={<LoadingIndicator />}>
-              <VRMAvatar
+        <>
+          <group
+            ref={(el) => {
+              (avatarGroupRef as React.MutableRefObject<THREE.Group | null>).current = el;
+              if (el) setAvatarGroupMounted(true);
+            }}
+            position={avatarGizmoEnabled ? undefined : [0, avatarPositionY, 0]}
+          >
+            <ModelErrorBoundary onError={(e) => console.error(e)}>
+              <Suspense fallback={<LoadingIndicator />}>
+                <VRMAvatar
                 ref={vrmRef}
                 modelUrl={vrmModelUrl || preloadedPreviewModelUrl || defaultModelUrl}
                 animationUrl={animationUrl || defaultAnimationUrl}
@@ -449,6 +479,10 @@ export const MainScene: React.FC = () => {
             return vrm ? <HandTrailEffect vrm={vrm} /> : null;
           })()}
         </group>
+          {avatarGizmoEnabled && avatarGroupMounted && avatarGroupRef.current && (
+            <TransformControls mode="translate" object={avatarGroupRef.current} />
+          )}
+        </>
       )}
 
       {/* 后期处理与特效 — 受性能设置 + 用户总开关双重门控 */}
@@ -483,7 +517,7 @@ export const MainScene: React.FC = () => {
               <LUTEffect url={lutUrl} intensity={lutIntensity} />
             </Suspense>
           )}
-          <ToneMapping mode={ToneMappingMode.REINHARD} />
+          <ToneMapping mode={ToneMappingMode.REINHARD} exposure={toneMappingExposure} />
         </EffectComposer>
       )}
     </>

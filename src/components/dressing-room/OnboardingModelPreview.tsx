@@ -53,7 +53,7 @@ export const DEFAULT_ONBOARDING_PREVIEW_CONFIG: OnboardingPreviewConfig = {
   cameraRotationZ: 0,
   fov: 40,
   modelScale: 1.0,
-  groupPosY: -1.1,
+  groupPosY: -0.35,
   adjustCamera: 0.5,
   stageIntensity: 2.1,
   ambientIntensity: 1.5,
