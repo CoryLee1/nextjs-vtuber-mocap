@@ -35,6 +35,32 @@ function isAllowedKey(key: string): boolean {
   );
 }
 
+/** 预设资源 key：无需查库即可读 S3，避免 DB 未配置/未入库时 500 */
+const DEFAULT_READ_ALLOWED_KEYS = new Set<string>([
+  'vrm/AvatarSample_A.vrm',
+  'vrm/AvatarSample_A_thumb.png',
+  'vrm/AvatarSample_C.vrm',
+  'vrm/AvatarSample_C_thumb.png',
+  'vrm/AvatarSample_H.vrm',
+  'vrm/AvatarSample_H_thumb.png',
+  'vrm/AvatarSample_M.vrm',
+  'vrm/AvatarSample_M_thumb.png',
+  'vrm/AvatarSample_Z.vrm',
+  'vrm/AvatarSample_Z_thumb.png',
+  'animations/Idle.fbx',
+  'animations/Breakdance 1990.fbx',
+  'animations/Mma Kick.fbx',
+  'animations/Breakdance Uprock Var 2.fbx',
+  'animations/Twist Dance.fbx',
+  'animations/Sitting Laughing.fbx',
+  'animations/Taunt.fbx',
+  'animations/Capoeira.fbx',
+]);
+
+function isDefaultReadAllowedKey(key: string): boolean {
+  return DEFAULT_READ_ALLOWED_KEYS.has(key);
+}
+
 /** 是否为图片 key：用于直接代理返回 body，避免 <img> 跟随 302 导致裂图 */
 function isImageKey(key: string): boolean {
   return THUMB_SUFFIX_RE.test(key) || IMAGE_EXT_RE.test(key);
@@ -60,16 +86,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: false, message: 'Invalid key' }, { status: 400 });
     }
 
-    // Asset visibility check
-    const asset = await prisma.asset.findUnique({ where: { s3Key: key } });
-    if (!asset || asset.status !== 'ACTIVE') {
-      return NextResponse.json({ success: false, message: 'Resource not found' }, { status: 404 });
-    }
-    if (asset.visibility === 'PRIVATE') {
-      const session = await getServerSession(authOptions);
-      const userId = (session?.user as any)?.id;
-      if (!session || asset.userId !== userId) {
-        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+    // 预设资源跳过 DB，直接读 S3，避免 DB 未配置或未入库时 500/404
+    const skipDbCheck = isDefaultReadAllowedKey(key);
+    if (!skipDbCheck) {
+      let asset;
+      try {
+        asset = await prisma.asset.findUnique({ where: { s3Key: key } });
+      } catch (dbError) {
+        console.error('[s3/read-object] DB lookup failed:', dbError);
+        return NextResponse.json(
+          { success: false, message: 'Asset lookup failed' },
+          { status: 500 }
+        );
+      }
+      if (!asset || asset.status !== 'ACTIVE') {
+        return NextResponse.json({ success: false, message: 'Resource not found' }, { status: 404 });
+      }
+      if (asset.visibility === 'PRIVATE') {
+        const session = await getServerSession(authOptions);
+        const userId = (session?.user as any)?.id;
+        if (!session || asset.userId !== userId) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
       }
     }
 
