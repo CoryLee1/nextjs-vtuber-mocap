@@ -19,6 +19,7 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  assets        Asset[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -63,5 +64,43 @@ model VerificationToken {
 model SiteViewCounter {
   id    String @id @default("default")
   count Int    @default(0)
+}
+
+enum AssetType {
+  VRM
+  ANIMATION
+  BGM
+  HDR
+  SCENE
+  IMAGE
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  DELETED
+  PROCESSING
+}
+
+enum AssetVisibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+model Asset {
+  id         String          @id @default(cuid())
+  s3Key      String          @unique @map("s3_key")
+  assetType  AssetType       @map("asset_type")
+  status     AssetStatus     @default(ACTIVE)
+  visibility AssetVisibility @default(PRIVATE)
+  userId     String?         @map("user_id")
+  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  @@index([s3Key])
+  @@index([userId])
+  @@map("assets")
 }
 
