@@ -417,7 +417,7 @@ export function remapAnimationToVrm(vrm, fbxScene) {
         else if (propName === 'position' && vrmBoneName === 'hips' && track instanceof THREE.VectorKeyframeTrack) {
             // KAWAII：不输出 hips position，保持角色在原点，避免切回其他动画时 origin 被带走
             if (isKawaii) continue;
-            // 臀部位移：Z-up 时先转 Y-up，再按高度缩放 + VRM 0.x 取反
+            // 臀部位移：Z-up 时先转 Y-up；再以首帧为零点做 in-place，避免 idle 片段切换后“越播越高”
             let value = Array.from(track.values);
             if (isZUp) {
                 const arr = new Float32Array(value.length);
@@ -425,7 +425,18 @@ export function remapAnimationToVrm(vrm, fbxScene) {
                 convertPositionZUpToYUp(arr, 3, true);
                 value = Array.from(arr);
             }
-            const scaled = value.map((v, i) =>
+
+            const baseX = value[0] ?? 0;
+            const baseY = value[1] ?? 0;
+            const baseZ = value[2] ?? 0;
+            const inPlace = value.slice();
+            for (let i = 0; i < inPlace.length; i += 3) {
+                inPlace[i] -= baseX;
+                inPlace[i + 1] -= baseY;
+                inPlace[i + 2] -= baseZ;
+            }
+
+            const scaled = inPlace.map((v, i) =>
                 (isVrm0 && i % 3 !== 1 ? -v : v) * hipsPositionScale
             );
             tracks.push(new THREE.VectorKeyframeTrack(
