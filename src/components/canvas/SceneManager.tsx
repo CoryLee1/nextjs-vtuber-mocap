@@ -28,18 +28,24 @@ const ToneMappingSync = memo(function ToneMappingSync() {
 });
 
 /**
- * 在 Canvas 内部响应截帧请求（useFrame 时当前帧已绘制，直接 toBlob 即可）
- * UI 只发 takePhotoRequest，不持有 canvas 引用
+ * 在 Canvas 内部响应截帧请求。
+ *
+ * preserveDrawingBuffer=false 时 toBlob/toDataURL 是异步的，
+ * 回调触发前 buffer 已被 swap/clear → 黑屏。
+ * 解法：在 useFrame（帧渲染完毕、buffer swap 之前）用 gl.readPixels 同步读取，
+ * 再画到离屏 canvas → toBlob 生成截图。
  */
 const TakePhotoCapture = memo(function TakePhotoCapture() {
-  const { gl } = useThree();
+  const { gl, scene, camera } = useThree();
 
   useFrame(() => {
     const request = useSceneStore.getState().takePhotoRequest;
     if (request == null) return;
 
     const canvas = gl.domElement;
-    if (!canvas || canvas.width === 0 || canvas.height === 0) {
+    const w = canvas.width;
+    const h = canvas.height;
+    if (!canvas || w === 0 || h === 0) {
       useSceneStore.getState().setTakePhotoRequest(null);
       return;
     }
@@ -47,21 +53,37 @@ const TakePhotoCapture = memo(function TakePhotoCapture() {
     useSceneStore.getState().setTakePhotoRequest(null);
 
     try {
-      if (typeof canvas.toBlob === 'function') {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              useSceneStore.getState().setLastCaptureBlobUrl(url);
-            }
-          },
-          'image/png',
-          1
-        );
-      } else {
-        const dataUrl = canvas.toDataURL('image/png');
-        useSceneStore.getState().setLastCaptureBlobUrl(dataUrl);
+      // Force a render so the current frame is in the buffer right now
+      gl.render(scene, camera);
+
+      // Synchronously read pixels from the GPU framebuffer
+      const pixels = new Uint8Array(w * h * 4);
+      const ctx2d = gl.getContext() as WebGL2RenderingContext;
+      ctx2d.readPixels(0, 0, w, h, ctx2d.RGBA, ctx2d.UNSIGNED_BYTE, pixels);
+
+      // readPixels gives bottom-up rows; flip vertically into an ImageData
+      const offscreen = document.createElement('canvas');
+      offscreen.width = w;
+      offscreen.height = h;
+      const ctx = offscreen.getContext('2d')!;
+      const imageData = ctx.createImageData(w, h);
+      for (let y = 0; y < h; y++) {
+        const srcRow = (h - 1 - y) * w * 4;
+        const dstRow = y * w * 4;
+        imageData.data.set(pixels.subarray(srcRow, srcRow + w * 4), dstRow);
       }
+      ctx.putImageData(imageData, 0, 0);
+
+      offscreen.toBlob(
+        (blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            useSceneStore.getState().setLastCaptureBlobUrl(url);
+          }
+        },
+        'image/png',
+        1
+      );
     } catch {
       // 静默失败，UI 可通过 lastCaptureBlobUrl 未变化判断
     }
