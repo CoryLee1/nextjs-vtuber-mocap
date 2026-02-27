@@ -30,6 +30,12 @@ interface SceneState {
   /** Canvas 是否已挂载并准备就绪 */
   canvasReady: boolean;
   setCanvasReady: (ready: boolean) => void;
+  /** WebGL 上下文是否丢失 */
+  webglContextLost: boolean;
+  /** WebGL 上下文丢失累计次数 */
+  webglLossCount: number;
+  /** 自动降质：关闭 bloom/vignette/chromatic/handTrail，降 composerResolutionScale */
+  triggerQualityDegradation: () => void;
   /** Stream 侧边栏是否打开（用于 Canvas 区域自适应，避免被盖住） */
   streamPanelOpen: boolean;
   setStreamPanelOpen: (open: boolean) => void;
@@ -159,6 +165,27 @@ interface SceneState {
   /** 泛光阈值 (0-1.5) */
   bloomThreshold: number;
   setBloomThreshold: (v: number) => void;
+  /** 泛光亮度过渡平滑 [0,1]，越大边缘越柔 */
+  bloomLuminanceSmoothing: number;
+  setBloomLuminanceSmoothing: (v: number) => void;
+  /** 后期管线分辨率缩放 (0.5-1)，降低可省性能 */
+  composerResolutionScale: number;
+  setComposerResolutionScale: (v: number) => void;
+  /** 暗角开关 */
+  vignetteEnabled: boolean;
+  setVignetteEnabled: (v: boolean) => void;
+  /** 暗角偏移 (0-1)，越大暗角范围越小 */
+  vignetteOffset: number;
+  setVignetteOffset: (v: number) => void;
+  /** 暗角暗度 (0-1) */
+  vignetteDarkness: number;
+  setVignetteDarkness: (v: number) => void;
+  /** 色散开关 */
+  chromaticEnabled: boolean;
+  setChromaticEnabled: (v: boolean) => void;
+  /** 色散强度，约 0–0.05 */
+  chromaticOffset: number;
+  setChromaticOffset: (v: number) => void;
   /** 亮度 (-0.5 - 0.5) */
   brightness: number;
   setBrightness: (v: number) => void;
@@ -221,6 +248,18 @@ export const useSceneStore = create<SceneState>()(
   canvasReady: false,
   setCanvasReady: (ready: boolean) => {
     set({ canvasReady: ready });
+  },
+  webglContextLost: false,
+  webglLossCount: 0,
+  triggerQualityDegradation: () => {
+    set({
+      vignetteEnabled: false,
+      chromaticEnabled: false,
+      handTrailEnabled: false,
+      bloomIntensity: 0,
+      composerResolutionScale: 0.5,
+    });
+    console.warn('[triggerQualityDegradation] Disabled post-processing effects to reduce GPU pressure');
   },
   streamPanelOpen: false,
   setStreamPanelOpen: (open: boolean) => {
@@ -336,7 +375,15 @@ export const useSceneStore = create<SceneState>()(
   takePhotoRequest: null,
   setTakePhotoRequest: (ts: number | null) => set({ takePhotoRequest: ts }),
   lastCaptureBlobUrl: null,
-  setLastCaptureBlobUrl: (url: string | null) => set({ lastCaptureBlobUrl: url }),
+  setLastCaptureBlobUrl: (url: string | null) => {
+    const prev = get().lastCaptureBlobUrl;
+    // Auto-revoke previous blob URL when *replacing* with a new capture (not when clearing to null,
+    // because the consumer may have grabbed the reference and needs it alive for processing).
+    if (prev && url !== null && prev !== url && prev.startsWith('blob:')) {
+      try { URL.revokeObjectURL(prev); } catch (_) { /* ignore */ }
+    }
+    set({ lastCaptureBlobUrl: url });
+  },
   vrmRef: null,
   setVrmRef: (ref: React.RefObject<any> | null) => {
     set({ vrmRef: ref });
@@ -386,25 +433,39 @@ export const useSceneStore = create<SceneState>()(
   sceneFbxUrl: null,
   setHdrUrl: (url) => set({ hdrUrl: url }),
   setSceneFbxUrl: (url) => set({ sceneFbxUrl: url }),
-  envBackgroundIntensity: 1.25,
+  envBackgroundIntensity: 1.1,
   setEnvBackgroundIntensity: (v) => set({ envBackgroundIntensity: Math.max(0.1, Math.min(3, v)) }),
   envBackgroundRotation: 0,
   setEnvBackgroundRotation: (v) => set({ envBackgroundRotation: ((v % 360) + 360) % 360 }),
-  toneMappingExposure: 1.2,
+  toneMappingExposure: 1.3,
   setToneMappingExposure: (v) => set({ toneMappingExposure: Math.max(0.3, Math.min(3, v)) }),
   toneMappingMode: 'reinhard',
   setToneMappingMode: (v) => set({ toneMappingMode: v }),
-  bloomIntensity: 0.4,
+  bloomIntensity: 0.25,
   setBloomIntensity: (v) => set({ bloomIntensity: v }),
-  bloomThreshold: 0.85,
+  bloomThreshold: 0.6,
   setBloomThreshold: (v) => set({ bloomThreshold: v }),
-  brightness: 0,
+  bloomLuminanceSmoothing: 0.025,
+  setBloomLuminanceSmoothing: (v) => set({ bloomLuminanceSmoothing: Math.max(0, Math.min(1, v)) }),
+  composerResolutionScale: 0.75,
+  setComposerResolutionScale: (v) => set({ composerResolutionScale: Math.max(0.5, Math.min(1, v)) }),
+  vignetteEnabled: false,
+  setVignetteEnabled: (v) => set({ vignetteEnabled: v }),
+  vignetteOffset: 0.5,
+  setVignetteOffset: (v) => set({ vignetteOffset: Math.max(0, Math.min(1, v)) }),
+  vignetteDarkness: 0.5,
+  setVignetteDarkness: (v) => set({ vignetteDarkness: Math.max(0, Math.min(1, v)) }),
+  chromaticEnabled: false,
+  setChromaticEnabled: (v) => set({ chromaticEnabled: v }),
+  chromaticOffset: 0.002,
+  setChromaticOffset: (v) => set({ chromaticOffset: Math.max(0, Math.min(0.1, v)) }),
+  brightness: 0.06,
   setBrightness: (v) => set({ brightness: v }),
-  contrast: 0,
+  contrast: 0.1,
   setContrast: (v) => set({ contrast: v }),
-  saturation: 0,
+  saturation: 0.5,
   setSaturation: (v) => set({ saturation: Math.max(-1, Math.min(1, v)) }),
-  hue: 0,
+  hue: (3 * Math.PI) / 180,
   setHue: (v) => set({ hue: v }),
   handTrailEnabled: false,
   setHandTrailEnabled: (v) => set({ handTrailEnabled: v }),
@@ -429,6 +490,13 @@ export const useSceneStore = create<SceneState>()(
         toneMappingMode: state.toneMappingMode,
         bloomIntensity: state.bloomIntensity,
         bloomThreshold: state.bloomThreshold,
+        bloomLuminanceSmoothing: state.bloomLuminanceSmoothing,
+        composerResolutionScale: state.composerResolutionScale,
+        vignetteEnabled: state.vignetteEnabled,
+        vignetteOffset: state.vignetteOffset,
+        vignetteDarkness: state.vignetteDarkness,
+        chromaticEnabled: state.chromaticEnabled,
+        chromaticOffset: state.chromaticOffset,
         brightness: state.brightness,
         contrast: state.contrast,
         saturation: state.saturation,

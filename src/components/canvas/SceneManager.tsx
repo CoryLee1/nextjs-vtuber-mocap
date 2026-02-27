@@ -4,6 +4,7 @@ import React, { memo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useWebGLContextGuard } from '@/hooks/use-webgl-context-guard';
 import { MainScene } from './scenes/MainScene';
 
 const TONE_MAP = {
@@ -69,6 +70,12 @@ const TakePhotoCapture = memo(function TakePhotoCapture() {
   return null;
 });
 
+/** WebGL context loss / restore 事件守卫 — 必须在 R3F 树内渲染 */
+const WebGLContextGuard = memo(function WebGLContextGuard() {
+  useWebGLContextGuard();
+  return null;
+});
+
 /**
  * 场景管理器
  *
@@ -80,6 +87,7 @@ export const SceneManager: React.FC = () => {
 
   return (
     <>
+      <WebGLContextGuard />
       <TakePhotoCapture />
       <ToneMappingSync />
 

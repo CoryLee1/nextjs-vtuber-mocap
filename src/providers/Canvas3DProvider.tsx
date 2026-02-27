@@ -22,6 +22,10 @@ class CanvasErrorBoundary extends React.Component<
     return { hasError: true, message: isWebGLError ? msg : undefined };
   }
 
+  handleRetry = () => {
+    this.setState({ hasError: false, message: undefined });
+  };
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
@@ -32,6 +36,12 @@ class CanvasErrorBoundary extends React.Component<
             <p className="text-sm mt-2 text-gray-300">
               {this.state.message || '请尝试刷新页面，或使用 Chrome/Edge 并确保未禁用硬件加速。'}
             </p>
+            <button
+              onClick={this.handleRetry}
+              className="mt-4 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-md text-sm transition-colors"
+            >
+              重试 / Retry
+            </button>
           </div>
         </div>
       );
@@ -81,6 +91,21 @@ function calculateDPR(settings: { quality: 'low' | 'medium' | 'high'; resolution
  * 使用固定定位覆盖整个视口，z-index 为 -1 确保在页面内容下方
  * 不使用 pointer-events-none，以支持未来的 3D 交互功能
  */
+/** Overlay shown when WebGL context is lost — auto-hides on restore */
+const ContextLostOverlay: React.FC = () => {
+  const lost = useSceneStore((s) => s.webglContextLost);
+  if (!lost) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 text-white p-4 text-center pointer-events-none">
+      <div>
+        <div className="animate-spin h-8 w-8 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4" />
+        <p className="font-medium">WebGL 上下文丢失，正在恢复…</p>
+        <p className="text-sm mt-2 text-gray-300">如持续出现请刷新页面</p>
+      </div>
+    </div>
+  );
+};
+
 export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { settings } = usePerformance();
   const setCanvasReady = useSceneStore((state) => state.setCanvasReady);
@@ -118,6 +143,9 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {/* 页面内容 - 覆盖在 Canvas 上方，但容器允许事件穿透 */}
       {children}
 
+      {/* Context loss overlay — shows spinner while WebGL is recovering */}
+      <ContextLostOverlay />
+
       {/* 持久化 Canvas - 固定定位，覆盖整个视口，接收鼠标事件；延迟挂载 + 错误边界避免 WebGL 创建失败白屏 */}
       {!isTestingLoading && canvasMounted && (
         <div
@@ -141,7 +169,7 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             gl={{
               antialias: true, // 强制启用抗锯齿以消除锯齿边缘
               alpha: false, // 不透明背景
-              preserveDrawingBuffer: true, // 启用以便截图（仅截 3D 画布，不含 UI）
+              preserveDrawingBuffer: false, // 截图在 useFrame 中同步 toBlob（buffer swap 前数据仍在），无需保留 buffer，节省 ~24MB GPU 显存
               powerPreference: 'high-performance',
               stencil: false, // 禁用模板缓冲以提升性能
               depth: true,

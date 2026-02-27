@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useEffect, useRef, Suspense, memo, useLayoutEffect } from 'react';
+import React, { useEffect, useRef, Suspense, memo, useLayoutEffect, useMemo } from 'react';
 import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles, Trail } from '@react-three/drei';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
-import { EffectComposer, Bloom, BrightnessContrast, ToneMapping, HueSaturation } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, BrightnessContrast, ToneMapping, HueSaturation, Vignette, ChromaticAberration } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
+import { Vector2 } from 'three';
 /** 预加载单个 FBX，填满 useLoader 缓存，切换动画时无需再等 */
 const PreloadFbx = memo(({ url }: { url: string }) => {
   useFBX(url);
@@ -158,14 +159,14 @@ const GridFloor = memo(() => (
 // 2. 补光：左后 [-5,3,-5]，不投阴影
 // 3. 顶光：[0,10,0]，不投阴影
 // 4. 环境光：无方向（略提亮人物）
-const Lighting = memo(() => (
+const Lighting = memo(({ shadowMapSize = 512 }: { shadowMapSize?: number }) => (
   <>
     <directionalLight
       intensity={1.5}
       position={[5, 5, 5]}
       castShadow
-      shadow-mapSize-width={512}
-      shadow-mapSize-height={512}
+      shadow-mapSize-width={shadowMapSize}
+      shadow-mapSize-height={shadowMapSize}
       shadow-camera-far={30}
       shadow-camera-left={-8}
       shadow-camera-right={8}
@@ -253,6 +254,13 @@ export const MainScene: React.FC = () => {
     updateDebugSettings,
     bloomIntensity,
     bloomThreshold,
+    bloomLuminanceSmoothing,
+    composerResolutionScale,
+    vignetteEnabled,
+    vignetteOffset,
+    vignetteDarkness,
+    chromaticEnabled,
+    chromaticOffset,
     brightness,
     contrast,
     saturation,
@@ -261,6 +269,11 @@ export const MainScene: React.FC = () => {
     handTrailEnabled,
     theatreCameraActive,
   } = useSceneStore();
+
+  const chromaticOffsetVec = useMemo(
+    () => new Vector2(chromaticOffset, chromaticOffset * 0.1),
+    [chromaticOffset]
+  );
   
   // PERF: 更新头部位置（用于 Autofocus）- 使用 ref 避免重渲染
   useFrame(() => {
@@ -350,8 +363,8 @@ export const MainScene: React.FC = () => {
       <TheatreCamera />
       <TheatreSequenceController />
 
-      {/* 优化的光照系统 */}
-      <Lighting />
+      {/* 优化的光照系统 — shadow map 尺寸由性能设置控制 */}
+      <Lighting shadowMapSize={perfSettings.shadowMapSize} />
 
       {/* 网格地板 */}
       <GridFloor />
@@ -419,23 +432,34 @@ export const MainScene: React.FC = () => {
         </group>
       )}
 
-      {/* 后期处理与特效 */}
-      <Sparkles count={50} scale={5} size={2} speed={0.4} opacity={0.5} />
+      {/* 后期处理与特效 — 受性能设置门控 */}
+      {perfSettings.postProcessing && (
+        <Sparkles count={30} scale={5} size={2} speed={0.4} opacity={0.5} />
+      )}
 
-      <EffectComposer disableNormalPass>
-        <Bloom
-          luminanceThreshold={bloomThreshold}
-          mipmapBlur
-          intensity={bloomIntensity}
-          radius={0.6}
-        />
-        <BrightnessContrast
-          brightness={brightness}
-          contrast={contrast}
-        />
-        <HueSaturation hue={hue} saturation={saturation} />
-        <ToneMapping mode={ToneMappingMode.REINHARD} />
-      </EffectComposer>
+      {perfSettings.postProcessing && (
+        <EffectComposer enableNormalPass={false} resolutionScale={composerResolutionScale}>
+          <Bloom
+            luminanceThreshold={bloomThreshold}
+            luminanceSmoothing={bloomLuminanceSmoothing}
+            mipmapBlur
+            intensity={bloomIntensity}
+            radius={0.4}
+          />
+          {vignetteEnabled && (
+            <Vignette offset={vignetteOffset} darkness={vignetteDarkness} />
+          )}
+          {chromaticEnabled && (
+            <ChromaticAberration offset={chromaticOffsetVec} radialModulation={false} modulationOffset={0} />
+          )}
+          <BrightnessContrast
+            brightness={brightness}
+            contrast={contrast}
+          />
+          <HueSaturation hue={hue} saturation={saturation} />
+          <ToneMapping mode={ToneMappingMode.REINHARD} />
+        </EffectComposer>
+      )}
     </>
   );
 };

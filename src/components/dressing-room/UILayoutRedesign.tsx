@@ -450,7 +450,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, bloomLuminanceSmoothing, setBloomLuminanceSmoothing, composerResolutionScale, setComposerResolutionScale, vignetteEnabled, setVignetteEnabled, vignetteOffset, setVignetteOffset, vignetteDarkness, setVignetteDarkness, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -548,6 +548,13 @@ export const StreamRoomSidebar = memo(({
         if (['aces', 'linear', 'reinhard'].includes(parsed.toneMappingMode)) setToneMappingMode(parsed.toneMappingMode);
         if (typeof parsed.bloomIntensity === 'number') setBloomIntensity(parsed.bloomIntensity);
         if (typeof parsed.bloomThreshold === 'number') setBloomThreshold(parsed.bloomThreshold);
+        if (typeof parsed.bloomLuminanceSmoothing === 'number') setBloomLuminanceSmoothing(parsed.bloomLuminanceSmoothing);
+        if (typeof parsed.composerResolutionScale === 'number') setComposerResolutionScale(parsed.composerResolutionScale);
+        if (typeof parsed.vignetteEnabled === 'boolean') setVignetteEnabled(parsed.vignetteEnabled);
+        if (typeof parsed.vignetteOffset === 'number') setVignetteOffset(parsed.vignetteOffset);
+        if (typeof parsed.vignetteDarkness === 'number') setVignetteDarkness(parsed.vignetteDarkness);
+        if (typeof parsed.chromaticEnabled === 'boolean') setChromaticEnabled(parsed.chromaticEnabled);
+        if (typeof parsed.chromaticOffset === 'number') setChromaticOffset(parsed.chromaticOffset);
         if (typeof parsed.brightness === 'number') setBrightness(parsed.brightness);
         if (typeof parsed.contrast === 'number') setContrast(parsed.contrast);
         if (typeof parsed.saturation === 'number') setSaturation(parsed.saturation);
@@ -683,7 +690,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, brightness, contrast, saturation, hue, handTrailEnabled })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, bloomLuminanceSmoothing, composerResolutionScale, vignetteEnabled, vignetteOffset, vignetteDarkness, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1278,6 +1285,80 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomThreshold.toFixed(2)}</span>
               </div>
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '泛光平滑 (Luminance Smoothing)' : 'Bloom Smoothing'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={0}
+                  max={0.5}
+                  step={0.01}
+                  value={bloomLuminanceSmoothing}
+                  onValueChange={setBloomLuminanceSmoothing}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomLuminanceSmoothing.toFixed(2)}</span>
+              </div>
+              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '后期分辨率缩放' : 'Composer Resolution'}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={0.5}
+                  max={1}
+                  step={0.05}
+                  value={composerResolutionScale}
+                  onValueChange={setComposerResolutionScale}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{composerResolutionScale.toFixed(2)}</span>
+              </div>
+
+              {/* Vignette / Chromatic */}
+              <div className="mt-2 pt-2 border-t border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '暗角与色散' : 'Vignette & Chromatic'}</p>
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? '暗角 (Vignette)' : 'Vignette'}</label>
+                  <button
+                    type="button"
+                    onClick={() => setVignetteEnabled(!vignetteEnabled)}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${vignetteEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${vignetteEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+                {vignetteEnabled && (
+                  <>
+                    <label className="text-[12px] text-slate-500">{locale === 'zh' ? '暗角范围 (Offset)' : 'Vignette Offset'}</label>
+                    <div className="flex items-center gap-2">
+                      <Slider min={0} max={1} step={0.02} value={vignetteOffset} onValueChange={setVignetteOffset} showValue={false} className="flex-1" />
+                      <span className="text-xs text-slate-500 w-10 tabular-nums">{vignetteOffset.toFixed(2)}</span>
+                    </div>
+                    <label className="text-[12px] text-slate-500">{locale === 'zh' ? '暗角暗度 (Darkness)' : 'Vignette Darkness'}</label>
+                    <div className="flex items-center gap-2">
+                      <Slider min={0} max={1} step={0.02} value={vignetteDarkness} onValueChange={setVignetteDarkness} showValue={false} className="flex-1" />
+                      <span className="text-xs text-slate-500 w-10 tabular-nums">{vignetteDarkness.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色散 (Chromatic)' : 'Chromatic Aberration'}</label>
+                  <button
+                    type="button"
+                    onClick={() => setChromaticEnabled(!chromaticEnabled)}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${chromaticEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${chromaticEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+                {chromaticEnabled && (
+                  <>
+                    <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色散强度 (Offset)' : 'Chromatic Offset'}</label>
+                    <div className="flex items-center gap-2">
+                      <Slider min={0} max={0.05} step={0.001} value={chromaticOffset} onValueChange={setChromaticOffset} showValue={false} className="flex-1" />
+                      <span className="text-xs text-slate-500 w-10 tabular-nums">{chromaticOffset.toFixed(3)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Color Correction Settings */}
               <label className="text-[12px] text-slate-500">{locale === 'zh' ? '亮度 (Brightness)' : 'Brightness'}</label>
@@ -1555,7 +1636,9 @@ const ChatPanelFooterButtons = memo(() => {
     pendingPresetRef.current = null;
     setLastCaptureBlobUrl(null);
 
-    const finish = (finalUrl: string, fileName: string, mime: string) => {
+    // Unified revoke: finish() is the single revoke point — schedules revoke after
+    // the browser has had time to consume the blob for download/preview.
+    const finish = (finalUrl: string, fileName: string, _mime: string, extraRevokeUrl?: string) => {
       const a = document.createElement('a');
       a.href = finalUrl;
       a.download = fileName;
@@ -1563,7 +1646,13 @@ const ChatPanelFooterButtons = memo(() => {
       const w = window.open(finalUrl, '_blank', 'noopener');
       if (w) w.document.title = fileName;
       toast({ title: '已保存', description: `已下载：${fileName}` });
-      if (finalUrl.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(finalUrl), 2000);
+      // Revoke after a short delay so browser finishes consuming the blob
+      setTimeout(() => {
+        if (finalUrl.startsWith('blob:')) try { URL.revokeObjectURL(finalUrl); } catch (_) {}
+        if (extraRevokeUrl && extraRevokeUrl !== finalUrl && extraRevokeUrl.startsWith('blob:')) {
+          try { URL.revokeObjectURL(extraRevokeUrl); } catch (_) {}
+        }
+      }, 3000);
     };
 
     if (preset) {
@@ -1572,7 +1661,8 @@ const ChatPanelFooterButtons = memo(() => {
           .then(({ blobUrl }) => {
             const ext = 'jpg';
             const name = `stream-${preset.id.replace(':', 'x')}-${Date.now()}.${ext}`;
-            finish(blobUrl, name, 'image/jpeg');
+            // Revoke both the processed blobUrl and the original capture url
+            finish(blobUrl, name, 'image/jpeg', url);
           })
           .catch(() => {
             toast({ title: '处理失败', description: '已按原图下载', variant: 'destructive' });
@@ -1580,11 +1670,10 @@ const ChatPanelFooterButtons = memo(() => {
             finish(url, name, 'image/png');
           });
       });
-      if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+      // Do NOT revoke url here — the async processCaptureToPreset still needs it
     } else {
       const name = `stream-photo-${Date.now()}.png`;
       finish(url, name, 'image/png');
-      if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
   }, [lastCaptureBlobUrl, setLastCaptureBlobUrl]);
 
