@@ -30,11 +30,10 @@ let _sheet: ReturnType<ReturnType<typeof getProject>['sheet']> | null = null;
 
 function getOrCreateSheet() {
   if (!_project) {
-    // Pass { state: {} } to suppress the production-only warning:
-    // "config.state is empty" is thrown when @theatre/studio is absent and
-    // no saved state JSON is provided. An explicit empty state object tells
-    // Theatre the project has no choreography data (correct for production).
-    _project = getProject('EchuuCamera', { state: {} });
+    // Empty config for new project. Do NOT pass { state: {} } — Theatre.js
+    // validates state format and rejects plain {}; use getProject(id, {}) or
+    // getProject(id). For persisted choreography, pass { state: importedJson }.
+    _project = getProject('EchuuCamera', {});
   }
   if (!_sheet) {
     _sheet = _project.sheet('MainCamera');
