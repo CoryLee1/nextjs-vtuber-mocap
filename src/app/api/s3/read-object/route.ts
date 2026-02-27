@@ -37,24 +37,57 @@ function isAllowedKey(key: string): boolean {
 
 /** 预设资源 key：无需查库即可读 S3，避免 DB 未配置/未入库时 500 */
 const DEFAULT_READ_ALLOWED_KEYS = new Set<string>([
+  // VRM 样本模型及缩略图（resource-manager 内置）
   'vrm/AvatarSample_A.vrm',
   'vrm/AvatarSample_A_thumb.png',
+  'vrm/AvatarSample_B.vrm',
+  'vrm/AvatarSample_B_thumb.png',
   'vrm/AvatarSample_C.vrm',
   'vrm/AvatarSample_C_thumb.png',
+  'vrm/AvatarSample_D.vrm',
+  'vrm/AvatarSample_D_thumb.png',
+  'vrm/AvatarSample_E.vrm',
+  'vrm/AvatarSample_E_thumb.png',
+  'vrm/AvatarSample_F.vrm',
+  'vrm/AvatarSample_F_thumb.png',
+  'vrm/AvatarSample_G.vrm',
+  'vrm/AvatarSample_G_thumb.png',
   'vrm/AvatarSample_H.vrm',
   'vrm/AvatarSample_H_thumb.png',
+  'vrm/AvatarSample_I.vrm',
+  'vrm/AvatarSample_I_thumb.png',
+  'vrm/AvatarSample_J.vrm',
+  'vrm/AvatarSample_J_thumb.png',
+  'vrm/AvatarSample_K.vrm',
+  'vrm/AvatarSample_K_thumb.png',
+  'vrm/AvatarSample_L.vrm',
+  'vrm/AvatarSample_L_thumb.png',
   'vrm/AvatarSample_M.vrm',
   'vrm/AvatarSample_M_thumb.png',
+  'vrm/AvatarSample_N.vrm',
+  'vrm/AvatarSample_N_thumb.png',
+  'vrm/AvatarSample_R.vrm',
+  'vrm/AvatarSample_R_thumb.png',
   'vrm/AvatarSample_Z.vrm',
   'vrm/AvatarSample_Z_thumb.png',
-  'animations/Idle.fbx',
+  // 全量内置动画（vtuber-animations.ts ALL_ANIMATION_FILES + 额外文件）
+  'animations/Bashful.fbx',
   'animations/Breakdance 1990.fbx',
-  'animations/Mma Kick.fbx',
   'animations/Breakdance Uprock Var 2.fbx',
-  'animations/Twist Dance.fbx',
-  'animations/Sitting Laughing.fbx',
-  'animations/Taunt.fbx',
   'animations/Capoeira.fbx',
+  'animations/Disappointed.fbx',
+  'animations/Idle.fbx',
+  'animations/Listening To Music.fbx',
+  'animations/Mma Kick.fbx',
+  'animations/Sad Idle.fbx',
+  'animations/Sitting Laughing.fbx',
+  'animations/Sitting Talking.fbx',
+  'animations/Standing Greeting (1).fbx',
+  'animations/Talking.fbx',
+  'animations/Taunt.fbx',
+  'animations/Telling A Secret.fbx',
+  'animations/Thinking.fbx',
+  'animations/Twist Dance.fbx',
 ]);
 
 function isDefaultReadAllowedKey(key: string): boolean {
@@ -86,27 +119,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: false, message: 'Invalid key' }, { status: 400 });
     }
 
-    // 预设资源跳过 DB，直接读 S3，避免 DB 未配置或未入库时 500/404
+    // 预设资源跳过 DB；其他允许前缀的 key 在 DB 不可用/未入库时回退到 S3，避免 500
     const skipDbCheck = isDefaultReadAllowedKey(key);
+    let allowS3Fallback = false;
     if (!skipDbCheck) {
       let asset;
       try {
         asset = await prisma.asset.findUnique({ where: { s3Key: key } });
       } catch (dbError) {
         console.error('[s3/read-object] DB lookup failed:', dbError);
-        return NextResponse.json(
-          { success: false, message: 'Asset lookup failed' },
-          { status: 500 }
-        );
+        if (isAllowedKey(key)) {
+          allowS3Fallback = true;
+        } else {
+          return NextResponse.json(
+            { success: false, message: 'Asset lookup failed' },
+            { status: 500 }
+          );
+        }
       }
-      if (!asset || asset.status !== 'ACTIVE') {
-        return NextResponse.json({ success: false, message: 'Resource not found' }, { status: 404 });
-      }
-      if (asset.visibility === 'PRIVATE') {
-        const session = await getServerSession(authOptions);
-        const userId = (session?.user as any)?.id;
-        if (!session || asset.userId !== userId) {
-          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+      if (!allowS3Fallback) {
+        if (!asset || asset.status !== 'ACTIVE') {
+          if (isAllowedKey(key)) allowS3Fallback = true;
+          else return NextResponse.json({ success: false, message: 'Resource not found' }, { status: 404 });
+        } else if (asset.visibility === 'PRIVATE') {
+          const session = await getServerSession(authOptions);
+          const userId = (session?.user as any)?.id;
+          if (!session || asset.userId !== userId) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+          }
         }
       }
     }
@@ -121,10 +161,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       : FALLBACK_PUBLIC_BASE;
 
     if (!accessKeyId || !secretAccessKey) {
-      return NextResponse.json(
-        { success: false, message: 'AWS credentials not configured' },
-        { status: 500 }
-      );
+      // 凭证未配置时退回公有 URL，避免整站 500
+      const encodedPath = key.split('/').map(encodeURIComponent).join('/');
+      const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
+      const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
+      fallbackResponse.headers.set('Cache-Control', 'no-store');
+      fallbackResponse.headers.set('x-s3-read-fallback', 'no-credentials');
+      return fallbackResponse;
     }
 
     const s3Client = new S3Client({
