@@ -2,13 +2,27 @@
 
 import React, { useEffect, useRef, Suspense, memo, useLayoutEffect, useMemo } from 'react';
 import { Grid, Environment, useFBX, useTexture, Cloud, Clouds, Sparkles, Trail } from '@react-three/drei';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree, useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
-import { EffectComposer, Bloom, BrightnessContrast, ToneMapping, HueSaturation, Vignette, ChromaticAberration } from '@react-three/postprocessing';
-import { ToneMappingMode } from 'postprocessing';
+import { EffectComposer, Bloom, BrightnessContrast, ToneMapping, HueSaturation, Vignette, ChromaticAberration, LUT } from '@react-three/postprocessing';
+import { ToneMappingMode, LUTCubeLoader } from 'postprocessing';
 import { Vector2 } from 'three';
+/** 加载 .cube LUT 文件并渲染 LUT 后处理；intensity 通过 blendMode.opacity 控制混合强度 */
+const LUTEffect = memo(({ url, intensity = 0.6 }: { url: string; intensity?: number }) => {
+  const texture = useLoader(LUTCubeLoader as any, url);
+  const lutRef = useRef<any>(null);
+  useEffect(() => {
+    if (lutRef.current?.blendMode) {
+      lutRef.current.blendMode.opacity.value = intensity;
+    }
+  }, [intensity]);
+  if (!texture) return null;
+  return <LUT ref={lutRef} lut={texture} tetrahedralInterpolation />;
+});
+LUTEffect.displayName = 'LUTEffect';
+
 /** 预加载单个 FBX，填满 useLoader 缓存，切换动画时无需再等 */
 const PreloadFbx = memo(({ url }: { url: string }) => {
   useFBX(url);
@@ -252,10 +266,12 @@ export const MainScene: React.FC = () => {
     setAnimationManagerRef,
     setHandDetectionStateRef,
     updateDebugSettings,
+    bloomEnabled,
     bloomIntensity,
     bloomThreshold,
     bloomLuminanceSmoothing,
     composerResolutionScale,
+    postProcessingEnabled,
     vignetteEnabled,
     vignetteOffset,
     vignetteDarkness,
@@ -266,6 +282,9 @@ export const MainScene: React.FC = () => {
     saturation,
     hue,
     toneMappingMode,
+    lutEnabled,
+    lutUrl,
+    lutIntensity,
     handTrailEnabled,
     theatreCameraActive,
   } = useSceneStore();
@@ -432,20 +451,22 @@ export const MainScene: React.FC = () => {
         </group>
       )}
 
-      {/* 后期处理与特效 — 受性能设置门控 */}
-      {perfSettings.postProcessing && (
+      {/* 后期处理与特效 — 受性能设置 + 用户总开关双重门控 */}
+      {perfSettings.postProcessing && postProcessingEnabled && (
         <Sparkles count={30} scale={5} size={2} speed={0.4} opacity={0.5} />
       )}
 
-      {perfSettings.postProcessing && (
+      {perfSettings.postProcessing && postProcessingEnabled && (
         <EffectComposer enableNormalPass={false} resolutionScale={composerResolutionScale}>
-          <Bloom
-            luminanceThreshold={bloomThreshold}
-            luminanceSmoothing={bloomLuminanceSmoothing}
-            mipmapBlur
-            intensity={bloomIntensity}
-            radius={0.4}
-          />
+          {bloomEnabled && (
+            <Bloom
+              luminanceThreshold={bloomThreshold}
+              luminanceSmoothing={bloomLuminanceSmoothing}
+              mipmapBlur
+              intensity={bloomIntensity}
+              radius={0.4}
+            />
+          )}
           {vignetteEnabled && (
             <Vignette offset={vignetteOffset} darkness={vignetteDarkness} />
           )}
@@ -457,6 +478,11 @@ export const MainScene: React.FC = () => {
             contrast={contrast}
           />
           <HueSaturation hue={hue} saturation={saturation} />
+          {lutEnabled && (
+            <Suspense fallback={null}>
+              <LUTEffect url={lutUrl} intensity={lutIntensity} />
+            </Suspense>
+          )}
           <ToneMapping mode={ToneMappingMode.REINHARD} />
         </EffectComposer>
       )}

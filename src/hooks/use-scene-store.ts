@@ -198,6 +198,21 @@ interface SceneState {
   /** 色相偏移 (-Math.PI to Math.PI) */
   hue: number;
   setHue: (v: number) => void;
+  /** 泛光开关 */
+  bloomEnabled: boolean;
+  setBloomEnabled: (v: boolean) => void;
+  /** 后处理总开关（关闭后 EffectComposer 整个不渲染，节省大量 GPU） */
+  postProcessingEnabled: boolean;
+  setPostProcessingEnabled: (v: boolean) => void;
+  /** LUT 调色开关 */
+  lutEnabled: boolean;
+  setLutEnabled: (v: boolean) => void;
+  /** LUT 文件路径 (.cube) */
+  lutUrl: string;
+  setLutUrl: (v: string) => void;
+  /** LUT 强度 (0-1) */
+  lutIntensity: number;
+  setLutIntensity: (v: number) => void;
   /** 手部轨迹特效开关 */
   handTrailEnabled: boolean;
   setHandTrailEnabled: (v: boolean) => void;
@@ -253,8 +268,11 @@ export const useSceneStore = create<SceneState>()(
   webglLossCount: 0,
   triggerQualityDegradation: () => {
     set({
+      postProcessingEnabled: false,
       vignetteEnabled: false,
       chromaticEnabled: false,
+      bloomEnabled: false,
+      lutEnabled: false,
       handTrailEnabled: false,
       bloomIntensity: 0,
       composerResolutionScale: 0.5,
@@ -467,6 +485,16 @@ export const useSceneStore = create<SceneState>()(
   setSaturation: (v) => set({ saturation: Math.max(-1, Math.min(1, v)) }),
   hue: (3 * Math.PI) / 180,
   setHue: (v) => set({ hue: v }),
+  bloomEnabled: true,
+  setBloomEnabled: (v) => set({ bloomEnabled: v }),
+  postProcessingEnabled: true,
+  setPostProcessingEnabled: (v) => set({ postProcessingEnabled: v }),
+  lutEnabled: false,
+  setLutEnabled: (v) => set({ lutEnabled: v }),
+  lutUrl: '/lut/cinematic-warm.cube',
+  setLutUrl: (v) => set({ lutUrl: v }),
+  lutIntensity: 0.6,
+  setLutIntensity: (v) => set({ lutIntensity: Math.max(0, Math.min(1, v)) }),
   handTrailEnabled: false,
   setHandTrailEnabled: (v) => set({ handTrailEnabled: v }),
   theatreCameraActive: false,
@@ -501,6 +529,11 @@ export const useSceneStore = create<SceneState>()(
         contrast: state.contrast,
         saturation: state.saturation,
         hue: state.hue,
+        bloomEnabled: state.bloomEnabled,
+        postProcessingEnabled: state.postProcessingEnabled,
+        lutEnabled: state.lutEnabled,
+        lutUrl: state.lutUrl,
+        lutIntensity: state.lutIntensity,
         handTrailEnabled: state.handTrailEnabled,
         hdrUrl: state.hdrUrl,
         sceneFbxUrl: state.sceneFbxUrl,

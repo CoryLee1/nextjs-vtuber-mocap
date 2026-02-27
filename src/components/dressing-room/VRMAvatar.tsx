@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { Face, Hand, Pose } from 'kalidokit';
-import { Group } from 'three';
+import { Group, Box3, Vector3 as TV3 } from 'three';
 import { lerp } from 'three/src/math/MathUtils.js';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { useSensitivitySettings } from '@/hooks/use-sensitivity-settings';
@@ -420,6 +420,16 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         VRMUtils.removeUnnecessaryVertices(scene);
         VRMUtils.combineSkeletons(scene);
         VRMUtils.combineMorphs(vrm);
+
+        // ✅ 归一化 VRM 脚底到 Y=0（不同模型原点位置不同，统一站在地面上）
+        const bbox = new Box3().setFromObject(scene);
+        const bottomY = bbox.min.y;
+        if (Math.abs(bottomY) > 0.001) {
+            scene.position.y -= bottomY;
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[VRMAvatar] Grounded model: shifted Y by ${(-bottomY).toFixed(3)} (bbox bottom was ${bottomY.toFixed(3)})`);
+            }
+        }
 
         // 禁用视锥剔除以提高性能
         scene.traverse((obj: any) => {
