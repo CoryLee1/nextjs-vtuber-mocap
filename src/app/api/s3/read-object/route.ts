@@ -205,37 +205,43 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // 图片类 key 或 ?proxy=1 时直接代理返回 body（补全缩略图等需同源拉取 VRM，避免 302 跨域）
     const proxyMode = request.nextUrl.searchParams.get('proxy') === '1';
-    if (isImageKey(resolvedKey) || proxyMode) {
+    const isImage = isImageKey(resolvedKey);
+    const isThumbKey = THUMB_SUFFIX_RE.test(resolvedKey);
+
+    // 大文件（VRM/FBX 等）：用长有效期 presigned URL redirect（避免 Node.js 内存 OOM）
+    // 小文件（缩略图/图片）：直接代理 body（避免 <img> 302 跨域裂图）
+    const isLargeAsset = /\.(vrm|fbx|glb|gltf|hdr)$/i.test(resolvedKey);
+
+    if ((isImage || proxyMode) && !isLargeAsset) {
+      // 小文件走 proxy body
       const getCmd = new GetObjectCommand({ Bucket: bucket, Key: resolvedKey });
       const obj = await s3Client.send(getCmd);
       if (!obj.Body) {
         return NextResponse.json({ success: false, message: 'Empty object' }, { status: 404 });
       }
       const body = await obj.Body.transformToByteArray();
-      const contentType = obj.ContentType || (resolvedKey.endsWith('.vrm') ? 'model/vrm' : contentTypeFromKey(resolvedKey));
-      const isThumbKey = THUMB_SUFFIX_RE.test(resolvedKey);
+      const contentType = obj.ContentType || contentTypeFromKey(resolvedKey);
       return new NextResponse(body, {
         headers: {
           'Content-Type': contentType,
-          // Content-Length 必须提供，否则浏览器无法确定缓存大小 → ERR_CACHE_WRITE_FAILURE
           'Content-Length': String(body.byteLength),
-          // _thumb 图片会被同名覆盖上传，需禁用缓存避免看到旧图；
-          // VRM/FBX 等大资产走 proxy 时也应缓存（immutable=内容不变），否则每次刷新重下 20-40MB
           'Cache-Control': isThumbKey ? 'no-store' : 'public, max-age=86400, immutable',
         },
       });
     }
 
+    // 大文件或非 proxy 请求：presigned URL redirect
+    // 使用较长有效期（1 小时），配合浏览器缓存减少签名请求
     const signedUrl = await getSignedUrl(
       s3Client,
       new GetObjectCommand({ Bucket: bucket, Key: resolvedKey }),
-      { expiresIn: 300 }
+      { expiresIn: 3600 }
     );
 
     const response = NextResponse.redirect(signedUrl, { status: 302 });
-    response.headers.set('Cache-Control', 'no-store');
+    // 大资产 redirect 允许缓存 5 分钟（presigned URL 1 小时有效，5 分钟缓存安全）
+    response.headers.set('Cache-Control', isLargeAsset ? 'public, max-age=300' : 'no-store');
     return response;
   } catch (error) {
     // S3 请求失败时，如果 key 在白名单内则回退到公有 URL，避免完全不可用
