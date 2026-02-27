@@ -5,7 +5,7 @@
  *
  * 用法：
  *   <TheatreCameraProvider sheet={sheet}>
- *     {/* 包裹 MainScene 内容 */}
+ *     （包裹 MainScene 内容作为 children）
  *   </TheatreCameraProvider>
  *
  * 在 <TheatreCameraProvider> 内部：
