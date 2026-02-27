@@ -219,6 +219,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return new NextResponse(body, {
         headers: {
           'Content-Type': contentType,
+          // Content-Length 必须提供，否则浏览器无法确定缓存大小 → ERR_CACHE_WRITE_FAILURE
+          'Content-Length': String(body.byteLength),
           // _thumb 图片会被同名覆盖上传，需禁用缓存避免看到旧图；
           // VRM/FBX 等大资产走 proxy 时也应缓存（immutable=内容不变），否则每次刷新重下 20-40MB
           'Cache-Control': isThumbKey ? 'no-store' : 'public, max-age=86400, immutable',
@@ -236,10 +238,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (error) {
+    // S3 请求失败时，如果 key 在白名单内则回退到公有 URL，避免完全不可用
+    const key = request.nextUrl.searchParams.get('key') || '';
+    if (isAllowedKey(key)) {
+      const encodedPath = key.split('/').map(encodeURIComponent).join('/');
+      const fallbackUrl = `${FALLBACK_PUBLIC_BASE.replace(/\/+$/, '')}/${encodedPath}`;
+      console.error(`[S3 read-object] Error for ${key}, falling back to public URL:`, error instanceof Error ? error.message : error);
+      return NextResponse.redirect(fallbackUrl, { status: 302 });
+    }
     return NextResponse.json(
       {
         success: false,
-        message: 'Failed to sign read URL',
+        message: 'Failed to read S3 object',
         error: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
