@@ -30,11 +30,15 @@ let _sheet: ReturnType<ReturnType<typeof getProject>['sheet']> | null = null;
 
 function getOrCreateSheet() {
   if (!_project) {
-    // Empty config for new project. Do NOT pass { state: {} } — Theatre.js
-    // validates state format and rejects plain {}; use getProject(id, {}) or
-    // getProject(id). For persisted choreography, pass { state: importedJson }.
-    _project = getProject('EchuuCamera', {});
+    try {
+      // In production without @theatre/studio, getProject throws when no state
+      // is provided. Catch the error so the rest of the app keeps working.
+      _project = getProject('EchuuCamera', {});
+    } catch {
+      return null;
+    }
   }
+  if (!_project) return null;
   if (!_sheet) {
     _sheet = _project.sheet('MainCamera');
   }
@@ -58,6 +62,9 @@ export function TheatreCameraProvider({ children }: { children: React.ReactNode 
     }
   }, []);
 
+  // In production, Theatre.js may fail to initialize (no exported state).
+  // Fall through as a passthrough wrapper — camera choreography is dev-only.
+  if (!sheet) return <>{children}</>;
   return <SheetProvider sheet={sheet}>{children}</SheetProvider>;
 }
 
@@ -91,6 +98,7 @@ export function TheatreSequenceController() {
     prevRef.current = theatreSequencePlaying;
 
     const sheet = getOrCreateSheet();
+    if (!sheet) return;
     if (theatreSequencePlaying) {
       sheet.sequence.play({ iterationCount: 1 }).then(() => {
         setTheatreSequencePlaying(false);
