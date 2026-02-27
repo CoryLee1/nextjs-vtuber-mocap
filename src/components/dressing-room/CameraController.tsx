@@ -160,7 +160,7 @@ const CameraControllerComponent: React.FC<CameraControllerProps> = ({
         autoRotateSpeed={cameraSettings.autoRotateSpeed ?? orbit.autoRotateSpeed}
         mouseButtons={{
           LEFT: MOUSE.ROTATE,
-          MIDDLE: MOUSE.DOLLY,
+          MIDDLE: MOUSE.PAN,   // 中键平移（上下/左右），滚轮负责缩放
           RIGHT: MOUSE.ROTATE,
         }}
       />

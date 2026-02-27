@@ -29,6 +29,12 @@
 - `minPolarAngle`: 最小垂直角度（当前: `0`，即头顶）
 - `maxPolarAngle`: 最大垂直角度（当前: `Math.PI / 2`，即水平）
 
+**鼠标按钮映射：**
+- `LEFT`: 旋转（Orbit）
+- `MIDDLE`: 平移（Pan，上下/左右移动视角）
+- `RIGHT`: 旋转（Orbit）
+- `滚轮`: 缩放（Dolly）
+
 **其他：**
 - `target`: 旋转中心点（当前: `[0, 0.5, 0]`）
 - `enablePan`: 是否允许平移（当前: `true`）
