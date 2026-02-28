@@ -41,7 +41,7 @@ function toItem(filename: string, index: number, prefix: string): AnimationItem 
   return {
     id: `${prefix}_${index + 1}`,
     name,
-    url: getS3ObjectReadUrlByKey(`animations/${filename}`, { proxy: true }),
+    url: getS3ObjectReadUrlByKey(`animations/${filename}`),
   };
 }
 
@@ -80,7 +80,7 @@ export const IDLE_ROTATION_ANIMATIONS: AnimationItem[] = IDLE_ROTATION_FILENAMES
     return {
       id: `idle_rot_${name.replace(/\s+/g, '_')}`,
       name,
-      url: getS3ObjectReadUrlByKey(`animations/${filename}`, { proxy: true }),
+      url: getS3ObjectReadUrlByKey(`animations/${filename}`),
     };
   });
 
@@ -94,10 +94,10 @@ export const VTUBER_ANIMATION_CONFIG = {
 } as const;
 
 /** 默认使用的 idle 动画 URL（列表第一个，S3） */
-export const DEFAULT_IDLE_URL = IDLE_ANIMATIONS[0]?.url ?? getS3ObjectReadUrlByKey('animations/Idle.fbx', { proxy: true });
+export const DEFAULT_IDLE_URL = IDLE_ANIMATIONS[0]?.url ?? getS3ObjectReadUrlByKey('animations/Idle.fbx');
 
 /** 默认使用的 speaking 动画 URL（列表第一个，S3） */
-export const DEFAULT_SPEAKING_URL = SPEAKING_ANIMATIONS[0]?.url ?? getS3ObjectReadUrlByKey('animations/Talking.fbx', { proxy: true });
+export const DEFAULT_SPEAKING_URL = SPEAKING_ANIMATIONS[0]?.url ?? getS3ObjectReadUrlByKey('animations/Talking.fbx');
 
 /** 状态机用到的动画 URL 列表，用于预加载（idle 轮播 4 个 + speaking 1 个） */
 export const PRELOAD_ANIMATION_URLS: string[] = [
@@ -107,9 +107,9 @@ export const PRELOAD_ANIMATION_URLS: string[] = [
 
 /** 引导页步骤 1/2 预览动画 URL，需在 Loading 期间预加载 */
 export const ONBOARDING_PREVIEW_ANIMATION_URLS: string[] = [
-  getS3ObjectReadUrlByKey('animations/Standing Greeting (1).fbx', { proxy: true }),
-  getS3ObjectReadUrlByKey('animations/Thinking.fbx', { proxy: true }),
+  getS3ObjectReadUrlByKey('animations/Standing Greeting (1).fbx'),
+  getS3ObjectReadUrlByKey('animations/Thinking.fbx'),
 ];
 
-/** 引导页/占位用默认 3D 模型（透明背景预览、播 idle），按 S3 vrm/ 前缀约定，proxy 避免 302 */
-export const DEFAULT_PREVIEW_MODEL_URL = getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm', { proxy: true });
+/** 引导页/占位用默认 3D 模型（透明背景预览、播 idle），S3 桶内 vrm/ 文件夹 */
+export const DEFAULT_PREVIEW_MODEL_URL = getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm');

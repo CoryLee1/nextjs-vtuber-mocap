@@ -450,7 +450,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, bloomLuminanceSmoothing, setBloomLuminanceSmoothing, composerResolutionScale, setComposerResolutionScale, vignetteEnabled, setVignetteEnabled, vignetteOffset, setVignetteOffset, vignetteDarkness, setVignetteDarkness, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, bloomLuminanceSmoothing, setBloomLuminanceSmoothing, composerResolutionScale, setComposerResolutionScale, vignetteEnabled, setVignetteEnabled, vignetteOffset, setVignetteOffset, vignetteDarkness, setVignetteDarkness, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled, lutEnabled, setLutEnabled, lutUrl, setLutUrl, lutIntensity, setLutIntensity } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -562,6 +562,9 @@ export const StreamRoomSidebar = memo(({
         if (typeof parsed.handTrailEnabled === 'boolean') setHandTrailEnabled(parsed.handTrailEnabled);
         if (typeof parsed.avatarPositionY === 'number') setAvatarPositionY(parsed.avatarPositionY);
         if (typeof parsed.avatarGizmoEnabled === 'boolean') setAvatarGizmoEnabled(parsed.avatarGizmoEnabled);
+        if (typeof parsed.lutEnabled === 'boolean') setLutEnabled(parsed.lutEnabled);
+        if (typeof parsed.lutUrl === 'string') setLutUrl(parsed.lutUrl);
+        if (typeof parsed.lutIntensity === 'number') setLutIntensity(parsed.lutIntensity);
       } catch {
         // ignore invalid storage
       }
@@ -692,7 +695,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, bloomLuminanceSmoothing, composerResolutionScale, vignetteEnabled, vignetteOffset, vignetteDarkness, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled, avatarPositionY, avatarGizmoEnabled })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, bloomLuminanceSmoothing, composerResolutionScale, vignetteEnabled, vignetteOffset, vignetteDarkness, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled, avatarPositionY, avatarGizmoEnabled, lutEnabled, lutUrl, lutIntensity })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1443,6 +1446,46 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{(hue * (180 / Math.PI)).toFixed(0)}°</span>
               </div>
+
+              {/* LUT 调色 */}
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'LUT 调色' : 'LUT Color Grading'}</label>
+                <button
+                  type="button"
+                  onClick={() => setLutEnabled(!lutEnabled)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${lutEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${lutEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {lutEnabled && (
+                <>
+                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'LUT 预设' : 'LUT Preset'}</label>
+                  <select
+                    value={lutUrl}
+                    onChange={(e) => setLutUrl(e.target.value)}
+                    className="w-full h-8 rounded-md border border-slate-300 bg-white text-sm text-slate-800"
+                  >
+                    <option value="/lut/cinematic-warm.cube">{locale === 'zh' ? '电影暖色' : 'Cinematic Warm'}</option>
+                    <option value="/lut/neutral.cube">{locale === 'zh' ? '中性' : 'Neutral'}</option>
+                    <option value="/lut/anime-soft.cube">{locale === 'zh' ? '动漫柔和' : 'Anime Soft'}</option>
+                    <option value="/lut/cyberpunk.cube">{locale === 'zh' ? '赛博朋克' : 'Cyberpunk'}</option>
+                  </select>
+                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'LUT 强度' : 'LUT Intensity'}</label>
+                  <div className="flex items-center gap-2">
+                    <Slider
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={lutIntensity}
+                      onValueChange={setLutIntensity}
+                      showValue={false}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-slate-500 w-10 tabular-nums">{lutIntensity.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
 
               {/* 手部轨迹特效 */}
               <div className="flex items-center justify-between mt-1">

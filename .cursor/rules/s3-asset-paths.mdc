@@ -10,10 +10,10 @@ alwaysApply: true
 
 ## 路径规范
 
-- **模型（VRM）**：`vrm/` 前缀  
-  - 完整 S3 路径：`s3://nextjs-vtuber-assets/vrm/`  
-  - 代码里用 key 时：`vrm/模型名.vrm`（例如 `vrm/AvatarSample_A.vrm`）。  
-  - 通过 `getS3ObjectReadUrlByKey('vrm/xxx.vrm')` 或 API `/api/s3/read-object?key=vrm/xxx.vrm` 访问。
+- **模型（VRM）**：`vrm/` 或 **`models/`** 前缀（S3 桶内模型文件夹可为二者之一）  
+  - 完整 S3 路径：`s3://nextjs-vtuber-assets/vrm/` 或 `s3://nextjs-vtuber-assets/models/`  
+  - 代码里用 key 时：`vrm/模型名.vrm` 或 `models/模型名.vrm`（例如 `models/AvatarSample_A.vrm`）。  
+  - 默认预览模型当前使用 `models/AvatarSample_A.vrm`，通过 `getS3ObjectReadUrlByKey('models/xxx.vrm')` 或 API `/api/s3/read-object?key=models/xxx.vrm` 访问。
 
 - **动画（FBX）**：`animations/` 前缀  
   - 完整 S3 路径：`s3://nextjs-vtuber-assets/animations/`  

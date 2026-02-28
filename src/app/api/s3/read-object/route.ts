@@ -24,9 +24,10 @@ function normalizeKey(raw: string): string {
 
 function isAllowedKey(key: string): boolean {
   if (!key || key.includes('..')) return false;
-  // 仅允许读取常用资源前缀与历史根目录默认模型
+  // 仅允许读取常用资源前缀与历史根目录默认模型（models/ 为 S3 桶内模型文件夹）
   return (
     key.startsWith('vrm/') ||
+    key.startsWith('models/') ||
     key.startsWith('animations/') ||
     key.startsWith('bgm/') ||
     key.startsWith('hdr/') ||
@@ -37,7 +38,10 @@ function isAllowedKey(key: string): boolean {
 
 /** 预设资源 key：无需查库即可读 S3，避免 DB 未配置/未入库时 500 */
 const DEFAULT_READ_ALLOWED_KEYS = new Set<string>([
-  // VRM 样本模型及缩略图（resource-manager 内置）
+  // 默认预览模型（S3 桶内 models/ 文件夹，与 vrm/ 二选一）
+  'models/AvatarSample_A.vrm',
+  'models/AvatarSample_A_thumb.png',
+  // VRM 样本模型及缩略图（resource-manager 内置，vrm/ 前缀）
   'vrm/AvatarSample_A.vrm',
   'vrm/AvatarSample_A_thumb.png',
   'vrm/AvatarSample_B.vrm',
@@ -92,6 +96,24 @@ const DEFAULT_READ_ALLOWED_KEYS = new Set<string>([
 
 function isDefaultReadAllowedKey(key: string): boolean {
   return DEFAULT_READ_ALLOWED_KEYS.has(key);
+}
+
+/** 预设资源的 presigned URL 缓存，减少重复/并发请求时的 S3 签名延迟（TTL 50 分钟，小于 1 小时有效期） */
+const PRESIGNED_CACHE_TTL_MS = 50 * 60 * 1000;
+const presignedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+function getCachedPresignedUrl(resolvedKey: string): string | null {
+  const entry = presignedUrlCache.get(resolvedKey);
+  if (!entry || entry.expiresAt <= Date.now()) {
+    if (entry) presignedUrlCache.delete(resolvedKey);
+    return null;
+  }
+  return entry.url;
+}
+function setCachedPresignedUrl(resolvedKey: string, url: string): void {
+  presignedUrlCache.set(resolvedKey, {
+    url,
+    expiresAt: Date.now() + PRESIGNED_CACHE_TTL_MS,
+  });
 }
 
 /** 是否为图片 key：用于直接代理返回 body，避免 <img> 跟随 302 导致裂图 */
@@ -175,12 +197,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       credentials: { accessKeyId, secretAccessKey },
     });
 
-    // S3 key 格式回退：部分上传/存储用 + 表示空格，先试原始 key，失败再试 space↔+ 变体
+    // S3 key 格式回退：预设 key 只试一次；其他 key 失败再试 space↔+ 变体
     let resolvedKey = key;
+    const isDefaultKey = isDefaultReadAllowedKey(key);
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
       resolvedKey = key;
     } catch {
+      if (isDefaultKey) {
+        const encodedPath = key.split('/').map(encodeURIComponent).join('/');
+        const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
+        const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
+        fallbackResponse.headers.set('Cache-Control', 'no-store');
+        fallbackResponse.headers.set('x-s3-read-fallback', 'public-url');
+        return fallbackResponse;
+      }
       const keyWithPlus = key.replace(/ /g, '+');
       const keyWithSpaces = key.replace(/\+/g, ' ');
       const alternates = keyWithPlus !== key ? [keyWithPlus] : keyWithSpaces !== key ? [keyWithSpaces] : [];
@@ -231,13 +262,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 大文件或非 proxy 请求：presigned URL redirect
-    // 使用较长有效期（1 小时），配合浏览器缓存减少签名请求
-    const signedUrl = await getSignedUrl(
-      s3Client,
-      new GetObjectCommand({ Bucket: bucket, Key: resolvedKey }),
-      { expiresIn: 3600 }
-    );
+    // 大文件或非 proxy 请求：presigned URL redirect；预设 key 走内存缓存，减少 S3 签名延迟
+    let signedUrl: string;
+    if (isDefaultReadAllowedKey(resolvedKey)) {
+      const cached = getCachedPresignedUrl(resolvedKey);
+      if (cached) {
+        signedUrl = cached;
+      } else {
+        signedUrl = await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({ Bucket: bucket, Key: resolvedKey }),
+          { expiresIn: 3600 }
+        );
+        setCachedPresignedUrl(resolvedKey, signedUrl);
+      }
+    } else {
+      signedUrl = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({ Bucket: bucket, Key: resolvedKey }),
+        { expiresIn: 3600 }
+      );
+    }
 
     const response = NextResponse.redirect(signedUrl, { status: 302 });
     // 大资产 redirect 允许缓存 5 分钟（presigned URL 1 小时有效，5 分钟缓存安全）
@@ -245,7 +290,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return response;
   } catch (error) {
     // S3 请求失败时，如果 key 在白名单内则回退到公有 URL，避免完全不可用
-    const key = request.nextUrl.searchParams.get('key') || '';
+    const rawKey = request.nextUrl.searchParams.get('key') || '';
+    const key = normalizeKey(rawKey);
     if (isAllowedKey(key)) {
       const encodedPath = key.split('/').map(encodeURIComponent).join('/');
       const fallbackUrl = `${FALLBACK_PUBLIC_BASE.replace(/\/+$/, '')}/${encodedPath}`;

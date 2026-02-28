@@ -10,6 +10,7 @@ import {
   PRELOAD_ANIMATION_URLS,
 } from '@/config/vtuber-animations';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 
 /** 默认环境/背景图（与 MainScene DEFAULT_ENV_BACKGROUND_URL 一致） */
@@ -38,17 +39,21 @@ async function fetchAndCache(url: string): Promise<void> {
   }
 }
 
-const FALLBACK_PREVIEW_MODEL_URL = 'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm';
+/** 预加载失败时依次尝试：models/ 路径 → 桶根公有 URL */
+const FALLBACK_PREVIEW_MODEL_URLS = [
+  getS3ObjectReadUrlByKey('models/AvatarSample_A.vrm'),
+  'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
+];
 
-/** 预加载模型并写入 store 为 Object URL，引导页直接使用；主 URL 失败时尝试 fallback */
+/** 预加载模型并写入 store 为 Object URL，引导页直接使用；主 URL 失败时依次尝试 fallback 列表 */
 async function preloadPreviewModelAndStore(
   primaryUrl: string,
-  fallbackUrl: string,
+  fallbackUrls: string[],
   emitProgress: (p: number) => void
 ): Promise<void> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), PRELOAD_TIMEOUT_MS);
-  const urls = [primaryUrl, fallbackUrl].filter((u, i, arr) => arr.indexOf(u) === i);
+  const urls = [primaryUrl, ...fallbackUrls].filter((u, i, arr) => arr.indexOf(u) === i);
   try {
     let lastErr: unknown = null;
     for (const url of urls) {
@@ -109,10 +114,10 @@ export async function preloadCriticalAssets(options?: PreloadOptions): Promise<v
     img.src = DEFAULT_ENV_BACKGROUND_URL;
   });
 
-  // 默认 VRM：下载并转为 Object URL 写入 store，引导页直接用；vrm/ 失败时用公共 fallback
+  // 默认 VRM：下载并转为 Object URL 写入 store，引导页直接用；vrm/ 失败时依次试 models/、桶根
   const modelPreload = preloadPreviewModelAndStore(
     DEFAULT_PREVIEW_MODEL_URL,
-    FALLBACK_PREVIEW_MODEL_URL,
+    FALLBACK_PREVIEW_MODEL_URLS,
     emitProgress
   );
   // 引导页 3D 预览 FBX：优先预拉 Standing Greeting / Thinking，再拉 idle 轮播前 2 个
