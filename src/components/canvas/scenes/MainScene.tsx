@@ -9,6 +9,8 @@ import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } f
 import { EffectComposer, Bloom, BrightnessContrast, ToneMapping, HueSaturation, Vignette, ChromaticAberration, LUT } from '@react-three/postprocessing';
 import { ToneMappingMode, LUTCubeLoader } from 'postprocessing';
 import { Vector2 } from 'three';
+/** Shared zero Vector2 for disabled ChromaticAberration (avoid allocating per render) */
+const _zeroVec2 = new Vector2(0, 0);
 /** 加载 .cube LUT 文件并渲染 LUT 后处理；intensity 通过 blendMode.opacity 控制混合强度 */
 const LUTEffect = memo(({ url, intensity = 0.6 }: { url: string; intensity?: number }) => {
   const texture = useLoader(LUTCubeLoader as any, url);
@@ -18,7 +20,8 @@ const LUTEffect = memo(({ url, intensity = 0.6 }: { url: string; intensity?: num
       lutRef.current.blendMode.opacity.value = intensity;
     }
   }, [intensity]);
-  if (!texture) return null;
+  // NOTE: must never return null inside EffectComposer — causes addPass(null) crash
+  if (!texture) return <BrightnessContrast brightness={0} contrast={0} />;
   return <LUT ref={lutRef} lut={texture} tetrahedralInterpolation />;
 });
 LUTEffect.displayName = 'LUTEffect';
@@ -493,31 +496,24 @@ export const MainScene: React.FC = () => {
 
       {perfSettings.postProcessing && postProcessingEnabled && (
         <EffectComposer enableNormalPass={false} resolutionScale={composerResolutionScale}>
-          {bloomEnabled && (
-            <Bloom
-              luminanceThreshold={bloomThreshold}
-              luminanceSmoothing={bloomLuminanceSmoothing}
-              mipmapBlur
-              intensity={bloomIntensity}
-              radius={0.4}
-            />
-          )}
-          {vignetteEnabled && (
-            <Vignette offset={vignetteOffset} darkness={vignetteDarkness} />
-          )}
-          {chromaticEnabled && (
-            <ChromaticAberration offset={chromaticOffsetVec} radialModulation={false} modulationOffset={0} />
-          )}
+          {/* Always render all effects — use intensity/opacity 0 to disable.
+              Conditional {flag && <Effect>} returns false/null which crashes
+              EffectComposer's addPass (reads .alpha on null). */}
+          <Bloom
+            luminanceThreshold={bloomThreshold}
+            luminanceSmoothing={bloomLuminanceSmoothing}
+            mipmapBlur
+            intensity={bloomEnabled ? bloomIntensity : 0}
+            radius={0.4}
+          />
+          <Vignette offset={vignetteEnabled ? vignetteOffset : 0} darkness={vignetteEnabled ? vignetteDarkness : 0} />
+          <ChromaticAberration offset={chromaticEnabled ? chromaticOffsetVec : _zeroVec2} radialModulation={false} modulationOffset={0} />
           <BrightnessContrast
             brightness={brightness}
             contrast={contrast}
           />
           <HueSaturation hue={hue} saturation={saturation} />
-          {lutEnabled && (
-            <Suspense fallback={null}>
-              <LUTEffect url={lutUrl} intensity={lutIntensity} />
-            </Suspense>
-          )}
+          <LUTEffect url={lutUrl} intensity={lutEnabled ? lutIntensity : 0} />
           <ToneMapping mode={ToneMappingMode.REINHARD} exposure={toneMappingExposure} />
         </EffectComposer>
       )}
