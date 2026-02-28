@@ -514,7 +514,7 @@ export const MainScene: React.FC = () => {
           />
           <HueSaturation hue={hue} saturation={saturation} />
           <LUTEffect url={lutUrl} intensity={lutEnabled ? lutIntensity : 0} />
-          <ToneMapping mode={ToneMappingMode.REINHARD} exposure={toneMappingExposure} />
+          <ToneMapping mode={toneMappingMode === 'linear' ? ToneMappingMode.LINEAR : toneMappingMode === 'aces' ? ToneMappingMode.ACES_FILMIC : ToneMappingMode.REINHARD} exposure={toneMappingExposure} />
         </EffectComposer>
       )}
     </>
