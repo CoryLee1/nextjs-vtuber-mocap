@@ -29,10 +29,11 @@ let _project: ReturnType<typeof getProject> | null = null;
 let _sheet: ReturnType<ReturnType<typeof getProject>['sheet']> | null = null;
 
 function getOrCreateSheet() {
+  // Theatre.js camera choreography is dev-only; skip in production to avoid
+  // console errors from getProject() with empty state.
+  if (process.env.NODE_ENV !== 'development') return null;
   if (!_project) {
     try {
-      // In production without @theatre/studio, getProject throws when no state
-      // is provided. Catch the error so the rest of the app keeps working.
       _project = getProject('EchuuCamera', {});
     } catch {
       return null;

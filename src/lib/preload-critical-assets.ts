@@ -39,9 +39,9 @@ async function fetchAndCache(url: string): Promise<void> {
   }
 }
 
-/** 预加载失败时依次尝试：models/ 路径 → 桶根公有 URL */
+/** 预加载失败时依次尝试：桶根 key → 桶根公有 URL */
 const FALLBACK_PREVIEW_MODEL_URLS = [
-  getS3ObjectReadUrlByKey('models/AvatarSample_A.vrm'),
+  getS3ObjectReadUrlByKey('AvatarSample_A.vrm'),
   'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
 ];
 
