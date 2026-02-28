@@ -34,7 +34,7 @@ function getOrCreateSheet() {
   if (process.env.NODE_ENV !== 'development') return null;
   if (!_project) {
     try {
-      _project = getProject('EchuuCamera', {});
+      _project = getProject('EchuuCamera');
     } catch {
       return null;
     }
