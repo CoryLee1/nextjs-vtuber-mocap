@@ -284,6 +284,7 @@ export const MainScene: React.FC = () => {
     saturation,
     hue,
     toneMappingMode,
+    toneMappingExposure,
     lutEnabled,
     lutUrl,
     lutIntensity,

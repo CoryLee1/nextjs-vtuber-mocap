@@ -32,12 +32,13 @@ const ToneMappingSync = memo(function ToneMappingSync() {
  *
  * preserveDrawingBuffer=false 时 toBlob/toDataURL 是异步的，
  * 回调触发前 buffer 已被 swap/clear → 黑屏。
- * 解法：在 useFrame（帧渲染完毕、buffer swap 之前）用 gl.readPixels 同步读取，
- * 再画到离屏 canvas → toBlob 生成截图。
+ * 解法：在 useFrame 以 priority=2（EffectComposer 在 1）读取后处理完毕的帧缓冲。
+ * 不手动调 gl.render，直接读 EffectComposer 已渲染的最终画面。
  */
 const TakePhotoCapture = memo(function TakePhotoCapture() {
-  const { gl, scene, camera } = useThree();
+  const gl = useThree((s) => s.gl);
 
+  // priority=2: runs AFTER EffectComposer (priority=1), so framebuffer has post-processing
   useFrame(() => {
     const request = useSceneStore.getState().takePhotoRequest;
     if (request == null) return;
@@ -53,10 +54,7 @@ const TakePhotoCapture = memo(function TakePhotoCapture() {
     useSceneStore.getState().setTakePhotoRequest(null);
 
     try {
-      // Force a render so the current frame is in the buffer right now
-      gl.render(scene, camera);
-
-      // Synchronously read pixels from the GPU framebuffer
+      // Read pixels from the framebuffer AFTER post-processing has rendered
       const pixels = new Uint8Array(w * h * 4);
       const ctx2d = gl.getContext() as WebGL2RenderingContext;
       ctx2d.readPixels(0, 0, w, h, ctx2d.RGBA, ctx2d.UNSIGNED_BYTE, pixels);
@@ -87,7 +85,7 @@ const TakePhotoCapture = memo(function TakePhotoCapture() {
     } catch {
       // 静默失败，UI 可通过 lastCaptureBlobUrl 未变化判断
     }
-  });
+  }, 2); // priority 2 = after EffectComposer (1)
 
   return null;
 });
