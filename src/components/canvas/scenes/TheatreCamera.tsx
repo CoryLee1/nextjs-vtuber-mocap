@@ -15,25 +15,42 @@
  * 触发播放：useSceneStore().playTheatreSequence(true/false)
  */
 
-import React, { useEffect, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { getProject, val } from '@theatre/core';
-import { SheetProvider, PerspectiveCamera as TheatrePerspectiveCamera, editable as e } from '@theatre/r3f';
+import React, { useEffect, useRef, useState } from 'react';
+import { getProject } from '@theatre/core';
+import { SheetProvider, PerspectiveCamera as TheatrePerspectiveCamera } from '@theatre/r3f';
 import { useSceneStore } from '@/hooks/use-scene-store';
 
+// ─── Minimal project state (required when @theatre/studio is not loaded) ───────
+// Theatre.js throws when config.state is empty and Studio is not loaded.
+// This minimal state allows getProject to work without Studio.
+// To persist choreography, export from Studio and replace with imported JSON.
+const MINIMAL_STATE = {
+  sheetsById: {
+    MainCamera: {
+      instanceId: 'MainCamera',
+      sequence: {
+        type: 'Sequence',
+        length: 0,
+        subUnitsByUnit: {},
+        tracksByObject: {},
+      },
+      instances: {},
+    },
+  },
+} as const;
+
 // ─── Project / Sheet (module-level singletons) ────────────────────────────────
-// Initialized once; the project state is an empty object by default.
-// To persist/replay choreography, export state from Studio and replace `{}` with
-// the imported JSON: import state from '@/lib/theatre-camera-state.json'
 let _project: ReturnType<typeof getProject> | null = null;
 let _sheet: ReturnType<ReturnType<typeof getProject>['sheet']> | null = null;
 
-function getOrCreateSheet() {
+type ProjectConfig = { state?: typeof MINIMAL_STATE };
+
+function getOrCreateSheet(config?: ProjectConfig) {
   if (!_project) {
     try {
-      // In production without @theatre/studio, getProject throws when no state
-      // is provided. Catch the error so the rest of the app keeps working.
-      _project = getProject('EchuuCamera', {});
+      // Dev + Studio loaded: {} is OK. Prod or no Studio: need explicit state.
+      const cfg = config ?? { state: MINIMAL_STATE };
+      _project = getProject('EchuuCamera', cfg);
     } catch {
       return null;
     }
@@ -47,23 +64,27 @@ function getOrCreateSheet() {
 
 // ─── SheetProvider wrapper (must be inside R3F Canvas) ────────────────────────
 export function TheatreCameraProvider({ children }: { children: React.ReactNode }) {
-  const sheet = getOrCreateSheet();
+  // In dev: defer getProject until Studio is loaded (empty state is OK with Studio).
+  // In prod: call immediately with minimal state.
+  const [studioReady, setStudioReady] = useState(process.env.NODE_ENV !== 'development');
+  const sheet = studioReady
+    ? getOrCreateSheet(process.env.NODE_ENV === 'development' ? {} : { state: MINIMAL_STATE })
+    : null;
 
   useEffect(() => {
-    // Load Studio only in development; it's AGPL and heavy (~500KB).
-    // In production this block never runs (process.env.NODE_ENV is compile-time).
     if (process.env.NODE_ENV === 'development') {
-      import('@theatre/studio').then(({ default: studio }) => {
-        if (!(studio as any)._initialized) {
-          studio.initialize();
-          (studio as any)._initialized = true;
-        }
-      }).catch(() => {});
+      import('@theatre/studio')
+        .then(({ default: studio }) => {
+          if (!(studio as any)._initialized) {
+            studio.initialize();
+            (studio as any)._initialized = true;
+          }
+          setStudioReady(true);
+        })
+        .catch(() => setStudioReady(true));
     }
   }, []);
 
-  // In production, Theatre.js may fail to initialize (no exported state).
-  // Fall through as a passthrough wrapper — camera choreography is dev-only.
   if (!sheet) return <>{children}</>;
   return <SheetProvider sheet={sheet}>{children}</SheetProvider>;
 }
