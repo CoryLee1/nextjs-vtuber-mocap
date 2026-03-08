@@ -7,7 +7,7 @@ export interface ThemeSettings {
 
 export const useTheme = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>('dark');
-  const [primaryColor, setPrimaryColor] = useState('#0ea5e9');
+  const [primaryColor, setPrimaryColor] = useState('#B7FF7A');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // 加载保存的主题设置
@@ -106,7 +106,7 @@ export const useTheme = () => {
   const resetTheme = () => {
     const defaultTheme: ThemeSettings = {
       mode: 'dark',
-      primaryColor: '#0ea5e9'
+      primaryColor: '#B7FF7A'
     };
     
     setThemeMode(defaultTheme.mode);

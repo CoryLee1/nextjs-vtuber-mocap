@@ -4,7 +4,7 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-black text-white p-8 md:p-16 font-sans">
       <div className="max-w-3xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-[#EEFF00]">Terms of Service</h1>
+        <h1 className="text-3xl font-bold text-[#B7FF7A]">Terms of Service</h1>
         <p className="text-sm text-gray-400">Last Updated: February 24, 2026</p>
 
         <section className="space-y-4">
@@ -58,7 +58,7 @@ export default function TermsOfService() {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">6. Contact</h2>
           <p className="text-gray-300">
-            For any questions regarding these Terms, please contact us at: <a href="mailto:cory@anngel.live" className="text-[#EEFF00] hover:underline">cory@anngel.live</a>
+            For any questions regarding these Terms, please contact us at: <a href="mailto:cory@anngel.live" className="text-[#B7FF7A] hover:underline">cory@anngel.live</a>
           </p>
         </section>
       </div>

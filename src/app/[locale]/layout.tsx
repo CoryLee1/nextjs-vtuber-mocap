@@ -77,7 +77,7 @@ export default async function RootLayout({
 
     return (
       <html lang={locale} suppressHydrationWarning>
-        <body className={inter.className}>
+        <body className={`${inter.className} font-zen`}>
           <NextIntlClientProvider messages={messages}>
             <PostHogProvider>
               <ThemeProvider>
@@ -99,7 +99,7 @@ export default async function RootLayout({
     // 返回一个基本的错误页面
     return (
       <html lang="zh" suppressHydrationWarning>
-        <body className={inter.className}>
+        <body className={`${inter.className} font-zen`}>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-red-600 mb-4">加载错误</h1>

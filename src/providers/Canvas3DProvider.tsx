@@ -115,7 +115,20 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   /** 延迟挂载 Canvas，避免在 DOM/WebGL 未就绪时创建上下文导致 "Error creating WebGL context" */
   const [canvasMounted, setCanvasMounted] = useState(false);
   useEffect(() => {
-    setCanvasMounted(true);
+    if (typeof window === 'undefined') return;
+    // 双 rAF 确保布局完成后再创建 WebGL，避免 Strict Mode 或 DOM 未就绪导致的上下文创建失败
+    let cancelled = false;
+    const raf1 = requestAnimationFrame(() => {
+      if (cancelled) return;
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        setCanvasMounted(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+    };
   }, []);
 
   // Ctrl+P 切换性能监控面板显示

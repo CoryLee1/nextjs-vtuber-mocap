@@ -8,6 +8,9 @@ module.exports = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			zen: ['Zen Maru Gothic', 'sans-serif'],
+  		},
   		colors: {
   			vtuber: {
   				primary: '#3b82f6',
@@ -30,7 +33,12 @@ module.exports = {
   					'700': '#1d4ed8',
   					'800': '#1e40af',
   					'900': '#1e3a8a'
-  				}
+  				},
+  				// 品牌强调色 — 渐变色系
+  				neon: '#B7FF7A',          // Theme gradient start (黄绿)
+  				mint: '#8BFFEA',          // Theme gradient end (薄荷)
+  				glow: '#94F6FF',          // 内发光/边框光晕 (青)
+  				panel: '#B1DCE1',         // Side Panel 背景
   			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -112,6 +120,9 @@ module.exports = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
+  		},
+  		backgroundImage: {
+  			'theme-gradient': 'var(--theme-gradient)'
   		}
   	}
   },
