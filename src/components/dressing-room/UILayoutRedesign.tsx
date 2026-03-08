@@ -451,6 +451,8 @@ export const StreamRoomSidebar = memo(({
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<StreamRoomPanel>('character');
+  const [ribbonVisible, setRibbonVisible] = useState(false);
+  const sidebarHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [characterDraft, setCharacterDraft] = useState({
     characterName: echuuConfig.characterName,
     voice: echuuConfig.voice || 'Cherry',
@@ -638,6 +640,35 @@ export const StreamRoomSidebar = memo(({
     };
     load();
   }, [panelType, panelOpen]);
+
+  const clearSidebarHideTimer = useCallback(() => {
+    if (sidebarHideTimerRef.current) {
+      clearTimeout(sidebarHideTimerRef.current);
+      sidebarHideTimerRef.current = null;
+    }
+  }, []);
+
+  const startSidebarHideTimer = useCallback(() => {
+    clearSidebarHideTimer();
+    sidebarHideTimerRef.current = setTimeout(() => setRibbonVisible(false), 5000);
+  }, [clearSidebarHideTimer]);
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (typeof window === 'undefined') return;
+      const nearLeft = e.clientX < 40;
+      if (nearLeft) {
+        setRibbonVisible(true);
+        clearSidebarHideTimer();
+      }
+    };
+    window.addEventListener('mousemove', handleMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [clearSidebarHideTimer]);
+
+  useEffect(() => {
+    return () => clearSidebarHideTimer();
+  }, [clearSidebarHideTimer]);
 
   const handleOpenPanel = (type: StreamRoomPanel) => {
     if (panelOpen && panelType === type) {
@@ -838,12 +869,20 @@ export const StreamRoomSidebar = memo(({
     }
   };
 
+  const showRibbon = ribbonVisible || panelOpen;
+
   return (
     <>
-      <div 
-        className={`fixed left-[93px] top-1/2 -translate-y-1/2 z-40 pointer-events-auto transition-transform duration-300 ease-in-out ${
-          panelOpen ? 'translate-x-[480px]' : 'translate-x-0'
-        }`}
+      <div
+        className={cn(
+          'fixed left-[93px] top-1/2 -translate-y-1/2 z-40 transition-all duration-300 ease-out',
+          showRibbon ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none -translate-x-2',
+          showRibbon && panelOpen && 'translate-x-[480px]',
+          showRibbon && !panelOpen && 'translate-x-0'
+        )}
+        onMouseEnter={clearSidebarHideTimer}
+        onMouseLeave={startSidebarHideTimer}
+        onClick={clearSidebarHideTimer}
       >
         <div className="flex flex-col items-center justify-center gap-[10px]">
           <button
