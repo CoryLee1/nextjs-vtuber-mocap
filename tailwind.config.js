@@ -10,7 +10,6 @@ module.exports = {
   	extend: {
   		fontFamily: {
   			zen: ['Zen Maru Gothic', 'sans-serif'],
-  			pixel: ['var(--font-pixel)', 'cursive'],
   		},
   		colors: {
   			vtuber: {
