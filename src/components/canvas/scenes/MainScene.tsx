@@ -23,6 +23,7 @@ import { CameraController } from '@/components/dressing-room/CameraController';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { usePerformance } from '@/hooks/use-performance';
+import { useControls } from 'leva';
 import { TheatreCamera, TheatreSequenceController } from './TheatreCamera';
 
 // ─── Hand Trail Effect (drei Trail) ─────────────────────────────────────────
@@ -274,7 +275,37 @@ export const MainScene: React.FC = () => {
     setAvatarPositionY,
     avatarGizmoEnabled,
     setAvatarGizmoEnabled,
+    setEnvBackgroundRotation,
+    setEnvBackgroundIntensity,
   } = useSceneStore();
+
+  // Leva 面板：HDR/环境贴图旋转与强度，便于调试（与 store 同步，侧栏滑块也会生效）
+  const { rotation: hdrRotation, intensity: hdrIntensity } = useControls(
+    'HDR / 环境',
+    {
+      rotation: {
+        value: envBackgroundRotation,
+        min: 0,
+        max: 360,
+        step: 1,
+        label: '贴图旋转 (°)',
+      },
+      intensity: {
+        value: envBackgroundIntensity,
+        min: 0.1,
+        max: 3,
+        step: 0.05,
+        label: '强度',
+      },
+    },
+    { collapsed: true }
+  );
+  useEffect(() => {
+    setEnvBackgroundRotation(hdrRotation);
+  }, [hdrRotation, setEnvBackgroundRotation]);
+  useEffect(() => {
+    setEnvBackgroundIntensity(hdrIntensity);
+  }, [hdrIntensity, setEnvBackgroundIntensity]);
 
   const chromaticOffsetVec = useMemo(
     () => new Vector2(chromaticOffset, chromaticOffset * 0.1),
