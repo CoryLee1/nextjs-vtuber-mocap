@@ -105,6 +105,11 @@ const WebGLContextGuard = memo(function WebGLContextGuard() {
 export const SceneManager: React.FC = () => {
   const activeScene = useSceneStore((state) => state.activeScene);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[SceneManager] activeScene:', activeScene, '→ MainScene visible:', activeScene === 'main');
+  }, [activeScene]);
+
   return (
     <>
       <WebGLContextGuard />

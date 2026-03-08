@@ -137,7 +137,7 @@ export default function LoadingPage({
               }}
             />
             
-            {/* Mesh/Halo_Ring (光环) */}
+            {/* Mesh/Halo_Ring (光环) - 主题渐变色 */}
           <div 
             className="absolute"
             style={{
@@ -145,11 +145,12 @@ export default function LoadingPage({
               height: '49.84px',
               left: '9px',
               top: '41px',
-              border: '5px solid #B7FF7A',
+              border: '5px solid transparent',
               borderRadius: '50%',
               transform: 'matrix(0.68, -0.73, 0.73, 0.68, 0, 0)',
               boxSizing: 'border-box',
-              boxShadow: '0 0 20px rgba(183, 255, 122, 0.3)'
+              boxShadow: '0 0 20px rgba(183, 255, 122, 0.3)',
+              background: 'linear-gradient(transparent, transparent) padding-box, linear-gradient(to right, var(--theme-gradient-start) 0%, var(--theme-gradient-mid) 50%, var(--theme-gradient-end) 100%) border-box'
             }}
           />
         </div>
@@ -210,14 +211,15 @@ export default function LoadingPage({
               style={{ borderRadius: '19px' }}
             />
             
-            {/* Bar/Fill */}
+            {/* Bar/Fill - 主题渐变色 (horizontal for progress bar) */}
             <div 
-              className="absolute h-full bg-[#B7FF7A] "
+              className="absolute h-full"
               style={{ 
                 width: `${(progress / 100) * 190.5}px`, // Max width 190.5px
                 left: 'calc(50% - 190.5px/2 - 31.25px)', // Figma offset
                 borderRadius: '19px',
-                transition: 'width 0.3s ease-out'
+                transition: 'width 0.3s ease-out',
+                background: 'linear-gradient(to right, var(--theme-gradient-start) 0%, var(--theme-gradient-mid) 50%, var(--theme-gradient-end) 100%)'
               }}
             />
           </div>

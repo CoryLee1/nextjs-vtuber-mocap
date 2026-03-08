@@ -29,10 +29,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(url, {
       headers: { 'User-Agent': 'VTuberMocap-AvatarProxy/1' },
-      next: { revalidate: 3600 },
+      signal: controller.signal,
+      cache: 'force-cache',
     });
+    clearTimeout(timer);
     if (!res.ok) {
       return NextResponse.json({ error: 'Upstream fetch failed' }, { status: 502 });
     }
@@ -41,11 +45,23 @@ export async function GET(request: NextRequest) {
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        'Cache-Control': 'public, max-age=86400',
       },
     });
-  } catch (e) {
-    console.warn('Avatar proxy error:', e);
-    return NextResponse.json({ error: 'Proxy failed' }, { status: 502 });
+  } catch (e: any) {
+    const msg = e?.name === 'AbortError' ? 'timeout' : e?.message || 'unknown';
+    console.warn(`[avatar-proxy] ${msg} for ${url}`);
+    // Return a 1x1 transparent PNG so <img> doesn't break the page
+    const TRANSPARENT_PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAB' +
+      'Nl7BcQAAAABJRU5ErkJggg==',
+      'base64'
+    );
+    return new NextResponse(TRANSPARENT_PNG, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=300',
+      },
+    });
   }
 }

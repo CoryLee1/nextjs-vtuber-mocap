@@ -28,7 +28,7 @@ async function fetchAndCache(url: string): Promise<void> {
   const timer = window.setTimeout(() => controller.abort(), PRELOAD_TIMEOUT_MS);
 
   try {
-    const res = await fetch(url, { mode: 'cors', signal: controller.signal, cache: 'force-cache' });
+    const res = await fetch(url, { signal: controller.signal, cache: 'default' });
     if (!res.ok) {
       throw new Error(`preload failed: ${res.status}`);
     }
@@ -41,7 +41,7 @@ async function fetchAndCache(url: string): Promise<void> {
 
 /** 预加载失败时依次尝试：models/ 路径 → 桶根公有 URL */
 const FALLBACK_PREVIEW_MODEL_URLS = [
-  getS3ObjectReadUrlByKey('models/AvatarSample_A.vrm'),
+  getS3ObjectReadUrlByKey('models/AvatarSample_A.vrm', { proxy: true }),
   'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
 ];
 
@@ -58,7 +58,7 @@ async function preloadPreviewModelAndStore(
     let lastErr: unknown = null;
     for (const url of urls) {
       try {
-        const res = await fetch(url, { mode: 'cors', signal: controller.signal, cache: 'force-cache' });
+        const res = await fetch(url, { signal: controller.signal, cache: 'default' });
         if (!res.ok) throw new Error(`preload model: ${res.status}`);
         const blob = await res.blob();
         const objectUrl = URL.createObjectURL(blob);
@@ -115,8 +115,10 @@ export async function preloadCriticalAssets(options?: PreloadOptions): Promise<v
   });
 
   // 默认 VRM：下载并转为 Object URL 写入 store，引导页直接用；vrm/ 失败时依次试 models/、桶根
+  // 使用 proxy 模式避免 302 redirect 到 S3 导致的 CORS 问题
+  const primaryProxyUrl = getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm', { proxy: true });
   const modelPreload = preloadPreviewModelAndStore(
-    DEFAULT_PREVIEW_MODEL_URL,
+    primaryProxyUrl,
     FALLBACK_PREVIEW_MODEL_URLS,
     emitProgress
   );

@@ -31,7 +31,9 @@
       "Bash(node scripts/analyze-kawaii-fbx.mjs:*)",
       "Bash(node scripts/analyze-kawaii-threejs.mjs:*)",
       "Bash(node scripts/fbx-raw-strings.mjs:*)",
-      "Bash(node scripts/validate-kawaii-mapping.mjs:*)"
+      "Bash(node scripts/validate-kawaii-mapping.mjs:*)",
+      "Bash(find:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

@@ -195,7 +195,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
         <div className="flex items-center space-x-4">
           <img src="/logo.svg" alt="Echuu" className="w-10 h-10 rounded-xl object-contain" />
           <div className="flex flex-col">
-            <h1 className="font-pixel text-xl font-black bg-theme-gradient bg-clip-text text-transparent leading-none">Echuu</h1>
+            <h1 className="font-pixel text-xl font-black bg-theme-gradient bg-clip-text text-transparent leading-none mt-2">Echuu</h1>
             <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-1">AI Vtubing Platform</span>
           </div>
         </div>

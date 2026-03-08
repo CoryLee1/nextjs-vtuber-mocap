@@ -6,6 +6,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
+import { toS3ReadUrl } from '@/lib/s3-read-url';
 import { EffectComposer, BrightnessContrast, HueSaturation, ChromaticAberration } from '@react-three/postprocessing';
 import { Vector2 } from 'three';
 /** Shared zero Vector2 for disabled ChromaticAberration (avoid allocating per render) */
@@ -161,12 +162,13 @@ const GridFloor = memo(() => (
 // 2. 补光：左后 [-5,3,-5]，不投阴影
 // 3. 顶光：[0,10,0]，不投阴影
 // 4. 环境光：无方向（略提亮人物）
-const Lighting = memo(({ shadowMapSize = 512 }: { shadowMapSize?: number }) => (
+// 注：castShadow 与 shadow-bias/shadow-normalBias 需与 Canvas shadows 设置一致，避免 postprocessing RenderPass 中 shadowBias undefined 报错
+const Lighting = memo(({ shadowMapSize = 512, shadowsEnabled = true }: { shadowMapSize?: number; shadowsEnabled?: boolean }) => (
   <>
     <directionalLight
       intensity={1.5}
       position={[5, 5, 5]}
-      castShadow
+      castShadow={shadowsEnabled}
       shadow-mapSize-width={shadowMapSize}
       shadow-mapSize-height={shadowMapSize}
       shadow-camera-far={30}
@@ -174,6 +176,8 @@ const Lighting = memo(({ shadowMapSize = 512 }: { shadowMapSize?: number }) => (
       shadow-camera-right={8}
       shadow-camera-top={8}
       shadow-camera-bottom={-8}
+      shadow-bias={-0.0001}
+      shadow-normalBias={0.02}
       shadow-color="#ffffff"
     />
     <directionalLight intensity={0.75} position={[-5, 3, -5]} castShadow={false} />
@@ -336,9 +340,35 @@ export const MainScene: React.FC = () => {
   const defaultModelUrl = DEFAULT_PREVIEW_MODEL_URL;
   const defaultAnimationUrl = DEFAULT_IDLE_URL;
 
-  // DEBUG: 诊断模型 URL 解析
-  const resolvedModelUrl = vrmModelUrl || preloadedPreviewModelUrl || defaultModelUrl;
+  // 确保原始 S3 URL 转为 API 代理 URL（避免跨域 CORS 问题）
+  const safeModelUrl = vrmModelUrl ? toS3ReadUrl(vrmModelUrl) : vrmModelUrl;
+  const resolvedModelUrl = safeModelUrl || preloadedPreviewModelUrl || defaultModelUrl;
+
+  // DEBUG: 渲染诊断日志（排查「其他浏览器黑屏」）
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[MainScene] mount');
+    return () => console.log('[MainScene] unmount');
+  }, []);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[MainScene] isOnboardingActive:', isOnboardingActive, '→ VRM 渲染:', !isOnboardingActive);
+  }, [isOnboardingActive]);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[MainScene] 模型 URL:', resolvedModelUrl?.slice(0, 60) + '...');
+  }, [resolvedModelUrl]);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[MainScene] 后处理:', {
+      postProcessing: perfSettings.postProcessing,
+      postProcessingEnabled,
+      shadows: perfSettings.shadows,
+      EffectComposer渲染: perfSettings.postProcessing && postProcessingEnabled,
+    });
+  }, [perfSettings.postProcessing, postProcessingEnabled, perfSettings.shadows]);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
     console.log('[MainScene] Model URL resolution:', {
       vrmModelUrl,
       preloadedPreviewModelUrl: preloadedPreviewModelUrl ? '(blob)' : null,
@@ -382,8 +412,8 @@ export const MainScene: React.FC = () => {
       <TheatreCamera />
       <TheatreSequenceController />
 
-      {/* 优化的光照系统 — shadow map 尺寸由性能设置控制 */}
-      <Lighting shadowMapSize={perfSettings.shadowMapSize} />
+      {/* 优化的光照系统 — shadow map 尺寸由性能设置控制；shadows 关闭时禁用 castShadow 避免 postprocessing shadowBias undefined */}
+      <Lighting shadowMapSize={perfSettings.shadowMapSize} shadowsEnabled={perfSettings.shadows} />
 
       {/* 网格地板 */}
       <GridFloor />
@@ -412,7 +442,7 @@ export const MainScene: React.FC = () => {
               <Suspense fallback={<LoadingIndicator />}>
                 <VRMAvatar
                 ref={vrmRef}
-                modelUrl={vrmModelUrl || preloadedPreviewModelUrl || defaultModelUrl}
+                modelUrl={safeModelUrl || preloadedPreviewModelUrl || defaultModelUrl}
                 animationUrl={animationUrl || defaultAnimationUrl}
                 nextAnimationUrl={nextAnimationUrl}
                 scale={1}

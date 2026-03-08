@@ -114,6 +114,18 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [perfVisible, setPerfVisible] = useState(false);
   /** 延迟挂载 Canvas，避免在 DOM/WebGL 未就绪时创建上下文导致 "Error creating WebGL context" */
   const [canvasMounted, setCanvasMounted] = useState(false);
+
+  // 跨浏览器诊断：页面加载时输出环境信息，便于排查「其他浏览器黑屏」问题
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const coi = (window as any).crossOriginIsolated;
+    console.log('[Canvas] 环境:', {
+      userAgent: navigator.userAgent.slice(0, 80),
+      crossOriginIsolated: coi,
+      origin: window.location.origin,
+    });
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     // 双 rAF 确保布局完成后再创建 WebGL，避免 Strict Mode 或 DOM 未就绪导致的上下文创建失败
@@ -198,14 +210,18 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               canvasElement.style.pointerEvents = 'auto';
               canvasElement.style.touchAction = 'none'; // 防止触摸事件冲突
               
-              // 调试信息
+              // 调试信息（跨浏览器排查用）
               if (process.env.NODE_ENV === 'development') {
-                console.log('Canvas created:', {
-                  pointerEvents: canvasElement.style.pointerEvents,
-                  zIndex: window.getComputedStyle(canvasElement.parentElement!).zIndex,
+                const crossOriginIsolated = typeof window !== 'undefined' && (window as any).crossOriginIsolated;
+                console.log('[Canvas] WebGL 已创建:', {
+                  userAgent: navigator.userAgent,
+                  crossOriginIsolated,
                   width: canvasElement.width,
-                  height: canvasElement.height
+                  height: canvasElement.height,
                 });
+                if (!crossOriginIsolated) {
+                  console.warn('[Canvas] crossOriginIsolated=false，MediaPipe 可能异常。请确保使用 localhost（非 127.0.0.1）且 COEP/COOP 头生效。');
+                }
               }
             }}
           >

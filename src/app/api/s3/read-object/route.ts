@@ -200,11 +200,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // S3 key 格式回退：预设 key 只试一次；其他 key 失败再试 space↔+ 变体
     let resolvedKey = key;
     const isDefaultKey = isDefaultReadAllowedKey(key);
+    const isLargeAsset = /\.(vrm|fbx|glb|gltf|hdr)$/i.test(key);
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
       resolvedKey = key;
     } catch {
       if (isDefaultKey) {
+        // 大文件：直接用 key 尝试 GetObject 流式返回（避免 302 跨域 CORS 问题）
+        if (isLargeAsset) {
+          try {
+            const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+            const obj = await s3Client.send(getCmd);
+            if (obj.Body) {
+              const webStream = obj.Body.transformToWebStream();
+              const contentType = obj.ContentType || 'application/octet-stream';
+              const headers: Record<string, string> = {
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=3600',
+              };
+              if (obj.ContentLength != null) headers['Content-Length'] = String(obj.ContentLength);
+              return new Response(webStream as ReadableStream, { headers });
+            }
+          } catch { /* fall through to public URL redirect */ }
+        }
         const encodedPath = key.split('/').map(encodeURIComponent).join('/');
         const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
         const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
@@ -227,6 +245,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
       }
       if (!found) {
+        // 大文件：尝试直接 GetObject 流式返回，避免 302 redirect 跨域 CORS 问题
+        if (isLargeAsset) {
+          try {
+            const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+            const obj = await s3Client.send(getCmd);
+            if (obj.Body) {
+              const webStream = obj.Body.transformToWebStream();
+              const contentType = obj.ContentType || 'application/octet-stream';
+              const headers: Record<string, string> = {
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=3600',
+              };
+              if (obj.ContentLength != null) headers['Content-Length'] = String(obj.ContentLength);
+              return new Response(webStream as ReadableStream, { headers });
+            }
+          } catch { /* fall through to public URL redirect */ }
+        }
         const encodedPath = key.split('/').map(encodeURIComponent).join('/');
         const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
         const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
@@ -240,10 +275,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const isImage = isImageKey(resolvedKey);
     const isThumbKey = THUMB_SUFFIX_RE.test(resolvedKey);
 
-    // 大文件（VRM/FBX 等）：用长有效期 presigned URL redirect（避免 Node.js 内存 OOM）
     // 小文件（缩略图/图片）：直接代理 body（避免 <img> 302 跨域裂图）
-    const isLargeAsset = /\.(vrm|fbx|glb|gltf|hdr)$/i.test(resolvedKey);
-
     if ((isImage || proxyMode) && !isLargeAsset) {
       // 小文件走 proxy body
       const getCmd = new GetObjectCommand({ Bucket: bucket, Key: resolvedKey });
@@ -262,7 +294,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 大文件或非 proxy 请求：presigned URL redirect；预设 key 走内存缓存，减少 S3 签名延迟
+    // 大文件（VRM/FBX 等）：流式转发 S3 body，避免 302 redirect 跨域 CORS 问题
+    // transformToWebStream() 是流式传输，不会把整个文件读入内存（无 OOM 风险）
+    if (isLargeAsset) {
+      const getCmd = new GetObjectCommand({ Bucket: bucket, Key: resolvedKey });
+      const obj = await s3Client.send(getCmd);
+      if (!obj.Body) {
+        return NextResponse.json({ success: false, message: 'Empty object' }, { status: 404 });
+      }
+      const webStream = obj.Body.transformToWebStream();
+      const contentType = obj.ContentType || 'application/octet-stream';
+      const headers: Record<string, string> = {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+      };
+      if (obj.ContentLength != null) {
+        headers['Content-Length'] = String(obj.ContentLength);
+      }
+      return new Response(webStream as ReadableStream, { headers });
+    }
+
+    // 非大文件、非 proxy、非图片：presigned URL redirect
     let signedUrl: string;
     if (isDefaultReadAllowedKey(resolvedKey)) {
       const cached = getCachedPresignedUrl(resolvedKey);
@@ -285,8 +337,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     const response = NextResponse.redirect(signedUrl, { status: 302 });
-    // 大资产 redirect 允许缓存 5 分钟（presigned URL 1 小时有效，5 分钟缓存安全）
-    response.headers.set('Cache-Control', isLargeAsset ? 'public, max-age=300' : 'no-store');
+    response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (error) {
     // S3 请求失败时，如果 key 在白名单内则回退到公有 URL，避免完全不可用

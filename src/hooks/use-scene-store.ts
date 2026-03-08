@@ -4,6 +4,7 @@ import type { VRM } from '@pixiv/three-vrm';
 import type { CameraSettings } from '@/types/vtuber';
 import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
 import { DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
+import { toS3ReadUrl } from '@/lib/s3-read-url';
 
 /**
  * 场景类型
@@ -311,12 +312,14 @@ export const useSceneStore = create<SceneState>()(
     
     set({
       vrmModel: model,
-      vrmModelUrl: url,
+      // 确保 S3 URL 走 API 代理，避免跨域 CORS 问题
+      vrmModelUrl: url ? toS3ReadUrl(url) : url,
     });
   },
 
   setVRMModelUrl: (url: string) => {
-    set({ vrmModelUrl: url });
+    // 确保 S3 URL 走 API 代理，避免跨域 CORS 问题
+    set({ vrmModelUrl: url ? toS3ReadUrl(url) : url });
   },
 
   preloadedPreviewModelUrl: null,
@@ -514,7 +517,10 @@ export const useSceneStore = create<SceneState>()(
         // 仅持久化需要保存的配置，排除复杂对象和临时状态
         // Blob URLs are session-scoped; they become invalid after page reload.
         // Persist null so the app falls back to the default model on next load.
-        vrmModelUrl: state.vrmModelUrl?.startsWith('blob:') ? null : state.vrmModelUrl,
+        // Blob URLs 会失效；原始 S3 URL 转为 API 代理 URL 避免 CORS 问题
+        vrmModelUrl: state.vrmModelUrl?.startsWith('blob:') ? null
+          : state.vrmModelUrl ? toS3ReadUrl(state.vrmModelUrl)
+          : state.vrmModelUrl,
         echuuConfig: state.echuuConfig,
         cameraSettings: state.cameraSettings,
         debugSettings: state.debugSettings,
@@ -537,6 +543,16 @@ export const useSceneStore = create<SceneState>()(
         avatarPositionY: state.avatarPositionY,
         avatarGizmoEnabled: state.avatarGizmoEnabled,
       }),
+      // 恢复持久化数据时，修正旧的原始 S3 URL → API 代理 URL
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (state.vrmModelUrl && state.vrmModelUrl.startsWith('http')) {
+          const fixed = toS3ReadUrl(state.vrmModelUrl);
+          if (fixed !== state.vrmModelUrl) {
+            useSceneStore.setState({ vrmModelUrl: fixed });
+          }
+        }
+      },
     }
   )
 );
