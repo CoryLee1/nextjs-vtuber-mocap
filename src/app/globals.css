@@ -162,3 +162,17 @@
   background: var(--rdp-accent-background-color, hsl(217 91% 60%)) !important;
   color: var(--rdp-accent-foreground-color, #fff) !important;
 }
+
+/* 隐藏滚动条，保留滚动功能 */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+* {
+  scrollbar-width: none;
+}
+
+/* Leva 调试面板暂时隐藏 */
+#leva__root {
+  display: none !important;
+}
