@@ -86,11 +86,11 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --theme-gradient: linear-gradient(to bottom, #7dd956 0%, #5dd4c4 50%, #FFFFFF 100%);
-    --theme-gradient-start: #7dd956;
-    --theme-gradient-mid: #5dd4c4;
+    --theme-gradient: linear-gradient(to bottom, #B7FF7A 0%, #8BFFEA 50%, #FFFFFF 100%);
+    --theme-gradient-start: #B7FF7A;
+    --theme-gradient-mid: #8BFFEA;
     --theme-gradient-end: #FFFFFF;
-    --theme-stroke: #5dd4c4;
+    --theme-stroke: #8BFFEA;
     --primary: 90 70% 55%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 168 50% 45%;
