@@ -4,8 +4,16 @@ import React, { useRef, useEffect, memo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, CameraShake } from '@react-three/drei';
 import { Vector3, MOUSE } from 'three';
+import { useControls } from 'leva';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { ORBIT_CONTROLS_DEFAULTS, CAMERA_SHAKE_DEFAULTS } from '@/config/drei-camera-settings';
+
+/** 相机调试默认值（Leva panel 可实时调节） */
+const CAMERA_DEBUG_DEFAULTS = {
+  distance: 1.3,
+  height: 1.5,
+  targetY: 0.9,
+};
 
 /**
  * VRM 相机控制器（drei OrbitControls + CameraShake）
@@ -45,6 +53,17 @@ const CameraControllerComponent: React.FC<CameraControllerProps> = ({
   const controlsRef = useRef<any>(null);
   const { camera } = useThree();
   const vrmModel = useSceneStore((state) => state.vrmModel);
+
+  // Leva 相机调试面板（方便调节默认距离、高度、目标点）
+  const { distance, height, targetY } = useControls(
+    'Camera',
+    {
+      distance: { value: CAMERA_DEBUG_DEFAULTS.distance, min: 0.5, max: 5, step: 0.05, label: '距离' },
+      height: { value: CAMERA_DEBUG_DEFAULTS.height, min: 0.5, max: 3, step: 0.05, label: '高度' },
+      targetY: { value: CAMERA_DEBUG_DEFAULTS.targetY, min: 0, max: 2, step: 0.05, label: '目标Y' },
+    },
+    { collapsed: true }
+  );
   
   // PERF: 对象池，避免每帧创建新对象
   const tmpVec3 = useRef(new Vector3());
@@ -53,18 +72,18 @@ const CameraControllerComponent: React.FC<CameraControllerProps> = ({
   const updateInterval = 3; // 每 3 帧计算一次（节流，从 60fps 降到 20fps）
   const isInitialized = useRef(false);
 
-  // 初始化相机位置和鼠标按钮配置
+  // 初始化相机位置 + Leva 值变化时同步更新
   useEffect(() => {
-    if (controlsRef.current && camera && !isInitialized.current) {
-      // 设置初始相机位置（稍微向后，俯视角度，默认更靠近人物）
-      camera.position.set(0, 1.5, 1.8);
-      // OrbitControls 会自动设置 target
-      const initialTarget = new Vector3(0, 0.9, 0); // 初始目标点（VRM 胸部位置）
+    if (!camera) return;
+    // 设置相机位置（正对人物，Z 为距离）
+    camera.position.set(0, height, distance);
+    const initialTarget = new Vector3(0, targetY, 0);
+    targetPosition.current.copy(initialTarget);
+    if (controlsRef.current) {
       controlsRef.current.target.copy(initialTarget);
-      targetPosition.current.copy(initialTarget); // 初始化目标位置
-      isInitialized.current = true;
     }
-  }, [camera]);
+    isInitialized.current = true;
+  }, [camera, distance, height, targetY]);
 
   // 自动跟踪 VRM 头部骨骼（使用 lerp 平滑插值，节流计算）
   useFrame(() => {
