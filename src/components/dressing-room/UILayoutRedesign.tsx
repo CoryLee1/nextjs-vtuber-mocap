@@ -2159,9 +2159,19 @@ export const GoLiveButton = memo(() => {
         ) : null}
       </div>
 
-      {/* Bar: 最小 214×53，随文案宽度自适应；主题渐变色 #B7FF7A→#8BFFEA→#FFF，无勾边 */}
-      <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-theme-gradient rounded-[26.5px] flex items-center gap-0 outline-none border-0 ring-0">
-        {/* Go Live 外圈流光，提高可见性 */}
+      {/* Bar: 最小 214×53，随文案宽度自适应；主题渐变色 #B7FF7A→#8BFFEA→#FFF，流光描边 */}
+      <div className="relative p-[2px] rounded-[27px] min-w-[218px] w-max">
+        {/* 流光描边：旋转 conic-gradient */}
+        <div className="absolute inset-0 rounded-[27px] overflow-hidden pointer-events-none">
+          <div
+            className="absolute -left-1/2 -top-1/2 w-[200%] h-[200%] animate-border-flow"
+            style={{
+              background:
+                'conic-gradient(from 0deg, transparent 0deg, #B7FF7A 60deg, #8BFFEA 180deg, #FFFFFF 240deg, transparent 300deg)',
+            }}
+          />
+        </div>
+        <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-theme-gradient rounded-[26.5px] flex items-center gap-0 outline-none border-0 ring-0">
         <span
           aria-hidden
           className="absolute left-[3px] top-[5px] w-[44px] h-[44px] rounded-full bg-[#B7FF7A]/35 blur-[10px] animate-pulse pointer-events-none"
@@ -2217,6 +2227,7 @@ export const GoLiveButton = memo(() => {
         >
           {topic?.trim() || 'Stream Topic'}
         </span>
+        </div>
       </div>
       {startError ? (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 text-[10px] text-red-400">{startError}</div>

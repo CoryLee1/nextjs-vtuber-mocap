@@ -84,7 +84,8 @@ module.exports = {
   		animation: {
   			'fade-in-up': 'fadeInUp 1s ease-out forwards',
   			'fade-in-down': 'fadeInDown 1s ease-out forwards',
-  			float: 'float 3s ease-in-out infinite'
+  			float: 'float 3s ease-in-out infinite',
+  			'border-flow': 'spin 3s linear infinite'
   		},
   		keyframes: {
   			fadeInUp: {
