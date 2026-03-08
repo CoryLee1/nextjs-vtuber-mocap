@@ -54,9 +54,10 @@ const TakePhotoCapture = memo(function TakePhotoCapture() {
     useSceneStore.getState().setTakePhotoRequest(null);
 
     try {
+      const ctx2d = gl.getContext() as WebGL2RenderingContext;
+      if (ctx2d?.isContextLost?.()) return; // 避免 context lost 后 readPixels 抛错/未定义
       // Read pixels from the framebuffer AFTER post-processing has rendered
       const pixels = new Uint8Array(w * h * 4);
-      const ctx2d = gl.getContext() as WebGL2RenderingContext;
       ctx2d.readPixels(0, 0, w, h, ctx2d.RGBA, ctx2d.UNSIGNED_BYTE, pixels);
 
       // readPixels gives bottom-up rows; flip vertically into an ImageData
