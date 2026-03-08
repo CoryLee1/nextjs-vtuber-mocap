@@ -56,8 +56,8 @@ const CameraControllerComponent: React.FC<CameraControllerProps> = ({
   // 初始化相机位置和鼠标按钮配置
   useEffect(() => {
     if (controlsRef.current && camera && !isInitialized.current) {
-      // 设置初始相机位置（稍微向后，俯视角度）
-      camera.position.set(0, 1.5, 2.5);
+      // 设置初始相机位置（稍微向后，俯视角度，默认更靠近人物）
+      camera.position.set(0, 1.5, 1.8);
       // OrbitControls 会自动设置 target
       const initialTarget = new Vector3(0, 0.9, 0); // 初始目标点（VRM 胸部位置）
       controlsRef.current.target.copy(initialTarget);
