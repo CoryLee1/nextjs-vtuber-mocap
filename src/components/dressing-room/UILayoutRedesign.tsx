@@ -164,41 +164,41 @@ export const PowerToggle = memo(({
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
       <div className="flex items-center gap-4">
-        {/* 全站访问 + 在线人数 + 天使数 + 点赞：合并为一个胶囊 */}
+        {/* 全站访问 + 在线人数 + 天使数 + 点赞：合并为一个胶囊，与 CONTACT 上下对齐 */}
         <div
-          className="flex items-center gap-3 px-5 py-2.5 rounded-full border-2 border-[#8BFFEA]/40 transition-all duration-500 bg-white text-slate-800 scale-105 shadow-[inset_0_0_40px_rgba(148,246,255,0.35)]"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/40 transition-all duration-500 bg-white text-slate-800 shadow-[inset_0_0_40px_rgba(148,246,255,0.35)]"
           title={locale === 'zh' ? '本站访问 · 当前在线 · 已加入天使数 · 点赞' : 'Views · Online · Angels joined · Like'}
         >
-          <Eye className="w-4 h-4 shrink-0 text-slate-500" aria-hidden />
-          <span className="text-xs font-black uppercase tracking-widest text-slate-500">
+          <Eye className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">
             {locale === 'zh' ? '访问' : 'VIEWS'}
           </span>
           <span className="text-xs font-black tabular-nums text-slate-800">
             {viewCount === null ? '—' : viewCount.toLocaleString()}
           </span>
-          <span className="w-px h-4 bg-slate-300" aria-hidden />
+          <span className="w-px h-3.5 bg-slate-300" aria-hidden />
           <Circle
             className={cn(
-              "w-2.5 h-2.5 shrink-0",
+              "w-2 h-2 shrink-0",
               connectionState === 'connected' ? "fill-[#8BFFEA] text-[#8BFFEA] animate-pulse" : "text-slate-400"
             )}
             aria-hidden
           />
-          <span className="text-xs font-black uppercase tracking-widest text-slate-500">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
           <span className="text-xs font-black tabular-nums text-slate-800">{onlineCount}</span>
-          <span className="w-px h-4 bg-slate-300" aria-hidden />
-          <SparklesIcon className="w-4 h-4 shrink-0 text-slate-500" aria-hidden />
-          <span className="text-xs font-black uppercase tracking-widest text-slate-500">{locale === 'zh' ? '天使' : 'ANGELS'}</span>
+          <span className="w-px h-3.5 bg-slate-300" aria-hidden />
+          <SparklesIcon className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">{locale === 'zh' ? '天使' : 'ANGELS'}</span>
           <span className="text-xs font-black tabular-nums text-slate-800">
             {angelCount === null ? '—' : angelCount.toLocaleString()}
           </span>
-          <span className="w-px h-4 bg-slate-300" aria-hidden />
+          <span className="w-px h-3.5 bg-slate-300" aria-hidden />
           <button
             onClick={() => setLikeCount((c) => c + 1)}
-            className="flex items-center gap-2 px-2 py-1 rounded-full text-[#636363] hover:bg-[#8BFFEA]/20 hover:scale-105 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[#636363] hover:bg-[#8BFFEA]/20 hover:scale-105 active:scale-95 transition-all"
             title={locale === 'zh' ? '点赞' : 'Like'}
           >
-            <Heart className="w-4 h-4 fill-current" />
+            <Heart className="w-3.5 h-3.5 fill-current" />
             <span className="text-xs font-black tabular-nums">{likeCount > 0 ? likeCount : (locale === 'zh' ? '点赞' : 'LIKE')}</span>
           </button>
         </div>
