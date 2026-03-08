@@ -15,7 +15,7 @@
 ### 1.2 本项目 R3F 架构要点
 
 - **主 Canvas**：由 `Canvas3DProvider` 在 layout 层创建，单例、持久化，内部为 `SceneManager` → `MainScene`（VRMAvatar、光照、后处理、截帧等）。
-- **第二/第三 Canvas**：引导页 `OnboardingModelPreview` 内嵌独立 Canvas；`PixelTrail`（以及 blocks 内 `PixelTrail`）可能再开一层 Canvas。主场景通过 `isOnboardingActive` 在引导页显示时**不渲染 VRMAvatar**，避免两个 Canvas 争用同一 VRM 实例，但**仍存在多 WebGL 上下文同时存在**的情况。
+- **第二 Canvas**：引导页 `OnboardingModelPreview` 内嵌独立 Canvas。主场景通过 `isOnboardingActive` 在引导页显示时**不渲染 VRMAvatar**，避免两个 Canvas 争用同一 VRM 实例，但**两个 WebGL 上下文可同时存在**。
 
 ---
 
@@ -39,12 +39,8 @@
 |------|------|------|
 | 主场景 | `Canvas3DProvider` → 单 Canvas | 主 3D 场景、VRM、后处理、截帧 |
 | 引导页预览 | `OnboardingModelPreview.tsx` → `PreviewCanvasInner` | 独立 `<Canvas>`，`frameloop="always"`，加载 VRM + FBX 预览；与主场景通过 `isOnboardingActive` 互斥渲染 VRM，但**两个 WebGL 上下文可同时存在** |
-| 手部轨迹特效 | `src/components/effects/PixelTrail.tsx` | 独立 `<Canvas>`，轻量（alpha、无 AA、无 depth），用于轨迹层 |
-| Blocks 动画 | `src/blocks/Animations/PixelTrail/PixelTrail.tsx` | 若与主应用同屏使用，会再增加一个 Canvas |
 
-**建议**：  
-- 引导页关闭时尽快卸载 `OnboardingModelPreview` 的 Canvas，避免长时间双上下文。  
-- PixelTrail 类特效若与主场景可合并为同一 Canvas 内的一层（例如主 Canvas 内叠加透明层），可减少上下文数量。
+**建议**：引导页关闭时尽快卸载 `OnboardingModelPreview` 的 Canvas，避免长时间双上下文。
 
 ### 3.2 readPixels 与截帧（Context Lost 时必败）
 
@@ -80,7 +76,7 @@
 ### 3.5 资源释放与 dispose
 
 - **VRM 切换/卸载**：`use-scene-store` 的 `setVRMModel` 与 VRMAvatar 内对 `disposeCurrentVRM()` 已包 try/catch，避免 dispose 抛错导致状态不一致。  
-- **场景卸载**：主 Canvas 不随路由卸载，因此不会因频繁创建/销毁 WebGL 上下文而触发 context lost；第二 Canvas（引导、PixelTrail）在组件卸载时会销毁对应上下文，属预期行为。
+- **场景卸载**：主 Canvas 不随路由卸载，因此不会因频繁创建/销毁 WebGL 上下文而触发 context lost；第二 Canvas（引导页预览）在组件卸载时会销毁对应上下文，属预期行为。
 
 ---
 
@@ -94,8 +90,7 @@
    将 `bone.getWorldPosition(new Vector3())` 改为使用 ref 复用的 Vector3，或在非渲染路径（如 useFrame）中更新位置并存入 ref/state，再用于 JSX，避免在 render 中每骨每帧分配。
 
 3. **多 Canvas 策略**  
-   - 产品上确保引导页关闭后尽快卸载预览 Canvas。  
-   - 若未来将 PixelTrail 等特效并入主 Canvas 的一层，可减少 WebGL 上下文数量，降低 context 数量触顶风险。
+   产品上确保引导页关闭后尽快卸载预览 Canvas，避免长时间双上下文。
 
 4. **文档与排查**  
    - 出现“黑屏/闪退”时，除查看 `[WebGLContextGuard] context lost` 日志外，可检查：  
@@ -114,6 +109,5 @@
 | Canvas 与错误边界 | `src/providers/Canvas3DProvider.tsx` |
 | 主场景与截帧 | `src/components/canvas/SceneManager.tsx`，`src/components/canvas/scenes/MainScene.tsx` |
 | 引导页预览 Canvas | `src/components/dressing-room/OnboardingModelPreview.tsx` |
-| 手部轨迹 Canvas | `src/components/effects/PixelTrail.tsx`，`src/blocks/Animations/PixelTrail/PixelTrail.tsx` |
 | useFrame/渲染逻辑 | `VRMController.tsx`，`VRMAvatar.tsx`，`BoneVisualizer.tsx`，`DebugHelpers.tsx`，`MainScene.tsx`，`ConstellationParticles.tsx` |
 | 场景加载与优化 | `docs/scene-loading-optimization.md` |

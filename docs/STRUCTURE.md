@@ -35,10 +35,7 @@ nextjs-vtuber-mocap/
 │   │   ├── layout.tsx                # 根布局
 │   │   └── page.tsx                  # 根页面
 │   │
-│   ├── blocks/                       # 动画块组件
-│   │   └── Animations/
-│   │       └── PixelTrail/
-│   │           └── PixelTrail.tsx
+│   ├── blocks/                       # 动画块组件（可选）
 │   │
 │   ├── components/                    # React 组件
 │   │   ├── debug/                    # 调试组件
