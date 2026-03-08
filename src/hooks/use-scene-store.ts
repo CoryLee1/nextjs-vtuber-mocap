@@ -6,6 +6,9 @@ import type { EchuuCue } from '@/lib/echuu-vrm-bridge';
 import { DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
 import { toS3ReadUrl } from '@/lib/s3-read-url';
 
+/** Phase 4: 首屏 rehydration 只恢复这些字段，其余在 requestIdleCallback 中延迟恢复 */
+const PERSIST_CRITICAL_KEYS = ['vrmModelUrl', 'cameraSettings'] as const;
+
 /**
  * 场景类型
  */
@@ -304,12 +307,16 @@ export const useSceneStore = create<SceneState>()(
   setAnimationStateMachinePaused: (paused: boolean) => set({ animationStateMachinePaused: paused }),
 
   setVRMModel: (model: VRM, url: string) => {
-    // 如果已有模型，先释放旧模型
     const currentModel = get().vrmModel;
     if (currentModel && currentModel !== model) {
-      get().disposeCurrentVRM();
+      try {
+        get().disposeCurrentVRM();
+      } catch (e) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[setVRMModel] disposeCurrentVRM 异常，继续写入新模型', e);
+        }
+      }
     }
-    
     set({
       vrmModel: model,
       // 确保 S3 URL 走 API 代理，避免跨域 CORS 问题
@@ -543,7 +550,36 @@ export const useSceneStore = create<SceneState>()(
         avatarPositionY: state.avatarPositionY,
         avatarGizmoEnabled: state.avatarGizmoEnabled,
       }),
-      // 恢复持久化数据时，修正旧的原始 S3 URL → API 代理 URL
+      // Phase 4: 首屏只恢复关键字段，次要字段在 requestIdleCallback 中延迟恢复，减少同步阻塞
+      storage: (() => {
+        const name = 'vtuber-scene-storage';
+        return {
+          getItem: (key: string) => {
+            if (typeof window === 'undefined') return null;
+            try {
+              const raw = window.localStorage.getItem(key);
+              if (!raw) return null;
+              const full = JSON.parse(raw) as Record<string, unknown>;
+              const critical: Record<string, unknown> = {};
+              for (const k of PERSIST_CRITICAL_KEYS) {
+                if (Object.prototype.hasOwnProperty.call(full, k)) critical[k] = full[k];
+              }
+              return JSON.stringify(critical);
+            } catch {
+              return null;
+            }
+          },
+          setItem: (key: string, value: string) => {
+            if (typeof window === 'undefined') return;
+            window.localStorage.setItem(key, value);
+          },
+          removeItem: (key: string) => {
+            if (typeof window === 'undefined') return;
+            window.localStorage.removeItem(key);
+          },
+        };
+      })(),
+      // 恢复持久化数据时，修正旧的原始 S3 URL → API 代理 URL；并调度延迟恢复次要字段
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         if (state.vrmModelUrl && state.vrmModelUrl.startsWith('http')) {
@@ -551,6 +587,26 @@ export const useSceneStore = create<SceneState>()(
           if (fixed !== state.vrmModelUrl) {
             useSceneStore.setState({ vrmModelUrl: fixed });
           }
+        }
+        // Phase 4: 空闲时恢复其余持久化字段，不阻塞首屏
+        if (typeof window === 'undefined') return;
+        const runDeferred = () => {
+          try {
+            const raw = window.localStorage.getItem('vtuber-scene-storage');
+            if (!raw) return;
+            const full = JSON.parse(raw) as Record<string, unknown>;
+            const deferred: Record<string, unknown> = {};
+            const criticalSet = new Set(PERSIST_CRITICAL_KEYS);
+            for (const k of Object.keys(full)) {
+              if (!criticalSet.has(k as typeof PERSIST_CRITICAL_KEYS[number])) deferred[k] = full[k];
+            }
+            if (Object.keys(deferred).length > 0) useSceneStore.setState(deferred);
+          } catch { /* ignore */ }
+        };
+        if (typeof requestIdleCallback === 'function') {
+          requestIdleCallback(runDeferred, { timeout: 2000 });
+        } else {
+          setTimeout(runDeferred, 100);
         }
       },
     }

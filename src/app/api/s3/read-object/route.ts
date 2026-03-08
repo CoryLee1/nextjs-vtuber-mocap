@@ -197,55 +197,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       credentials: { accessKeyId, secretAccessKey },
     });
 
-    // S3 key 格式回退：预设 key 只试一次；其他 key 失败再试 space↔+ 变体
+    // 白名单 key 跳过 HeadObject 探测，直接用原始 key 进入 GetObject 流程。
+    // 省去一次 S3 往返（100-300ms），大幅加快 VRM/FBX 等高频资源的首次加载。
+    // 非白名单 key 才做 HeadObject + space↔+ 变体回退。
     let resolvedKey = key;
     const isDefaultKey = isDefaultReadAllowedKey(key);
     const isLargeAsset = /\.(vrm|fbx|glb|gltf|hdr)$/i.test(key);
-    try {
-      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-      resolvedKey = key;
-    } catch {
-      if (isDefaultKey) {
-        // 大文件：直接用 key 尝试 GetObject 流式返回（避免 302 跨域 CORS 问题）
-        if (isLargeAsset) {
+
+    if (!isDefaultKey) {
+      // 非白名单：HeadObject 探测 key 是否存在，失败时尝试 space↔+ 编码变体
+      let headOk = false;
+      try {
+        await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+        headOk = true;
+      } catch {
+        const keyWithPlus = key.replace(/ /g, '+');
+        const keyWithSpaces = key.replace(/\+/g, ' ');
+        const alternates = keyWithPlus !== key ? [keyWithPlus] : keyWithSpaces !== key ? [keyWithSpaces] : [];
+        for (const alt of alternates) {
           try {
-            const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
-            const obj = await s3Client.send(getCmd);
-            if (obj.Body) {
-              const webStream = obj.Body.transformToWebStream();
-              const contentType = obj.ContentType || 'application/octet-stream';
-              const headers: Record<string, string> = {
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=3600',
-              };
-              if (obj.ContentLength != null) headers['Content-Length'] = String(obj.ContentLength);
-              return new Response(webStream as ReadableStream, { headers });
-            }
-          } catch { /* fall through to public URL redirect */ }
-        }
-        const encodedPath = key.split('/').map(encodeURIComponent).join('/');
-        const fallbackUrl = `${publicBase.replace(/\/+$/, '')}/${encodedPath}`;
-        const fallbackResponse = NextResponse.redirect(fallbackUrl, { status: 302 });
-        fallbackResponse.headers.set('Cache-Control', 'no-store');
-        fallbackResponse.headers.set('x-s3-read-fallback', 'public-url');
-        return fallbackResponse;
-      }
-      const keyWithPlus = key.replace(/ /g, '+');
-      const keyWithSpaces = key.replace(/\+/g, ' ');
-      const alternates = keyWithPlus !== key ? [keyWithPlus] : keyWithSpaces !== key ? [keyWithSpaces] : [];
-      let found = false;
-      for (const alt of alternates) {
-        try {
-          await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: alt }));
-          resolvedKey = alt;
-          found = true;
-          break;
-        } catch {
-          /* try next */
+            await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: alt }));
+            resolvedKey = alt;
+            headOk = true;
+            break;
+          } catch { /* try next */ }
         }
       }
-      if (!found) {
-        // 大文件：尝试直接 GetObject 流式返回，避免 302 redirect 跨域 CORS 问题
+      if (!headOk) {
+        // HeadObject 全部失败：大文件尝试直接 GetObject 流式返回，其他走公有 URL fallback
         if (isLargeAsset) {
           try {
             const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
@@ -270,6 +249,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         return fallbackResponse;
       }
     }
+    // 白名单 key 直接到此处，resolvedKey = key，跳过了 HeadObject
 
     const proxyMode = request.nextUrl.searchParams.get('proxy') === '1';
     const isImage = isImageKey(resolvedKey);

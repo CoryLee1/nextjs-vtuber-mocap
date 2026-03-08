@@ -130,13 +130,13 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         ? cachedVRMModel
         : userData?.vrm;
 
-    // 当新模型加载完成时，缓存到 store
+    // 当新模型加载完成时，缓存到 store（try/catch 隔离：单次失败不冒泡、不留下半更新状态）
     useEffect(() => {
-        if (userData?.vrm && modelUrl) {
+        if (!userData?.vrm || !modelUrl) return;
+        try {
             const vrmUuid = userData.vrm.scene?.uuid || 'unknown';
             const isLocalModel = !modelUrl.startsWith('http');
-            
-            // 如果 URL 改变，先释放旧模型
+
             if (cachedVRMModel && cachedVRMModelUrl && cachedVRMModelUrl !== modelUrl) {
                 if (process.env.NODE_ENV === 'development') {
                     console.log('🔄 VRMAvatar: 检测到模型 URL 变化，释放旧模型', {
@@ -148,8 +148,7 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                 }
                 disposeCurrentVRM();
             }
-            
-            // 如果模型未缓存或 URL 改变，缓存新模型
+
             if (!cachedVRMModel || cachedVRMModelUrl !== modelUrl) {
                 if (process.env.NODE_ENV === 'development') {
                     console.log('💾 VRMAvatar: 缓存新模型到 store', {
@@ -162,7 +161,6 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                 }
                 setVRMModel(userData.vrm, modelUrl);
             } else {
-                // 即使 URL 相同，也检查 VRM 实例是否真的相同
                 const cachedUuid = cachedVRMModel.scene?.uuid;
                 if (cachedUuid !== vrmUuid) {
                     if (process.env.NODE_ENV === 'development') {
@@ -176,8 +174,20 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
                     setVRMModel(userData.vrm, modelUrl);
                 }
             }
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+                console.error('[VRMAvatar] 缓存到 store 失败，保持状态一致', { modelUrl, error });
+            }
+            disposeCurrentVRM();
         }
     }, [userData?.vrm, modelUrl, cachedVRMModel, cachedVRMModelUrl, setVRMModel, disposeCurrentVRM]);
+
+    // 当前 URL 加载报错时，清空该 URL 在 store 的缓存，避免继续使用旧的成功实例造成错觉
+    useEffect(() => {
+        if (errors && modelUrl && cachedVRMModelUrl === modelUrl) {
+            disposeCurrentVRM();
+        }
+    }, [errors, modelUrl, cachedVRMModelUrl, disposeCurrentVRM]);
 
     // 动画管理器 - 移到vrm加载之后
     const {

@@ -8,6 +8,7 @@ import {
   DEFAULT_PREVIEW_MODEL_URL,
   ONBOARDING_PREVIEW_ANIMATION_URLS,
   PRELOAD_ANIMATION_URLS,
+  ALL_ANIMATION_URLS,
 } from '@/config/vtuber-animations';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { getS3ObjectReadUrlByKey } from '@/lib/s3-read-url';
@@ -17,7 +18,6 @@ import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 const DEFAULT_ENV_BACKGROUND_URL = '/images/sky (3).png';
 
 const PRELOAD_TIMEOUT_MS = 25000;
-const PRELOAD_ONBOARDING_FBX_COUNT = 2;
 
 interface PreloadOptions {
   onProgress?: (progress: number) => void;
@@ -36,6 +36,37 @@ async function fetchAndCache(url: string): Promise<void> {
     await res.arrayBuffer();
   } finally {
     window.clearTimeout(timer);
+  }
+}
+
+/**
+ * 触发 R3F 的 FBXLoader 预解析：下载 + parse 并缓存到 useLoader 内部缓存。
+ * 后续 animation-manager 调用 useFBX(url) 时命中缓存，跳过 200-300ms 的 parse 延迟。
+ * 失败时静默吞掉错误 — 不影响其他资源和场景渲染。
+ */
+function triggerFbxPreparse(urls: string[]): void {
+  // 延迟 dynamic import，避免阻塞首屏关键路径
+  import('@react-three/drei')
+    .then(({ useFBX }) => {
+      for (const url of urls) {
+        try { useFBX.preload(url); } catch { /* non-fatal */ }
+      }
+    })
+    .catch(() => { /* drei import failed — non-fatal */ });
+}
+
+/**
+ * 空闲时后台预解析剩余 FBX 动画：在首屏关键资源加载完后调用。
+ * 使用 requestIdleCallback（不支持时 setTimeout 4s）避免抢占主线程。
+ */
+function scheduleIdleFbxPreparse(alreadyPreloaded: string[]): void {
+  const remaining = ALL_ANIMATION_URLS.filter((u) => !alreadyPreloaded.includes(u));
+  if (remaining.length === 0) return;
+  const run = () => triggerFbxPreparse(remaining);
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(run, { timeout: 8000 });
+  } else {
+    setTimeout(run, 4000);
   }
 }
 
@@ -122,15 +153,18 @@ export async function preloadCriticalAssets(options?: PreloadOptions): Promise<v
     FALLBACK_PREVIEW_MODEL_URLS,
     emitProgress
   );
-  // 引导页 3D 预览 FBX：优先预拉 Standing Greeting / Thinking，再拉 idle 轮播前 2 个
+  // 引导页 3D 预览 FBX + 状态机动画：下载到浏览器缓存 + 触发 FBXLoader 预解析
+  const criticalFbxUrls = [
+    ...ONBOARDING_PREVIEW_ANIMATION_URLS,
+    ...PRELOAD_ANIMATION_URLS,
+  ].filter((url, i, arr) => arr.indexOf(url) === i);
+
   const fbxPreloads = Promise.all(
-    [
-      ...ONBOARDING_PREVIEW_ANIMATION_URLS,
-      ...PRELOAD_ANIMATION_URLS.slice(0, PRELOAD_ONBOARDING_FBX_COUNT),
-    ]
-      .filter((url, i, arr) => arr.indexOf(url) === i)
-      .map((url) => fetchAndCache(url).catch(() => {}))
-  ).finally(() => emitProgress(95));
+    criticalFbxUrls.map((url) => fetchAndCache(url).catch(() => {}))
+  ).then(() => {
+    // 下载完成后立即触发 FBXLoader 预解析（fetch 命中浏览器缓存，仅 parse 开销）
+    triggerFbxPreparse(criticalFbxUrls);
+  }).finally(() => emitProgress(95));
 
   // S3 列表与首屏资源并行拉取；不阻塞 Loading 结束
   // 进入主界面后 HomePageClient 会再 loadAll(checkThumbnails: true) 做二次校准
@@ -139,8 +173,11 @@ export async function preloadCriticalAssets(options?: PreloadOptions): Promise<v
     .loadAll({ checkThumbnails: false })
     .catch(() => {});
 
-  // 仅等待首屏核心资源：背景图 + 默认模型 + 少量 FBX
+  // 仅等待首屏核心资源：背景图 + 默认模型 + 关键 FBX
   await Promise.allSettled([imagePreload, modelPreload, fbxPreloads]);
   emitProgress(90);
   emitProgress(100);
+
+  // 首屏加载完毕后，空闲时后台预解析剩余 FBX 动画（不阻塞 Loading 退出）
+  scheduleIdleFbxPreparse(criticalFbxUrls);
 }

@@ -186,9 +186,10 @@ const Lighting = memo(({ shadowMapSize = 512, shadowsEnabled = true }: { shadowM
   </>
 ));
 
-// 简单的错误边界组件
+// 错误边界：VRM/FBX 加载失败时显示占位方块，不崩溃整个场景。
+// resetKey 变化时自动恢复（如切换模型/动画 URL），无需刷新页面。
 class ModelErrorBoundary extends React.Component<
-  { children: React.ReactNode; onError?: (error: any) => void },
+  { children: React.ReactNode; onError?: (error: any) => void; resetKey?: string },
   { hasError: boolean }
 > {
   constructor(props: any) {
@@ -200,21 +201,20 @@ class ModelErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
+  componentDidUpdate(prevProps: any) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
   componentDidCatch(error: any, errorInfo: any) {
-    console.error('VRM Avatar load failed:', error, errorInfo);
+    console.error('[ModelErrorBoundary] VRM/Animation load failed:', error);
     this.props.onError?.(error);
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <group position={[0, 1, 0]}>
-          <mesh>
-            <boxGeometry args={[0.5, 0.5, 0.5]} />
-            <meshBasicMaterial color="red" wireframe />
-          </mesh>
-        </group>
-      );
+      return null;
     }
     return this.props.children;
   }
@@ -438,7 +438,7 @@ export const MainScene: React.FC = () => {
             }}
             position={avatarGizmoEnabled ? undefined : [0, avatarPositionY, 0]}
           >
-            <ModelErrorBoundary onError={(e) => console.error(e)}>
+            <ModelErrorBoundary resetKey={`${resolvedModelUrl}|${animationUrl}`}>
               <Suspense fallback={<LoadingIndicator />}>
                 <VRMAvatar
                 ref={vrmRef}

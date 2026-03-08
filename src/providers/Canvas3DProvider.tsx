@@ -128,18 +128,15 @@ export const Canvas3DProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // 双 rAF 确保布局完成后再创建 WebGL，避免 Strict Mode 或 DOM 未就绪导致的上下文创建失败
+    // 单 rAF 延迟挂载 Canvas，避免 DOM 未就绪时创建 WebGL 失败（Phase 4 优化：减少约 16ms 延迟）
     let cancelled = false;
-    const raf1 = requestAnimationFrame(() => {
+    const rafId = requestAnimationFrame(() => {
       if (cancelled) return;
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        setCanvasMounted(true);
-      });
+      setCanvasMounted(true);
     });
     return () => {
       cancelled = true;
-      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(rafId);
     };
   }, []);
 

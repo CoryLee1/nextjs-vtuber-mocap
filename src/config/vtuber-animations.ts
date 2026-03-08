@@ -111,5 +111,11 @@ export const ONBOARDING_PREVIEW_ANIMATION_URLS: string[] = [
   getS3ObjectReadUrlByKey('animations/Thinking.fbx'),
 ];
 
+/** 全部动画 URL（idle + speaking），用于空闲时后台预解析 */
+export const ALL_ANIMATION_URLS: string[] = [
+  ...IDLE_ANIMATIONS.map((a) => a.url),
+  ...SPEAKING_ANIMATIONS.map((a) => a.url),
+].filter((url, i, arr) => arr.indexOf(url) === i);
+
 /** 引导页/占位用默认 3D 模型（透明背景预览、播 idle），S3 桶内 vrm/ 文件夹 */
 export const DEFAULT_PREVIEW_MODEL_URL = getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm');
