@@ -1695,7 +1695,7 @@ const ChatPanelFooterButtons = memo(() => {
         </button>
         {captureMenuOpen && (
           <>
-            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#B7FF7A]/50 min-w-[180px] z-20 max-h-[240px] overflow-y-auto">
+            <div className="absolute bottom-[calc(100%+4px)] left-[-165px] mb-[-4px] py-[3px] rounded-lg bg-black/95 border border-[#B7FF7A]/50 min-w-[180px] z-[16] max-h-[240px] overflow-y-auto">
               <button
                 type="button"
                 onClick={() => handleTakePhoto(null)}
@@ -1797,14 +1797,14 @@ export const StreamRoomChatPanel = memo(() => {
       <div
         className={cn(
           'relative h-[520px] transition-all duration-300 ease-out',
-          collapsed ? 'w-[56px]' : 'w-[340px]'
+          collapsed ? 'w-[50px]' : 'w-[340px]'
         )}
       >
       <div className="absolute inset-0 rounded-[28px] bg-theme-gradient" />
       <button
         type="button"
         onClick={() => setCollapsed((prev) => !prev)}
-        className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#B7FF7A] text-xs font-black"
+        className="absolute right-2 top-2 left-[9px] z-10 h-8 w-8 rounded-full bg-black/90 text-[#B7FF7A] text-xs font-black"
         aria-label={collapsed ? '展开聊天' : '收起聊天'}
       >
         {collapsed ? '<<' : '>>'}
@@ -1854,7 +1854,7 @@ export const StreamRoomChatPanel = memo(() => {
         )}
       </div>
       {/* 语言切换 + 直播拍照：放在 chat 面板下方一竖列 */}
-      <div className={cn('flex flex-col gap-2 transition-all duration-300 ease-out', collapsed ? 'w-[56px]' : 'w-[340px]')}>
+      <div className={cn('flex flex-col gap-2 transition-all duration-300 ease-out', collapsed ? 'w-[50px]' : 'w-[340px]')}>
         <ChatPanelFooterButtons />
       </div>
     </div>
@@ -2282,16 +2282,16 @@ export const GoLiveButton = memo(() => {
             onClick={handleGoLive}
             disabled={isStarting || isAudience}
             title={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : undefined}
-            className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed border-[3px] border-[#d1d1d1]"
             style={{
-              background: 'rgba(255, 255, 255, 0.068)',
+              background: 'rgba(220, 246, 254, 0.7)',
               boxShadow:
                 '-11.15px -10.39px 48px -12px rgba(0, 0, 0, 0.15), inset 2.15px 2px 9.24px rgba(255, 255, 255, 0.126), inset 1.22px 1.13px 4.62px rgba(255, 255, 255, 0.126)',
               backdropFilter: 'blur(7.58px)',
             }}
             aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
           >
-            <span className="flex items-center justify-center w-5 h-5 rounded-sm text-[#1e293b]">
+            <span className="flex items-center justify-center w-5 h-5 rounded-sm text-[#878787]">
               <Play className="h-3 w-3" strokeWidth={2} />
             </span>
           </button>
