@@ -2202,7 +2202,7 @@ export const GoLiveButton = memo(() => {
             }}
             aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
           >
-            <span className="flex items-center justify-center w-5 h-5 rounded-sm border-2 border-[#8BFFEA] text-[#1e293b]">
+            <span className="flex items-center justify-center w-5 h-5 rounded-sm text-[#1e293b]">
               <Play className="h-3 w-3" strokeWidth={2} />
             </span>
           </button>
