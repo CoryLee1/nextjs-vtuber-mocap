@@ -2160,7 +2160,10 @@ export const GoLiveButton = memo(() => {
       </div>
 
       {/* Bar: 最小 214×53，随文案宽度自适应；主题渐变色，无勾边 */}
-      <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-theme-gradient rounded-[26.5px] flex items-center gap-0 outline-none border-0 ring-0">
+      <div
+        className="relative min-w-[214px] w-max h-[53px] px-4 rounded-[26.5px] flex items-center gap-0 outline-none border-0 ring-0"
+        style={{ background: 'linear-gradient(180deg, rgba(183, 255, 122, 1) 0%, rgba(139, 255, 234, 1) 50%, rgba(255, 255, 255, 1) 100%)' }}
+      >
         {/* Go Live 外圈流光，提高可见性 */}
         <span
           aria-hidden
