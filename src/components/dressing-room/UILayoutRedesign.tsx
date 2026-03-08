@@ -1720,7 +1720,7 @@ export const StreamRoomChatPanel = memo(() => {
           collapsed ? 'w-[56px]' : 'w-[340px]'
         }`}
       >
-        <div className="absolute inset-0 rounded-[28px] bg-[#B7FF7A] " />
+        <div className="absolute inset-0 rounded-[28px] bg-theme-gradient" />
 
         <button
           type="button"
