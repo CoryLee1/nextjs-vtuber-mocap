@@ -1689,9 +1689,8 @@ const ChatPanelFooterButtons = memo(() => {
 });
 ChatPanelFooterButtons.displayName = 'ChatPanelFooterButtons';
 
-// 右上 Profile 左边缘距右 72px（right-8 + w-10），Chat 未展开宽 56px，故 right-[128px] 使左边缘对齐
-const CHAT_RIGHT_COLLAPSED = 128;
-const CHAT_RIGHT_EXPANDED = 412; // 72 + 340
+// 右上 Profile 右边缘与 right-8 对齐（32px），Chat 最右边与 Profile 最右边对齐
+const CHAT_RIGHT_EDGE = 32; // right-8 = 32px
 const CHAT_HIDE_IDLE_MS = 5000;
 /** 视口右边缘热区宽度（px），鼠标进入此区域时弹出 */
 const CHAT_HOT_ZONE_PX = 40;
@@ -1754,7 +1753,7 @@ export const StreamRoomChatPanel = memo(() => {
       {visible && (
         <div
           className="fixed top-28 z-40 pointer-events-auto flex flex-col gap-3 transition-all duration-300"
-          style={{ right: collapsed ? `${CHAT_RIGHT_COLLAPSED}px` : `${CHAT_RIGHT_EXPANDED}px` }}
+          style={{ right: `${CHAT_RIGHT_EDGE}px` }}
           onMouseEnter={clearHideTimer}
           onMouseLeave={startHideTimer}
           onClick={clearHideTimer}
