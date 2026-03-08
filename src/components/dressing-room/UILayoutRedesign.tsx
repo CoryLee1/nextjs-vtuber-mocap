@@ -1749,30 +1749,31 @@ export const StreamRoomChatPanel = memo(() => {
   };
 
   return (
-    <>
-      {visible && (
-        <div
-          className="fixed top-28 z-40 pointer-events-auto flex flex-col gap-3 transition-all duration-300"
-          style={{ right: `${CHAT_RIGHT_EDGE}px` }}
-          onMouseEnter={clearHideTimer}
-          onMouseLeave={startHideTimer}
-          onClick={clearHideTimer}
-        >
-          <div
-            className={`relative h-[520px] transition-all duration-300 ${
-              collapsed ? 'w-[56px]' : 'w-[340px]'
-            }`}
-          >
-        <div className="absolute inset-0 rounded-[28px] bg-theme-gradient" />
-
-        <button
-          type="button"
-          onClick={() => setCollapsed((prev) => !prev)}
-          className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#B7FF7A] text-xs font-black"
-          aria-label={collapsed ? '展开聊天' : '收起聊天'}
-        >
-          {collapsed ? '<<' : '>>'}
-        </button>
+    <div
+      className={cn(
+        'fixed top-28 z-40 flex flex-col gap-3 transition-all duration-300 ease-out',
+        visible ? 'opacity-100 pointer-events-auto translate-x-0' : 'opacity-0 pointer-events-none translate-x-2'
+      )}
+      style={{ right: `${CHAT_RIGHT_EDGE}px` }}
+      onMouseEnter={clearHideTimer}
+      onMouseLeave={startHideTimer}
+      onClick={clearHideTimer}
+    >
+      <div
+        className={cn(
+          'relative h-[520px] transition-all duration-300 ease-out',
+          collapsed ? 'w-[56px]' : 'w-[340px]'
+        )}
+      >
+      <div className="absolute inset-0 rounded-[28px] bg-theme-gradient" />
+      <button
+        type="button"
+        onClick={() => setCollapsed((prev) => !prev)}
+        className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#B7FF7A] text-xs font-black"
+        aria-label={collapsed ? '展开聊天' : '收起聊天'}
+      >
+        {collapsed ? '<<' : '>>'}
+      </button>
 
         {collapsed ? (
           <div className="absolute inset-0 flex items-center justify-center text-[#636363] font-black text-[14px] tracking-tight rotate-90">
@@ -1816,14 +1817,12 @@ export const StreamRoomChatPanel = memo(() => {
             </div>
           </>
         )}
-          </div>
-          {/* 语言切换 + 直播拍照：放在 chat 面板下方一竖列 */}
-          <div className={`flex flex-col gap-2 transition-all duration-300 ${collapsed ? 'w-[56px]' : 'w-[340px]'}`}>
-            <ChatPanelFooterButtons />
-          </div>
-        </div>
-      )}
-    </>
+      </div>
+      {/* 语言切换 + 直播拍照：放在 chat 面板下方一竖列 */}
+      <div className={cn('flex flex-col gap-2 transition-all duration-300 ease-out', collapsed ? 'w-[56px]' : 'w-[340px]')}>
+        <ChatPanelFooterButtons />
+      </div>
+    </div>
   );
 });
 
