@@ -548,10 +548,8 @@ export const StreamRoomSidebar = memo(({
         // Vignette removed
         if (typeof parsed.chromaticEnabled === 'boolean') setChromaticEnabled(parsed.chromaticEnabled);
         if (typeof parsed.chromaticOffset === 'number') setChromaticOffset(parsed.chromaticOffset);
-        if (typeof parsed.brightness === 'number') setBrightness(parsed.brightness);
-        if (typeof parsed.contrast === 'number') setContrast(parsed.contrast);
-        if (typeof parsed.saturation === 'number') setSaturation(parsed.saturation);
-        if (typeof parsed.hue === 'number') setHue(parsed.hue);
+        // brightness/contrast/saturation/hue 不再从 scene localStorage 恢复
+        // 统一由 Zustand persist (vtuber-scene-storage) 管理，避免双重持久化冲突
         if (typeof parsed.handTrailEnabled === 'boolean') setHandTrailEnabled(parsed.handTrailEnabled);
         if (typeof parsed.avatarPositionY === 'number') setAvatarPositionY(parsed.avatarPositionY);
         if (typeof parsed.avatarGizmoEnabled === 'boolean') setAvatarGizmoEnabled(parsed.avatarGizmoEnabled);
@@ -686,7 +684,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, composerResolutionScale, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled, avatarPositionY, avatarGizmoEnabled })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, composerResolutionScale, chromaticEnabled, chromaticOffset, handTrailEnabled, avatarPositionY, avatarGizmoEnabled })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
