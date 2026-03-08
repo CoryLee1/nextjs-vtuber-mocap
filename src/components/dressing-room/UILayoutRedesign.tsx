@@ -101,18 +101,16 @@ const BGM_PRESETS: { id: string; url: string; nameZh: string; nameEn: string }[]
 
 type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar' | 'mocap';
 
-// 1. Top Left Branding
+// 1. Top Left Branding（与右侧胶囊按钮上下平齐）
 export const BrandOverlay = memo(() => {
   return (
-    <div className="fixed top-8 left-8 z-50 flex items-center space-x-3 pointer-events-auto group">
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden  transform group-hover:rotate-6 transition-transform duration-300 bg-transparent">
+    <div className="fixed top-8 left-8 z-50 flex items-center space-x-2 pointer-events-auto group">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 transform group-hover:rotate-6 transition-transform duration-300 bg-transparent">
         <img src="/favicon.svg" alt="Echuu" className="w-full h-full object-contain" />
       </div>
-      <div className="flex flex-col">
-        <h1 className="font-pixel text-[18px] font-extrabold tracking-tight text-[#90E1FE] leading-none">
-          AI Vtuber
-        </h1>
-      </div>
+      <h1 className="font-pixel text-[14px] font-extrabold tracking-tight text-[#90E1FE] leading-none">
+        AI Vtuber
+      </h1>
     </div>
   );
 });
