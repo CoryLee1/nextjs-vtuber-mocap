@@ -35,8 +35,6 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Sparkles, Environment } from '@react-three/drei';
-import { EffectComposer, Bloom, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
-import { ToneMappingMode } from 'postprocessing';
 import * as DialogUI from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
@@ -450,7 +448,7 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, toneMappingExposure, setToneMappingExposure, toneMappingMode, setToneMappingMode, bloomIntensity, setBloomIntensity, bloomThreshold, setBloomThreshold, bloomLuminanceSmoothing, setBloomLuminanceSmoothing, composerResolutionScale, setComposerResolutionScale, vignetteEnabled, setVignetteEnabled, vignetteOffset, setVignetteOffset, vignetteDarkness, setVignetteDarkness, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled, lutEnabled, setLutEnabled, lutUrl, setLutUrl, lutIntensity, setLutIntensity } = useSceneStore();
+  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, composerResolutionScale, setComposerResolutionScale, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled } = useSceneStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -544,15 +542,10 @@ export const StreamRoomSidebar = memo(({
         else setSceneFbxUrl(null);
         if (typeof parsed.envBackgroundIntensity === 'number') setEnvBackgroundIntensity(parsed.envBackgroundIntensity);
         if (typeof parsed.envBackgroundRotation === 'number') setEnvBackgroundRotation(parsed.envBackgroundRotation);
-        if (typeof parsed.toneMappingExposure === 'number') setToneMappingExposure(parsed.toneMappingExposure);
-        if (['aces', 'linear', 'reinhard'].includes(parsed.toneMappingMode)) setToneMappingMode(parsed.toneMappingMode);
-        if (typeof parsed.bloomIntensity === 'number') setBloomIntensity(parsed.bloomIntensity);
-        if (typeof parsed.bloomThreshold === 'number') setBloomThreshold(parsed.bloomThreshold);
-        if (typeof parsed.bloomLuminanceSmoothing === 'number') setBloomLuminanceSmoothing(parsed.bloomLuminanceSmoothing);
+        // toneMappingExposure / toneMappingMode removed — handled by ToneMappingSync only
+        // Bloom removed — GPU heavy multi-pass effect
         if (typeof parsed.composerResolutionScale === 'number') setComposerResolutionScale(parsed.composerResolutionScale);
-        if (typeof parsed.vignetteEnabled === 'boolean') setVignetteEnabled(parsed.vignetteEnabled);
-        if (typeof parsed.vignetteOffset === 'number') setVignetteOffset(parsed.vignetteOffset);
-        if (typeof parsed.vignetteDarkness === 'number') setVignetteDarkness(parsed.vignetteDarkness);
+        // Vignette removed
         if (typeof parsed.chromaticEnabled === 'boolean') setChromaticEnabled(parsed.chromaticEnabled);
         if (typeof parsed.chromaticOffset === 'number') setChromaticOffset(parsed.chromaticOffset);
         if (typeof parsed.brightness === 'number') setBrightness(parsed.brightness);
@@ -562,9 +555,7 @@ export const StreamRoomSidebar = memo(({
         if (typeof parsed.handTrailEnabled === 'boolean') setHandTrailEnabled(parsed.handTrailEnabled);
         if (typeof parsed.avatarPositionY === 'number') setAvatarPositionY(parsed.avatarPositionY);
         if (typeof parsed.avatarGizmoEnabled === 'boolean') setAvatarGizmoEnabled(parsed.avatarGizmoEnabled);
-        if (typeof parsed.lutEnabled === 'boolean') setLutEnabled(parsed.lutEnabled);
-        if (typeof parsed.lutUrl === 'string') setLutUrl(parsed.lutUrl);
-        if (typeof parsed.lutIntensity === 'number') setLutIntensity(parsed.lutIntensity);
+        // LUT removed — unstable .cube loading + GPU overhead
       } catch {
         // ignore invalid storage
       }
@@ -580,7 +571,7 @@ export const StreamRoomSidebar = memo(({
         // ignore invalid storage
       }
     }
-  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity, setEnvBackgroundRotation, setToneMappingExposure, setToneMappingMode]);
+  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity, setEnvBackgroundRotation]);
 
   useEffect(() => {
     onPanelOpenChange?.(panelOpen);
@@ -695,7 +686,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, toneMappingExposure, toneMappingMode, bloomIntensity, bloomThreshold, bloomLuminanceSmoothing, composerResolutionScale, vignetteEnabled, vignetteOffset, vignetteDarkness, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled, avatarPositionY, avatarGizmoEnabled, lutEnabled, lutUrl, lutIntensity })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, composerResolutionScale, chromaticEnabled, chromaticOffset, brightness, contrast, saturation, hue, handTrailEnabled, avatarPositionY, avatarGizmoEnabled })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -1287,47 +1278,6 @@ export const StreamRoomSidebar = memo(({
                 </button>
               </div>
 
-              {/* Bloom Settings */}
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '泛光强度 (Bloom)' : 'Bloom Intensity'}</label>
-              <div className="flex items-center gap-2">
-                <Slider
-                  min={0}
-                  max={2}
-                  step={0.05}
-                  value={bloomIntensity}
-                  onValueChange={setBloomIntensity}
-                  showValue={false}
-                  className="flex-1"
-                />
-                <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomIntensity.toFixed(2)}</span>
-              </div>
-              
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '泛光阈值 (Threshold)' : 'Bloom Threshold'}</label>
-              <div className="flex items-center gap-2">
-                <Slider
-                  min={0}
-                  max={1.5}
-                  step={0.05}
-                  value={bloomThreshold}
-                  onValueChange={setBloomThreshold}
-                  showValue={false}
-                  className="flex-1"
-                />
-                <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomThreshold.toFixed(2)}</span>
-              </div>
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '泛光平滑 (Luminance Smoothing)' : 'Bloom Smoothing'}</label>
-              <div className="flex items-center gap-2">
-                <Slider
-                  min={0}
-                  max={0.5}
-                  step={0.01}
-                  value={bloomLuminanceSmoothing}
-                  onValueChange={setBloomLuminanceSmoothing}
-                  showValue={false}
-                  className="flex-1"
-                />
-                <span className="text-xs text-slate-500 w-10 tabular-nums">{bloomLuminanceSmoothing.toFixed(2)}</span>
-              </div>
               <label className="text-[12px] text-slate-500">{locale === 'zh' ? '后期分辨率缩放' : 'Composer Resolution'}</label>
               <div className="flex items-center gap-2">
                 <Slider
@@ -1342,34 +1292,10 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{composerResolutionScale.toFixed(2)}</span>
               </div>
 
-              {/* Vignette / Chromatic */}
+              {/* Chromatic Aberration */}
               <div className="mt-2 pt-2 border-t border-slate-200">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '暗角与色散' : 'Vignette & Chromatic'}</p>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '色散' : 'Chromatic'}</p>
                 <div className="flex items-center justify-between">
-                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? '暗角 (Vignette)' : 'Vignette'}</label>
-                  <button
-                    type="button"
-                    onClick={() => setVignetteEnabled(!vignetteEnabled)}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${vignetteEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
-                  >
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${vignetteEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  </button>
-                </div>
-                {vignetteEnabled && (
-                  <>
-                    <label className="text-[12px] text-slate-500">{locale === 'zh' ? '暗角范围 (Offset)' : 'Vignette Offset'}</label>
-                    <div className="flex items-center gap-2">
-                      <Slider min={0} max={1} step={0.02} value={vignetteOffset} onValueChange={setVignetteOffset} showValue={false} className="flex-1" />
-                      <span className="text-xs text-slate-500 w-10 tabular-nums">{vignetteOffset.toFixed(2)}</span>
-                    </div>
-                    <label className="text-[12px] text-slate-500">{locale === 'zh' ? '暗角暗度 (Darkness)' : 'Vignette Darkness'}</label>
-                    <div className="flex items-center gap-2">
-                      <Slider min={0} max={1} step={0.02} value={vignetteDarkness} onValueChange={setVignetteDarkness} showValue={false} className="flex-1" />
-                      <span className="text-xs text-slate-500 w-10 tabular-nums">{vignetteDarkness.toFixed(2)}</span>
-                    </div>
-                  </>
-                )}
-                <div className="flex items-center justify-between mt-2">
                   <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色散 (Chromatic)' : 'Chromatic Aberration'}</label>
                   <button
                     type="button"
@@ -1447,46 +1373,6 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{(hue * (180 / Math.PI)).toFixed(0)}°</span>
               </div>
 
-              {/* LUT 调色 */}
-              <div className="flex items-center justify-between mt-1">
-                <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'LUT 调色' : 'LUT Color Grading'}</label>
-                <button
-                  type="button"
-                  onClick={() => setLutEnabled(!lutEnabled)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${lutEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${lutEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-              {lutEnabled && (
-                <>
-                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'LUT 预设' : 'LUT Preset'}</label>
-                  <select
-                    value={lutUrl}
-                    onChange={(e) => setLutUrl(e.target.value)}
-                    className="w-full h-8 rounded-md border border-slate-300 bg-white text-sm text-slate-800"
-                  >
-                    <option value="/lut/cinematic-warm.cube">{locale === 'zh' ? '电影暖色' : 'Cinematic Warm'}</option>
-                    <option value="/lut/neutral.cube">{locale === 'zh' ? '中性' : 'Neutral'}</option>
-                    <option value="/lut/anime-soft.cube">{locale === 'zh' ? '动漫柔和' : 'Anime Soft'}</option>
-                    <option value="/lut/cyberpunk.cube">{locale === 'zh' ? '赛博朋克' : 'Cyberpunk'}</option>
-                  </select>
-                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'LUT 强度' : 'LUT Intensity'}</label>
-                  <div className="flex items-center gap-2">
-                    <Slider
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={lutIntensity}
-                      onValueChange={setLutIntensity}
-                      showValue={false}
-                      className="flex-1"
-                    />
-                    <span className="text-xs text-slate-500 w-10 tabular-nums">{lutIntensity.toFixed(2)}</span>
-                  </div>
-                </>
-              )}
-
               {/* 手部轨迹特效 */}
               <div className="flex items-center justify-between mt-1">
                 <label className="text-[12px] text-slate-500">{locale === 'zh' ? '手部轨迹特效' : 'Hand Trail VFX'}</label>
@@ -1528,31 +1414,6 @@ export const StreamRoomSidebar = memo(({
                 )}
               </div>
 
-              <label className="text-[12px] text-slate-500 mt-2">{locale === 'zh' ? '整体曝光' : 'Exposure'}</label>
-              <div className="flex items-center gap-2">
-                <Slider
-                  min={0.3}
-                  max={2.5}
-                  step={0.05}
-                  value={toneMappingExposure}
-                  onValueChange={setToneMappingExposure}
-                  showValue={false}
-                  className="flex-1"
-                />
-                <span className="text-xs text-slate-500 w-10 tabular-nums">{toneMappingExposure.toFixed(1)}</span>
-              </div>
-              <p className="text-[11px] text-slate-400">{locale === 'zh' ? '调高可减轻天空发灰' : 'Higher = less gray sky'}</p>
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色调映射' : 'Tone mapping'}</label>
-              <Select value={toneMappingMode} onValueChange={(v: 'aces' | 'linear' | 'reinhard') => setToneMappingMode(v)}>
-                <SelectTrigger className="h-9 bg-white rounded-lg px-3 text-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="reinhard">{locale === 'zh' ? '平衡（推荐，天空更艳）' : 'Reinhard (balanced)'}</SelectItem>
-                  <SelectItem value="linear">{locale === 'zh' ? '鲜艳（饱和度最高）' : 'Linear (vivid)'}</SelectItem>
-                  <SelectItem value="aces">{locale === 'zh' ? '电影感（ACES，易发灰）' : 'ACES (cinematic)'}</SelectItem>
-                </SelectContent>
-              </Select>
               <label className="text-[12px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
               <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>
               <div className="flex gap-2">

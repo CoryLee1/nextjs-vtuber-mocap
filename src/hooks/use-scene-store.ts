@@ -275,12 +275,8 @@ export const useSceneStore = create<SceneState>()(
   triggerQualityDegradation: () => {
     set({
       postProcessingEnabled: false,
-      vignetteEnabled: false,
       chromaticEnabled: false,
-      bloomEnabled: false,
-      lutEnabled: false,
       handTrailEnabled: false,
-      bloomIntensity: 0,
       composerResolutionScale: 0.5,
     });
     console.warn('[triggerQualityDegradation] Disabled post-processing effects to reduce GPU pressure');
@@ -524,26 +520,15 @@ export const useSceneStore = create<SceneState>()(
         debugSettings: state.debugSettings,
         envBackgroundIntensity: state.envBackgroundIntensity,
         envBackgroundRotation: state.envBackgroundRotation,
-        toneMappingExposure: state.toneMappingExposure,
-        toneMappingMode: state.toneMappingMode,
-        bloomIntensity: state.bloomIntensity,
-        bloomThreshold: state.bloomThreshold,
-        bloomLuminanceSmoothing: state.bloomLuminanceSmoothing,
         composerResolutionScale: state.composerResolutionScale,
-        vignetteEnabled: state.vignetteEnabled,
-        vignetteOffset: state.vignetteOffset,
-        vignetteDarkness: state.vignetteDarkness,
+        // vignette removed from persist
         chromaticEnabled: state.chromaticEnabled,
         chromaticOffset: state.chromaticOffset,
         brightness: state.brightness,
         contrast: state.contrast,
         saturation: state.saturation,
-        hue: state.hue,
-        bloomEnabled: state.bloomEnabled,
+        // hue 不再持久化 — 默认 0，避免旧值恢复偏色
         postProcessingEnabled: state.postProcessingEnabled,
-        lutEnabled: state.lutEnabled,
-        lutUrl: state.lutUrl,
-        lutIntensity: state.lutIntensity,
         handTrailEnabled: state.handTrailEnabled,
         hdrUrl: state.hdrUrl,
         sceneFbxUrl: state.sceneFbxUrl,
