@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -41,7 +41,6 @@ import { Sparkles, Environment } from '@react-three/drei';
 import * as DialogUI from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { ProfileButton } from '@/components/auth/ProfileButton';
 import { useSceneStore } from '@/hooks/use-scene-store';
@@ -1690,13 +1689,36 @@ const ChatPanelFooterButtons = memo(() => {
 });
 ChatPanelFooterButtons.displayName = 'ChatPanelFooterButtons';
 
-// 4.6 右侧弹幕 Chat 面板
+// 右上 Profile 左边缘距右 72px（right-8 + w-10），Chat 未展开宽 56px，故 right-[128px] 使左边缘对齐
+const CHAT_RIGHT_COLLAPSED = 128;
+const CHAT_RIGHT_EXPANDED = 412; // 72 + 340
+const CHAT_HIDE_IDLE_MS = 5000;
+
+// 4.6 右侧弹幕 Chat 面板：靠近右边缘弹出，长时间无操作隐藏，未展开时左边缘与 Profile 左边缘竖直对齐
 export const StreamRoomChatPanel = memo(() => {
   const { chatMessages, sendDanmaku } = useEchuuWebSocket();
   const [inputValue, setInputValue] = useState('');
   const [collapsed, setCollapsed] = useState(true);
+  const [visible, setVisible] = useState(false);
   const messageRef = useRef<HTMLDivElement | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentMessages = useMemo(() => chatMessages.slice(-20), [chatMessages]);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const startHideTimer = useCallback(() => {
+    clearHideTimer();
+    hideTimerRef.current = setTimeout(() => setVisible(false), CHAT_HIDE_IDLE_MS);
+  }, [clearHideTimer]);
+
+  useEffect(() => {
+    return () => clearHideTimer();
+  }, [clearHideTimer]);
 
   useEffect(() => {
     if (messageRef.current) {
@@ -1712,12 +1734,29 @@ export const StreamRoomChatPanel = memo(() => {
   };
 
   return (
-    <div className="fixed right-8 top-28 z-40 pointer-events-auto flex flex-col gap-3">
+    <>
+      {/* 右边缘热区：鼠标靠近时弹出 */}
       <div
-        className={`relative h-[520px] transition-all duration-300 ${
-          collapsed ? 'w-[56px]' : 'w-[340px]'
-        }`}
-      >
+        className="fixed right-0 top-28 bottom-8 z-50 w-6"
+        onMouseEnter={() => {
+          setVisible(true);
+          clearHideTimer();
+        }}
+        aria-hidden
+      />
+      {visible && (
+        <div
+          className="fixed top-28 z-40 pointer-events-auto flex flex-col gap-3 transition-all duration-300"
+          style={{ right: collapsed ? `${CHAT_RIGHT_COLLAPSED}px` : `${CHAT_RIGHT_EXPANDED}px` }}
+          onMouseEnter={clearHideTimer}
+          onMouseLeave={startHideTimer}
+          onClick={clearHideTimer}
+        >
+          <div
+            className={`relative h-[520px] transition-all duration-300 ${
+              collapsed ? 'w-[56px]' : 'w-[340px]'
+            }`}
+          >
         <div className="absolute inset-0 rounded-[28px] bg-theme-gradient" />
 
         <button
@@ -1771,12 +1810,14 @@ export const StreamRoomChatPanel = memo(() => {
             </div>
           </>
         )}
-      </div>
-      {/* 语言切换 + 直播拍照：放在 chat 面板下方一竖列 */}
-      <div className={`flex flex-col gap-2 transition-all duration-300 ${collapsed ? 'w-[56px]' : 'w-[340px]'}`}>
-        <ChatPanelFooterButtons />
-      </div>
-    </div>
+          </div>
+          {/* 语言切换 + 直播拍照：放在 chat 面板下方一竖列 */}
+          <div className={`flex flex-col gap-2 transition-all duration-300 ${collapsed ? 'w-[56px]' : 'w-[340px]'}`}>
+            <ChatPanelFooterButtons />
+          </div>
+        </div>
+      )}
+    </>
   );
 });
 
