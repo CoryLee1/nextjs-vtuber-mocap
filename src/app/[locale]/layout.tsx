@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import localFont from 'next/font/local'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
@@ -14,12 +13,6 @@ import { AuthProvider } from '@/providers/AuthProvider'
 import { locales } from '@/i18n/config'
 
 const inter = Inter({ subsets: ['latin'] })
-
-const pixelFont = localFont({
-  src: '../../../public/fonts/PFPixelscriptPro-subset.otf',
-  variable: '--font-pixel',
-  display: 'swap',
-})
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://echuu.xyz';
 
@@ -84,7 +77,7 @@ export default async function RootLayout({
 
     return (
       <html lang={locale} suppressHydrationWarning>
-        <body className={`${inter.className} font-zen ${pixelFont.variable}`}>
+        <body className={`${inter.className} font-zen`}>
           <NextIntlClientProvider messages={messages}>
             <PostHogProvider>
               <ThemeProvider>
@@ -106,7 +99,7 @@ export default async function RootLayout({
     // 返回一个基本的错误页面
     return (
       <html lang="zh" suppressHydrationWarning>
-        <body className={`${inter.className} font-zen ${pixelFont.variable}`}>
+        <body className={`${inter.className} font-zen`}>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-red-600 mb-4">加载错误</h1>

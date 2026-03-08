@@ -1,9 +1,16 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 import { BGMPlayer } from '@/components/dressing-room/BGMPlayer'
 
 const inter = Inter({ subsets: ['latin'] })
+
+const pixelFont = localFont({
+  src: '../../public/fonts/PFPixelscriptPro-subset.otf',
+  variable: '--font-pixel',
+  display: 'swap',
+})
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://echuu.xyz';
 
@@ -37,7 +44,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh" suppressHydrationWarning>
-      <body className={`${inter.className} font-zen`}>
+      <body className={`${inter.className} font-zen ${pixelFont.variable}`}>
         <BGMPlayer />
         {children}
       </body>

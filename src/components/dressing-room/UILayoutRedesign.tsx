@@ -109,7 +109,7 @@ export const BrandOverlay = memo(() => {
         <img src="/favicon.svg" alt="Echuu" className="w-full h-full object-contain" />
       </div>
       <div className="flex flex-col">
-        <h1 className="font-pixel text-sm font-black tracking-tight bg-theme-gradient bg-clip-text text-transparent leading-none">
+        <h1 className="font-pixel text-[18px] font-black tracking-tight bg-theme-gradient bg-clip-text text-transparent leading-none">
           AI Vtuber
         </h1>
       </div>
