@@ -95,21 +95,17 @@ canvas {
   }
 }
 
-/* 自定义滚动条 - 蓝白主题 */
+/* 隐藏滚动条，保留滚动功能 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 0;
+  height: 0;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--vtuber-light);
+* {
+  scrollbar-width: none;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--vtuber-primary);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--vtuber-secondary);
+/* Leva 调试面板暂时隐藏 */
+#leva__root {
+  display: none !important;
 }
