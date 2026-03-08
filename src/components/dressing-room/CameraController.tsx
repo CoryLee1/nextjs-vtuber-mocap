@@ -10,9 +10,9 @@ import { ORBIT_CONTROLS_DEFAULTS, CAMERA_SHAKE_DEFAULTS } from '@/config/drei-ca
 
 /** 相机调试默认值（Leva panel 可实时调节） */
 const CAMERA_DEBUG_DEFAULTS = {
-  distance: 1.3,
-  height: 1.5,
-  targetY: 0.9,
+  distance: 0.55,
+  height: 1.25,
+  targetY: 1.3,
 };
 
 /**
