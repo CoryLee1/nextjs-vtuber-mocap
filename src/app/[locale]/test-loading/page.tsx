@@ -31,7 +31,7 @@ export default function TestLoadingPage() {
       <div className="fixed bottom-8 right-8 z-[110] flex flex-col items-end space-y-4">
         {isDone && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-[#ef0]/10 text-[#ef0] text-[10px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-2xl border border-[#ef0]/20 backdrop-blur-xl shadow-2xl font-['MHTIROGLA',sans-serif]">
+            <div className="bg-[#B7FF7A]/10 text-[#B7FF7A] text-[10px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-2xl border border-[#B7FF7A]/20 backdrop-blur-xl font-['MHTIROGLA',sans-serif]">
               Load Sequence Complete
             </div>
           </div>

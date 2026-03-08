@@ -12,6 +12,42 @@
     font-display: optional;
   }
 
+  @font-face {
+    font-family: 'Zen Maru Gothic';
+    src: url('/fonts/zen-maru-gothic/ZenMaruGothic-Light.ttf') format('truetype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Zen Maru Gothic';
+    src: url('/fonts/zen-maru-gothic/ZenMaruGothic-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Zen Maru Gothic';
+    src: url('/fonts/zen-maru-gothic/ZenMaruGothic-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Zen Maru Gothic';
+    src: url('/fonts/zen-maru-gothic/ZenMaruGothic-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Zen Maru Gothic';
+    src: url('/fonts/zen-maru-gothic/ZenMaruGothic-Black.ttf') format('truetype');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -19,19 +55,27 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
+    /* 主题渐变色：从上到下 #B7FF7A → #8BFFEA → #FFFFFF */
+    --theme-gradient: linear-gradient(to bottom, #B7FF7A 0%, #8BFFEA 50%, #FFFFFF 100%);
+    --theme-gradient-start: #B7FF7A;
+    --theme-gradient-mid: #8BFFEA;
+    --theme-gradient-end: #FFFFFF;
+    --theme-stroke: #8BFFEA;
+    --theme-glow: #94F6FF;
+    --theme-inner-glow: inset 0 0 40px rgba(148, 246, 255, 0.35);
+    --primary: 90 100% 74%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 168 100% 80%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --accent: 168 100% 90%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
+    --border: 168 60% 85%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 90 100% 60%;
     --radius: 0.5rem;
   }
 
@@ -42,19 +86,24 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
+    --theme-gradient: linear-gradient(to bottom, #7dd956 0%, #5dd4c4 50%, #1e293b 100%);
+    --theme-gradient-start: #7dd956;
+    --theme-gradient-mid: #5dd4c4;
+    --theme-gradient-end: #1e293b;
+    --theme-stroke: #5dd4c4;
+    --primary: 90 70% 55%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 168 50% 45%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 168 40% 35%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 90 70% 50%;
   }
 }
 
@@ -64,6 +113,17 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* 主题描边工具类（渐变由 tailwind backgroundImage 提供） */
+@layer utilities {
+  .border-theme-stroke {
+    border-color: var(--theme-stroke);
+  }
+  .bg-white-inner-glow {
+    background-color: #ffffff;
+    box-shadow: var(--theme-inner-glow);
   }
 }
 
@@ -77,7 +137,6 @@
     background: hsl(var(--primary));
     cursor: pointer;
     border: 2px solid hsl(var(--background));
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   .slider-thumb::-moz-range-thumb {
     width: 16px;
@@ -86,7 +145,6 @@
     background: hsl(var(--primary));
     cursor: pointer;
     border: 2px solid hsl(var(--background));
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 }
 

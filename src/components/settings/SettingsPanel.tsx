@@ -89,15 +89,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     setHasChanges(false);
   };
 
-  // 主题颜色选项
+  // 主题颜色选项（含设计稿渐变色起止色）
   const themeColors = [
+    { color: '#B7FF7A', name: 'Neon Mint (渐变)' },
+    { color: '#8BFFEA', name: 'Mint' },
     { color: '#0ea5e9', name: 'Sky Blue' },
     { color: '#3b82f6', name: 'Blue' },
     { color: '#8b5cf6', name: 'Purple' },
     { color: '#f59e0b', name: 'Orange' },
     { color: '#ef4444', name: 'Red' },
     { color: '#10b981', name: 'Green' },
-    { color: '#f97316', name: 'Orange' },
     { color: '#ec4899', name: 'Pink' }
   ];
 
@@ -303,7 +304,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   {availableLocales.map((locale) => (
                     <Card
                       key={locale.code}
-                      className={`cursor-pointer transition-all hover:shadow-md ${
+                      className={`cursor-pointer transition-all ${
                         locale.isCurrent 
                           ? 'border-primary bg-primary/5' 
                           : 'border-border hover:border-primary/50'
@@ -390,7 +391,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-card-foreground">{t('theme.preview')}</h3>
                   
-                  <div className="p-6 bg-card rounded-lg border border-border shadow-sm">
+                  <div className="p-6 bg-card rounded-lg border border-border">
                     <div className="space-y-4">
                       <div className="text-sm text-muted-foreground">
                         {t('theme.previewArea')}

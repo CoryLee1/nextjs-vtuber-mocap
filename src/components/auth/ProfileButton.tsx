@@ -97,7 +97,7 @@ export function ProfileButton() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="w-16 h-16 rounded-full overflow-hidden bg-white/10 border border-white/10 shadow-xl hover:scale-105 active:scale-95 transition-all"
+          className="w-16 h-16 rounded-full overflow-hidden bg-white/10 border border-white/10 hover:scale-105 active:scale-95 transition-all"
           title="Profile"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}

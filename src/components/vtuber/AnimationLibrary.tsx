@@ -460,7 +460,7 @@ export const AnimationLibrary: React.FC<AnimationLibraryProps> = ({ onClose, onS
                 {filteredAnimations.map((animation: any) => (
                   <Card
                     key={animation.id}
-                    className={`cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white relative ${
+                    className={`cursor-pointer hover:border-sky-300 transition-all border-sky-100 bg-white relative ${
                       (selectedAnimation as any)?.id === animation.id ? 'ring-2 ring-sky-500' : ''
                     }`}
                   >

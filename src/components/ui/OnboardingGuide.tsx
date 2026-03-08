@@ -236,14 +236,14 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                 <div key={step.id} className="relative">
                   <div className={`flex items-center space-x-4 p-4 rounded-2xl transition-all duration-300 ${
                     isActive 
-                      ? 'bg-[#ef0] text-black shadow-[0_0_20px_rgba(238,255,0,0.3)]' 
+                      ? 'bg-[#B7FF7A] text-black ' 
                       : isCompleted 
                       ? 'bg-blue-500/20 text-blue-400' 
                       : 'bg-white/5 text-white/40'
                   }`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                       isActive 
-                        ? 'bg-black text-[#ef0]' 
+                        ? 'bg-black text-[#B7FF7A]' 
                         : isCompleted 
                         ? 'bg-blue-500 text-white' 
                         : 'bg-white/10 text-white/20'
@@ -279,7 +279,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
 
           <Button
             onClick={handleNext}
-            className="w-full rounded-xl bg-[#ef0] text-black hover:bg-[#d4e600] font-bold shadow-lg shadow-[#ef0]/10"
+            className="w-full rounded-xl bg-[#B7FF7A] text-black hover:bg-[#8BFFEA] font-bold"
           >
             {activeStep === steps.length - 1 ? '完成' : 'Next Step'}
             <ChevronRight className="h-4 w-4 ml-2" />
@@ -329,7 +329,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         {onStep1Select && (
                           <Button
                             onClick={onStep1Select}
-                            className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold"
+                            className="bg-[#B7FF7A] text-black hover:bg-[#8BFFEA] font-bold"
                           >
                             选择模型
                           </Button>
@@ -338,7 +338,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                           <Button
                             onClick={onStep1Upload}
                             variant="outline"
-                            className="border-[#ef0] text-[#ef0] hover:bg-[#ef0]/10 font-bold"
+                            className="border-[#B7FF7A] text-[#B7FF7A] hover:bg-[#B7FF7A]/10 font-bold"
                           >
                             上传模型
                           </Button>
@@ -347,7 +347,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     ) : (
                       actionHref && (
                         <Link href={actionHref}>
-                          <Button className="bg-[#ef0] text-black hover:bg-[#d4e600] font-bold">
+                          <Button className="bg-[#B7FF7A] text-black hover:bg-[#8BFFEA] font-bold">
                             {currentStep.actionLabel || '进入下一步'}
                           </Button>
                         </Link>
@@ -375,7 +375,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         <div 
                           key={model.id} 
                           onClick={() => useSceneStore.getState().setVRMModelUrl(model.url)}
-                          className={`aspect-square bg-white/10 rounded-lg border ${isSelected ? 'border-[#ef0] ring-1 ring-[#ef0]' : 'border-white/20'} flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-white/40 transition-all`}
+                          className={`aspect-square bg-white/10 rounded-lg border ${isSelected ? 'border-[#B7FF7A] ring-1 ring-[#B7FF7A]' : 'border-white/20'} flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-white/40 transition-all`}
                         >
                           <img
                             src={thumbSrc}
@@ -402,7 +402,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     <input
                       value={nameDraft}
                       onChange={(e) => setNameDraft(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B7FF7A]/50 transition-colors"
                       placeholder="e.g. Cathy"
                     />
                   </div>
@@ -413,7 +413,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     <select
                       value={voiceDraft}
                       onChange={(e) => setVoiceDraft(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors appearance-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B7FF7A]/50 transition-colors appearance-none"
                     >
                       {/* 优先显示 curated TTS_VOICES，如果 voiceDraft 不在其中，也会通过 ECHUU_AGENT_TTS_VOICES 兜底（这里先合并） */}
                       {TTS_VOICES.map((v) => {
@@ -458,7 +458,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                           }
                         }}
                         disabled={!!aiWritingField}
-                        className="text-[10px] text-[#ef0] hover:text-[#d4e600] flex items-center gap-1 disabled:opacity-50"
+                        className="text-[10px] text-[#B7FF7A] hover:text-[#8BFFEA] flex items-center gap-1 disabled:opacity-50"
                       >
                         {aiWritingField === 'persona' ? (
                           <RefreshCw className="h-3 w-3 animate-spin" />
@@ -471,7 +471,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     <textarea
                       value={personaDraft}
                       onChange={(e) => setPersonaDraft(e.target.value)}
-                      className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#ef0]/50 transition-colors resize-none"
+                      className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#B7FF7A]/50 transition-colors resize-none"
                       placeholder="Describe personality, catchphrases..."
                     />
                   </div>
@@ -497,7 +497,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                           }
                         }}
                         disabled={!!aiWritingField}
-                        className="text-[10px] text-[#ef0] hover:text-[#d4e600] flex items-center gap-1 disabled:opacity-50"
+                        className="text-[10px] text-[#B7FF7A] hover:text-[#8BFFEA] flex items-center gap-1 disabled:opacity-50"
                       >
                         {aiWritingField === 'background' ? (
                           <RefreshCw className="h-3 w-3 animate-spin" />
@@ -510,7 +510,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     <textarea
                       value={backgroundDraft}
                       onChange={(e) => setBackgroundDraft(e.target.value)}
-                      className="w-full h-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#ef0]/50 transition-colors resize-none"
+                      className="w-full h-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#B7FF7A]/50 transition-colors resize-none"
                       placeholder="Lore, origin story..."
                     />
                   </div>
@@ -537,7 +537,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                           }
                         }}
                         disabled={!!aiWritingField}
-                        className="text-[10px] text-[#ef0] hover:text-[#d4e600] flex items-center gap-1 disabled:opacity-50"
+                        className="text-[10px] text-[#B7FF7A] hover:text-[#8BFFEA] flex items-center gap-1 disabled:opacity-50"
                       >
                         {aiWritingField === 'topic' ? (
                           <RefreshCw className="h-3 w-3 animate-spin" />
@@ -550,7 +550,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     <textarea
                       value={topicDraft}
                       onChange={(e) => setTopicDraft(e.target.value)}
-                      className="w-full h-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ef0]/50 transition-colors resize-none"
+                      className="w-full h-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B7FF7A]/50 transition-colors resize-none"
                       placeholder="What are we doing today?"
                     />
                   </div>
@@ -570,7 +570,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                           <button
                             key={topic}
                             onClick={() => setTopicDraft(topic)}
-                            className="text-left text-xs text-white/80 px-3 py-2 rounded bg-white/5 hover:bg-white/10 hover:text-[#ef0] transition-all truncate border border-transparent hover:border-[#ef0]/20"
+                            className="text-left text-xs text-white/80 px-3 py-2 rounded bg-white/5 hover:bg-white/10 hover:text-[#B7FF7A] transition-all truncate border border-transparent hover:border-[#B7FF7A]/20"
                           >
                             {topic}
                           </button>

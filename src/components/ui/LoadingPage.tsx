@@ -145,11 +145,11 @@ export default function LoadingPage({
               height: '49.84px',
               left: '9px',
               top: '41px',
-              border: '5px solid #EEFF00',
+              border: '5px solid #B7FF7A',
               borderRadius: '50%',
               transform: 'matrix(0.68, -0.73, 0.73, 0.68, 0, 0)',
               boxSizing: 'border-box',
-              boxShadow: '0 0 20px rgba(238, 255, 0, 0.3)'
+              boxShadow: '0 0 20px rgba(183, 255, 122, 0.3)'
             }}
           />
         </div>
@@ -212,7 +212,7 @@ export default function LoadingPage({
             
             {/* Bar/Fill */}
             <div 
-              className="absolute h-full bg-[#EEFF00] shadow-[0_0_10px_#EEFF00]"
+              className="absolute h-full bg-[#B7FF7A] "
               style={{ 
                 width: `${(progress / 100) * 190.5}px`, // Max width 190.5px
                 left: 'calc(50% - 190.5px/2 - 31.25px)', // Figma offset
@@ -225,7 +225,7 @@ export default function LoadingPage({
           {/* Optional: System Message */}
           <div className="absolute top-[213px] left-1/2 -translate-x-1/2 flex items-center space-x-2 opacity-20">
             <span className="text-[7px] text-white uppercase tracking-[0.5em] font-bold">{message}</span>
-            <span className="text-[7px] text-[#EEFF00] font-['MHTIROGLA']">{Math.round(progress)}%</span>
+            <span className="text-[7px] text-[#B7FF7A] font-['MHTIROGLA']">{Math.round(progress)}%</span>
           </div>
 
         </div>

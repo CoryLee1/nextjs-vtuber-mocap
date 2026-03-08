@@ -75,7 +75,7 @@ export default function SubscriptionButton({ planId, className = '' }: Subscript
 
   return (
     <div className={`subscription-button ${className}`}>
-      <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+      <div className="bg-white rounded-lg p-6 border border-gray-200">
         <div className="text-center mb-4">
           <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
           <div className="text-3xl font-bold text-blue-600 mt-2">

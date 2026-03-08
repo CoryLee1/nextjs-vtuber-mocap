@@ -645,7 +645,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
                   <Card
                     key={model.id}
                     onClick={() => handleModelSelect(model)}
-                    className="cursor-pointer hover:border-sky-300 hover:shadow-lg transition-all border-sky-100 bg-white"
+                    className="cursor-pointer hover:border-sky-300 transition-all border-sky-100 bg-white"
                   >
                     <CardContent className="p-4">
                       {/* 缩略图：优先客户端生成的，再 thumbnail，再 /api/vrm-thumbnail；失败则尝试客户端生成证件照 */}
@@ -695,7 +695,7 @@ export const ModelManager: React.FC<ModelManagerProps> = ({ onClose, onSelect, i
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow"
+                            className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white"
                             onClick={(e) => handleRerenderSingle(model as VRMModel & { s3Key?: string }, e)}
                             disabled={backfilling || rerenderingModelId === model.id}
                             title="仅重拍此模型大头照，不覆盖其他"

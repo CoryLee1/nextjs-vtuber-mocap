@@ -47,7 +47,7 @@ export default function SubscriptionPage() {
         </div>
 
         {/* 功能对比 */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-12">
+        <div className="bg-white rounded-lg p-8 mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             功能对比
           </h2>
@@ -104,7 +104,7 @@ export default function SubscriptionPage() {
         </div>
 
         {/* 支付方式说明 */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-12">
+        <div className="bg-white rounded-lg p-8 mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             支持的支付方式
           </h2>
@@ -151,7 +151,7 @@ export default function SubscriptionPage() {
         </div>
 
         {/* 常见问题 */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white rounded-lg p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             常见问题
           </h2>

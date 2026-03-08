@@ -63,7 +63,7 @@ export const LanguageSwitcher: React.FC = () => {
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-2 z-50">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-lg min-w-[120px]">
+          <div className="bg-white border border-gray-200 rounded-lg min-w-[120px]">
             {availableLocales.map((loc) => (
                   <button
                 key={loc.code}

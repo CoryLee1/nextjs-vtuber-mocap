@@ -51,15 +51,15 @@ export default function V1Login() {
       </div>
 
       {/* Main Auth Card */}
-      <div className="relative z-20 w-full max-w-lg bg-black/60 backdrop-blur-2xl border border-[#EEFF00]/10 p-12 rounded-[40px] shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+      <div className="relative z-20 w-full max-w-lg bg-black/60 backdrop-blur-2xl border border-[#B7FF7A]/10 p-12 rounded-[40px] ">
         <div className="space-y-10">
           <div className="text-center space-y-2">
-            <h1 className="text-4xl font-black text-[#EEFF00] tracking-tighter uppercase italic">Welcome Back</h1>
+            <h1 className="text-4xl font-black text-[#B7FF7A] tracking-tighter uppercase italic">Welcome Back</h1>
             <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.3em]">Accessing ECHUU Mainframe</p>
           </div>
 
           {waking && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#EEFF00]/10 border border-[#EEFF00]/20 text-[#EEFF00] text-xs font-bold animate-pulse">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#B7FF7A]/10 border border-[#B7FF7A]/20 text-[#B7FF7A] text-xs font-bold animate-pulse">
               <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
               Server waking up… Retrying automatically
             </div>
@@ -86,12 +86,12 @@ export default function V1Login() {
               <input 
                 type="checkbox" 
                 id="terms-agreement"
-                className="mt-1 w-4 h-4 rounded border-gray-600 bg-black/50 text-[#EEFF00] focus:ring-[#EEFF00] focus:ring-offset-black"
+                className="mt-1 w-4 h-4 rounded border-gray-600 bg-black/50 text-[#B7FF7A] focus:ring-[#B7FF7A] focus:ring-offset-black"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
               />
               <label htmlFor="terms-agreement" className="text-xs text-white/70 leading-tight select-none cursor-pointer">
-                I agree to the <Link href="/legal/terms" className="text-[#EEFF00] hover:underline" target="_blank">User Agreement</Link> and <Link href="/legal/privacy" className="text-[#EEFF00] hover:underline" target="_blank">Privacy Policy</Link>.
+                I agree to the <Link href="/legal/terms" className="text-[#B7FF7A] hover:underline" target="_blank">User Agreement</Link> and <Link href="/legal/privacy" className="text-[#B7FF7A] hover:underline" target="_blank">Privacy Policy</Link>.
               </label>
             </div>
 
@@ -144,14 +144,14 @@ export default function V1Login() {
           )}
 
           <p className="text-center text-xs font-bold uppercase tracking-widest text-white/30">
-            No profile detected? <Link href="/v1/auth/signup" className="text-[#EEFF00] hover:underline underline-offset-4">Register New Link</Link>
+            No profile detected? <Link href="/v1/auth/signup" className="text-[#B7FF7A] hover:underline underline-offset-4">Register New Link</Link>
           </p>
         </div>
       </div>
 
       {/* Background decoration */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] border border-[#EEFF00]/5 rounded-full z-0 pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] border border-[#EEFF00]/5 rounded-full z-0 pointer-events-none animate-pulse" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] border border-[#B7FF7A]/5 rounded-full z-0 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] border border-[#B7FF7A]/5 rounded-full z-0 pointer-events-none animate-pulse" />
     </div>
   );
 }

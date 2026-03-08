@@ -358,7 +358,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
         <>
             {/* 错误提示 */}
             {error && (
-                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-md pointer-events-auto">
+                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg max-w-md pointer-events-auto">
                     <div className="flex items-start space-x-3">
                         <span className="text-lg flex-shrink-0">⚠️</span>
                         <div className="flex-1">
@@ -388,7 +388,7 @@ export const CameraWidget: React.FC<CameraWidgetProps> = ({
 
             {/* 摄像头预览窗口 */}
             {isActive && (
-                <div className="fixed bottom-2 right-2 w-48 h-36 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl z-10 bg-black pointer-events-auto">
+                <div className="fixed bottom-2 right-2 w-48 h-36 rounded-xl overflow-hidden border-2 border-white/20 z-10 bg-black pointer-events-auto">
                     {/* 画布层 - 显示检测结果 */}
                     <canvas
                         ref={canvasRef}

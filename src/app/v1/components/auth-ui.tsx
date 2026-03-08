@@ -11,9 +11,9 @@ export const AuthButton = ({
     <button 
       className={cn(
         "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95",
-        variant === 'primary' && "bg-[#EEFF00] text-black hover:shadow-[0_0_20px_rgba(238,255,0,0.4)]",
+        variant === 'primary' && "bg-[#B7FF7A] text-black ",
         variant === 'secondary' && "bg-white/10 text-white hover:bg-white/20",
-        variant === 'outline' && "bg-transparent border border-white/20 text-white hover:border-[#EEFF00] hover:text-[#EEFF00]",
+        variant === 'outline' && "bg-transparent border border-white/20 text-white hover:border-[#B7FF7A] hover:text-[#B7FF7A]",
         className
       )}
       {...props}
@@ -26,11 +26,11 @@ export const AuthButton = ({
 export const AuthInput = ({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) => {
   return (
     <div className="space-y-2 group">
-      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-black ml-1 group-focus-within:text-[#EEFF00] transition-colors">
+      <label className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-black ml-1 group-focus-within:text-[#B7FF7A] transition-colors">
         {label}
       </label>
       <input 
-        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/10 outline-none focus:border-[#EEFF00] focus:bg-white/[0.08] transition-all"
+        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/10 outline-none focus:border-[#B7FF7A] focus:bg-white/[0.08] transition-all"
         {...props}
       />
     </div>

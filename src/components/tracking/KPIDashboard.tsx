@@ -174,7 +174,7 @@ export const KPIDashboard: React.FC = () => {
       {/* KPI 指标网格 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric, index) => (
-          <Card key={index} className="hover:shadow-lg transition-shadow">
+          <Card key={index} className="transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className={`p-2 rounded-lg bg-gray-100 ${metric.color}`}>

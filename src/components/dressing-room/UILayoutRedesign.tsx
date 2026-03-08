@@ -22,7 +22,10 @@ import {
   ExternalLink,
   QrCode,
   Heart,
-  Mail
+  Mail,
+  Eye,
+  Circle,
+  Sparkles as SparklesIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,7 +54,6 @@ import sceneBaseIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 183.png';
 import sceneOverlayIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 179.png';
 import sceneRibbonIcon from '@/app/v1/assets/ECHUU V1 UX_img/image 180.png';
 import calendarIcon from '@/app/v1/assets/ECHUU V1 UX_img/8035b537838f81a942811ef8fecd8c5b 1.png';
-import echuuLogo from '@/app/v1/assets/logo-5-12.png';
 import accentSmall from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 262 (Stroke).svg';
 import mocapBtnIcon from '@/app/v1/assets/ECHUU V1 UX_icon/mocap btn.svg';
 import type { VRMModel } from '@/types';
@@ -103,8 +105,8 @@ type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar' | '
 export const BrandOverlay = memo(() => {
   return (
     <div className="fixed top-8 left-8 z-50 flex items-center space-x-3 pointer-events-auto group">
-      <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-2xl shadow-blue-500/20 transform group-hover:rotate-6 transition-transform duration-300 bg-transparent">
-        <img src={echuuLogo.src} alt="Echuu" className="w-full h-full object-contain" />
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden  transform group-hover:rotate-6 transition-transform duration-300 bg-transparent">
+        <img src="/favicon.svg" alt="Echuu" className="w-full h-full object-contain" />
       </div>
       <div className="flex flex-col">
         <h1 className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">
@@ -165,48 +167,51 @@ export const PowerToggle = memo(({
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
       <div className="flex items-center gap-4">
-        {/* 全站访问 + 在线人数 + 天使数 */}
+        {/* 全站访问 + 在线人数 + 天使数：白底 + 94F6FF 内发光 */}
         <div
-          className="flex items-center gap-3 px-5 py-2.5 rounded-full border-2 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900 border-blue-500 text-blue-500 scale-105"
+          className="flex items-center gap-3 px-5 py-2.5 rounded-full border-2 border-[#8BFFEA]/40 transition-all duration-500 bg-white text-slate-800 scale-105 shadow-[inset_0_0_40px_rgba(148,246,255,0.35)]"
           title={locale === 'zh' ? '本站访问 · 当前在线 · 已加入天使数' : 'Views · Online · Angels joined'}
         >
-          <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          <Eye className="w-4 h-4 shrink-0 text-slate-500" aria-hidden />
+          <span className="text-xs font-black uppercase tracking-widest text-slate-500">
             {locale === 'zh' ? '访问' : 'VIEWS'}
           </span>
-          <span className="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">
+          <span className="text-xs font-black tabular-nums text-slate-800">
             {viewCount === null ? '—' : viewCount.toLocaleString()}
           </span>
-          <span className="w-px h-4 bg-slate-300 dark:bg-slate-600" aria-hidden />
-          <div
+          <span className="w-px h-4 bg-slate-300" aria-hidden />
+          <Circle
             className={cn(
-              "w-2 h-2 rounded-full shrink-0",
-              connectionState === 'connected' ? "bg-blue-500 animate-pulse" : "bg-slate-300 dark:bg-slate-600"
+              "w-2.5 h-2.5 shrink-0",
+              connectionState === 'connected' ? "fill-[#8BFFEA] text-[#8BFFEA] animate-pulse" : "text-slate-400"
             )}
+            aria-hidden
           />
-          <span className="text-xs font-black uppercase tracking-widest">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
-          <span className="text-xs font-black tabular-nums">{onlineCount}</span>
-          <span className="w-px h-4 bg-slate-300 dark:bg-slate-600" aria-hidden />
-          <span className="text-xs font-black uppercase tracking-widest">{locale === 'zh' ? '天使' : 'ANGELS'}</span>
-          <span className="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300">
+          <span className="text-xs font-black uppercase tracking-widest text-slate-500">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
+          <span className="text-xs font-black tabular-nums text-slate-800">{onlineCount}</span>
+          <span className="w-px h-4 bg-slate-300" aria-hidden />
+          <SparklesIcon className="w-4 h-4 shrink-0 text-slate-500" aria-hidden />
+          <span className="text-xs font-black uppercase tracking-widest text-slate-500">{locale === 'zh' ? '天使' : 'ANGELS'}</span>
+          <span className="text-xs font-black tabular-nums text-slate-800">
             {angelCount === null ? '—' : angelCount.toLocaleString()}
           </span>
         </div>
 
-        {/* Like Button */}
+        {/* Like Button：白底 + 94F6FF 内发光 */}
         <button
           onClick={() => setLikeCount((c) => c + 1)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-300 shadow-xl bg-white dark:bg-slate-900 border-pink-500 text-pink-500 hover:scale-105 active:scale-95"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-slate-900 hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
           title={locale === 'zh' ? '点赞' : 'Like'}
         >
           <Heart className="w-4 h-4 fill-current" />
           <span className="text-xs font-black tabular-nums">{likeCount > 0 ? likeCount : (locale === 'zh' ? '点赞' : 'LIKE')}</span>
         </button>
 
-        {/* Contact Button */}
+        {/* Contact Button：白底 + 94F6FF 内发光 */}
         <DialogUI.Dialog>
           <DialogUI.DialogTrigger asChild>
             <button
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-300 shadow-xl bg-white dark:bg-slate-900 border-purple-500 text-purple-500 hover:scale-105 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-slate-900 hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
               title={locale === 'zh' ? '联系我们' : 'Contact'}
             >
               <Mail className="w-4 h-4" />
@@ -311,7 +316,7 @@ export const ActionButtonStack = memo(({
       <button 
         onClick={onOpenModelManager}
         title="模型管理"
-        className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-[0_8px_24px_rgba(59,130,246,0.3)] hover:scale-110 active:scale-95 transition-all duration-200"
+        className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center text-white  hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Users className="h-6 w-6" />
       </button>
@@ -321,10 +326,10 @@ export const ActionButtonStack = memo(({
         onClick={onCameraToggle}
         title={isCameraActive ? '停止摄像头' : '开启摄像头'}
         className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-110 active:scale-95",
+          "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95",
           isCameraActive
-            ? "bg-rose-500 text-white shadow-rose-500/30"
-            : "bg-blue-600 text-white shadow-blue-600/30"
+            ? "bg-rose-500 text-white"
+            : "bg-blue-600 text-white"
         )}
       >
         <Camera className={cn("h-6 w-6", isCameraActive && "animate-pulse")} />
@@ -335,9 +340,9 @@ export const ActionButtonStack = memo(({
         onClick={onToggleBones}
         title={isBonesVisible ? '隐藏骨骼' : '显示骨骼'}
         className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-110 active:scale-95",
+          "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95",
           isBonesVisible 
-            ? "bg-slate-800 text-white shadow-slate-800/20" 
+            ? "bg-slate-800 text-white" 
             : "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 text-slate-400"
         )}
       >
@@ -348,7 +353,7 @@ export const ActionButtonStack = memo(({
       <button 
         onClick={onOpenSettings}
         title="设置"
-        className="w-14 h-14 bg-amber-400 rounded-2xl flex items-center justify-center text-white shadow-[0_8px_24px_rgba(251,191,36,0.3)] hover:scale-110 active:scale-95 transition-all duration-200"
+        className="w-14 h-14 bg-amber-400 rounded-2xl flex items-center justify-center text-white  hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Layout className="h-6 w-6" />
       </button>
@@ -357,7 +362,7 @@ export const ActionButtonStack = memo(({
       <button
         onClick={() => router.push(nextLocalePath)}
         title={isZh ? '切换到 English' : '切换到中文'}
-        className="w-14 h-14 bg-slate-900/80 text-white rounded-2xl flex items-center justify-center shadow-xl border border-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
+        className="w-14 h-14 bg-slate-900/80 text-white rounded-2xl flex items-center justify-center border border-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Languages className="h-6 w-6" />
       </button>
@@ -857,7 +862,7 @@ export const StreamRoomSidebar = memo(({
             <img src={accentSmall.src} alt="" className="absolute" style={{ left: '77px', top: '14px', width: '19px', height: '7px', transform: 'rotate(3.04deg)' }} />
             <img src={accentMedium.src} alt="" className="absolute" style={{ left: '73px', top: '8px', width: '26px', height: '8px', transform: 'rotate(3.04deg)' }} />
             <img src={accentLarge.src} alt="" className="absolute" style={{ left: '65px', top: '0px', width: '37px', height: '11px', transform: 'rotate(3.04deg)' }} />
-            <div className="absolute text-[12px] leading-[13px] text-black w-full text-center" style={{ left: '0px', top: '108px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[13px] text-black w-full text-center" style={{ left: '0px', top: '108px', fontFamily: "'MHTIROGLA', system-ui, sans-serif", fontWeight: 500 }}>
               Character Setting
             </div>
           </button>
@@ -1272,7 +1277,7 @@ export const StreamRoomSidebar = memo(({
                   onClick={() => setAvatarGizmoEnabled(!avatarGizmoEnabled)}
                   className={`relative w-10 h-5 rounded-full transition-colors ${avatarGizmoEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
                 >
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${avatarGizmoEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${avatarGizmoEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
 
@@ -1300,7 +1305,7 @@ export const StreamRoomSidebar = memo(({
                     onClick={() => setChromaticEnabled(!chromaticEnabled)}
                     className={`relative w-10 h-5 rounded-full transition-colors ${chromaticEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
                   >
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${chromaticEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${chromaticEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
                 {chromaticEnabled && (
@@ -1379,7 +1384,7 @@ export const StreamRoomSidebar = memo(({
                   onClick={() => setHandTrailEnabled(!handTrailEnabled)}
                   className={`relative w-10 h-5 rounded-full transition-colors ${handTrailEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
                 >
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${handTrailEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${handTrailEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
 
@@ -1393,7 +1398,7 @@ export const StreamRoomSidebar = memo(({
                     onClick={() => setTheatreCameraActive(!theatreCameraActive)}
                     className={`relative w-10 h-5 rounded-full transition-colors ${theatreCameraActive ? 'bg-violet-500' : 'bg-slate-300'}`}
                   >
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${theatreCameraActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${theatreCameraActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
                 {theatreCameraActive && (
@@ -1430,7 +1435,7 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'calendar' && (
             <div className="flex flex-col gap-4">
-              <div className="echuu-calendar-wrap flex rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+              <div className="echuu-calendar-wrap flex rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 ">
                 <div className="flex-1 min-w-0 p-3">
                   <DayPicker
                     mode="single"
@@ -1618,14 +1623,14 @@ const ChatPanelFooterButtons = memo(() => {
         <button
           type="button"
           onClick={() => setLangOpen((o) => !o)}
-          className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#EEFF00] text-[#EEFF00] text-[11px] font-bold w-full"
+          className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#B7FF7A] text-[#B7FF7A] text-[11px] font-bold w-full"
           aria-label="语言 / Language"
         >
           <Languages className="h-4 w-4" />
         </button>
         {langOpen && (
           <>
-            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#EEFF00]/50 min-w-[120px] z-20 shadow-lg">
+            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#B7FF7A]/50 min-w-[120px] z-20">
               {locales.map((l) => (
                 <button
                   key={l.code}
@@ -1634,7 +1639,7 @@ const ChatPanelFooterButtons = memo(() => {
                     changeLocale(l.code);
                     setLangOpen(false);
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${l.code === locale ? 'text-[#EEFF00] font-bold' : 'text-white/90'}`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${l.code === locale ? 'text-[#B7FF7A] font-bold' : 'text-white/90'}`}
                 >
                   <span>{l.flag}</span>
                   <span>{l.label}</span>
@@ -1650,7 +1655,7 @@ const ChatPanelFooterButtons = memo(() => {
           type="button"
           onClick={() => canvasReady && setCaptureMenuOpen((o) => !o)}
           disabled={!canvasReady}
-          className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#EEFF00] text-[#EEFF00] text-[11px] font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#B7FF7A] text-[#B7FF7A] text-[11px] font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Take photo (3D view only)"
           title={canvasReady ? '截取 3D 画面（可选平台尺寸）' : '3D 场景就绪后可用'}
         >
@@ -1658,7 +1663,7 @@ const ChatPanelFooterButtons = memo(() => {
         </button>
         {captureMenuOpen && (
           <>
-            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#EEFF00]/50 min-w-[180px] z-20 shadow-lg max-h-[240px] overflow-y-auto">
+            <div className="absolute bottom-full left-0 mb-1 py-1 rounded-lg bg-black/95 border border-[#B7FF7A]/50 min-w-[180px] z-20 max-h-[240px] overflow-y-auto">
               <button
                 type="button"
                 onClick={() => handleTakePhoto(null)}
@@ -1715,12 +1720,12 @@ export const StreamRoomChatPanel = memo(() => {
           collapsed ? 'w-[56px]' : 'w-[340px]'
         }`}
       >
-        <div className="absolute inset-0 rounded-[28px] bg-[#EEFF00] shadow-[0_20px_60px_rgba(0,0,0,0.3)]" />
+        <div className="absolute inset-0 rounded-[28px] bg-[#B7FF7A] " />
 
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#EEFF00] text-xs font-black"
+          className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full bg-black/90 text-[#B7FF7A] text-xs font-black"
           aria-label={collapsed ? '展开聊天' : '收起聊天'}
         >
           {collapsed ? '<<' : '>>'}
@@ -1735,7 +1740,7 @@ export const StreamRoomChatPanel = memo(() => {
             <div className="absolute left-5 top-5 text-black font-black text-[18px] tracking-tight">
               CHAT PANEL
             </div>
-            <div className="absolute left-5 top-14 right-5 bottom-20 rounded-[22px] border-[3px] border-[#EEFF00] bg-white/40 p-3">
+            <div className="absolute left-5 top-14 right-5 bottom-20 rounded-[22px] border-[3px] border-[#B7FF7A] bg-white/40 p-3">
               <div ref={messageRef} className="h-full overflow-y-auto pr-2 text-[12px] text-black">
                 {recentMessages.map((msg, index) => (
                   <div key={`${msg.user}-${msg.timestamp}-${index}`} className="mb-2">
@@ -1747,7 +1752,7 @@ export const StreamRoomChatPanel = memo(() => {
                 ))}
               </div>
             </div>
-            <div className="absolute left-5 right-5 bottom-5 h-11 rounded-full bg-black/90 border-[3px] border-[#EEFF00] flex items-center px-3">
+            <div className="absolute left-5 right-5 bottom-5 h-11 rounded-full bg-black/90 border-[3px] border-[#B7FF7A] flex items-center px-3">
               <input
                 className="flex-1 bg-transparent text-white text-[11px] outline-none"
                 placeholder="Chat with your streamer..."
@@ -1763,7 +1768,7 @@ export const StreamRoomChatPanel = memo(() => {
               <button
                 type="button"
                 onClick={handleSend}
-                className="ml-2 h-7 w-10 rounded-full bg-[#DBDBDB] border-2 border-[#EEFF00]"
+                className="ml-2 h-7 w-10 rounded-full bg-[#DBDBDB] border-2 border-[#B7FF7A]"
               />
             </div>
           </>
@@ -2132,7 +2137,7 @@ export const GoLiveButton = memo(() => {
     >
       {/* 上方：实时 caption，一句一句播 + 打字机效果 */}
       {captionFullText ? (
-        <div className="mb-1.5 px-4 py-2 max-w-[90vw] min-h-[2.5rem] bg-black/70 border border-[#EEFF00]/40 rounded-lg text-sm text-[#EEFF00] text-center shadow-lg">
+        <div className="mb-1.5 px-4 py-2 max-w-[90vw] min-h-[2.5rem] bg-black/70 border border-[#B7FF7A]/40 rounded-lg text-sm text-[#B7FF7A] text-center">
           <CaptionTypewriter fullText={captionFullText} />
         </div>
       ) : null}
@@ -2154,12 +2159,12 @@ export const GoLiveButton = memo(() => {
         ) : null}
       </div>
 
-      {/* Bar: 最小 214×53，随文案宽度自适应 */}
-      <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-[#E9E9E9] rounded-[26.5px] flex items-center gap-0">
+      {/* Bar: 最小 214×53，随文案宽度自适应；主题渐变色 + 8px 外描边 */}
+      <div className="relative min-w-[214px] w-max h-[53px] px-4 bg-theme-gradient rounded-[26.5px] flex items-center gap-0 ">
         {/* Go Live 外圈流光，提高可见性 */}
         <span
           aria-hidden
-          className="absolute left-[3px] top-[5px] w-[44px] h-[44px] rounded-full bg-[#EEFF00]/35 blur-[10px] animate-pulse pointer-events-none"
+          className="absolute left-[3px] top-[5px] w-[44px] h-[44px] rounded-full bg-[#B7FF7A]/35 blur-[10px] animate-pulse pointer-events-none"
         />
         {isLive && !isAudience ? (
           // Stop button — shown while stream is active
@@ -2197,7 +2202,7 @@ export const GoLiveButton = memo(() => {
             }}
             aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
           >
-            <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-[#EEFF00] text-[#E9E9E9]">
+            <span className="flex items-center justify-center w-5 h-5 rounded-sm border-2 border-[#8BFFEA] text-[#1e293b]">
               <Play className="h-3 w-3" strokeWidth={2} />
             </span>
           </button>

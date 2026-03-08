@@ -34,7 +34,7 @@ export const DraggablePanel: React.FC<DraggablePanelProps> = ({
   return (
     <Draggable defaultPosition={defaultPosition} handle=".draggable-panel-header">
       <div
-        className="fixed bg-white shadow-2xl border border-gray-300 rounded-lg flex flex-col"
+        className="fixed bg-white border border-gray-300 rounded-lg flex flex-col"
         style={{
           zIndex,
           minWidth,

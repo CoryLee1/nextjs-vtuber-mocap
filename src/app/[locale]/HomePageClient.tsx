@@ -164,16 +164,16 @@ export default function HomePageClient() {
       {!isLoading && status !== 'authenticated' && (
         <div className="absolute inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <div className="relative z-10 w-full max-w-lg bg-black/70 border border-[#EEFF00]/20 rounded-[32px] p-10 shadow-2xl">
+          <div className="relative z-10 w-full max-w-lg bg-black/70 border border-[#B7FF7A]/20 rounded-[32px] p-10">
             <div className="flex items-center justify-between mb-8">
-              <div className="text-[#EEFF00] text-sm font-black uppercase tracking-[0.3em]">
+              <div className="text-[#B7FF7A] text-sm font-black uppercase tracking-[0.3em]">
                 ECHUU ACCESS
               </div>
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em]">
                 <button
                   type="button"
                   onClick={() => setAuthMode('login')}
-                  className={authMode === 'login' ? 'text-[#EEFF00]' : 'text-white/40 hover:text-white'}
+                  className={authMode === 'login' ? 'text-[#B7FF7A]' : 'text-white/40 hover:text-white'}
                 >
                   Login
                 </button>
@@ -181,7 +181,7 @@ export default function HomePageClient() {
                 <button
                   type="button"
                   onClick={() => setAuthMode('signup')}
-                  className={authMode === 'signup' ? 'text-[#EEFF00]' : 'text-white/40 hover:text-white'}
+                  className={authMode === 'signup' ? 'text-[#B7FF7A]' : 'text-white/40 hover:text-white'}
                 >
                   Register
                 </button>

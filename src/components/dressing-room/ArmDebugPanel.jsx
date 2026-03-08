@@ -389,7 +389,7 @@ export const ArmDebugPanel = ({
 
       {/* 主面板 */}
       {!isCollapsed && (
-        <div className="w-80 bg-gray-900 bg-opacity-95 backdrop-blur-sm rounded-lg shadow-2xl border border-gray-700 max-h-96 overflow-y-auto">
+        <div className="w-80 bg-gray-900 bg-opacity-95 backdrop-blur-sm rounded-lg border border-gray-700 max-h-96 overflow-y-auto">
           {/* 标题栏 */}
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
