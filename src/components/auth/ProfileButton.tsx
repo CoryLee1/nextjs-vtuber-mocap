@@ -97,7 +97,7 @@ export function ProfileButton() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="w-16 h-16 rounded-full overflow-hidden bg-white/10 border border-white/10 hover:scale-105 active:scale-95 transition-all"
+          className="w-10 h-10 rounded-full overflow-hidden bg-white border border-white/20 hover:scale-105 active:scale-95 transition-all shrink-0"
           title="Profile"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -120,7 +120,7 @@ export function ProfileButton() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-16 h-16 rounded-full overflow-hidden bg-black/10 border border-white/10 hover:scale-105 active:scale-95 transition-all"
+              className="w-16 h-16 rounded-full overflow-hidden bg-white border border-white/20 hover:scale-105 active:scale-95 transition-all"
               title="点击更换头像"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
