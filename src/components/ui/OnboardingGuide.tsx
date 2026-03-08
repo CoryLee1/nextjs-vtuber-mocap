@@ -236,7 +236,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                 <div key={step.id} className="relative">
                   <div className={`flex items-center space-x-4 p-4 rounded-2xl transition-all duration-300 ${
                     isActive 
-                      ? 'bg-[#B7FF7A] text-black ' 
+                      ? 'bg-[#B7FF7A] text-[#636363] ' 
                       : isCompleted 
                       ? 'bg-blue-500/20 text-blue-400' 
                       : 'bg-white/5 text-white/40'
@@ -279,7 +279,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
 
           <Button
             onClick={handleNext}
-            className="w-full rounded-xl bg-[#B7FF7A] text-black hover:bg-[#8BFFEA] font-bold"
+            className="w-full rounded-xl bg-[#B7FF7A] text-[#636363] hover:bg-[#8BFFEA] font-bold"
           >
             {activeStep === steps.length - 1 ? '完成' : 'Next Step'}
             <ChevronRight className="h-4 w-4 ml-2" />
@@ -329,7 +329,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         {onStep1Select && (
                           <Button
                             onClick={onStep1Select}
-                            className="bg-[#B7FF7A] text-black hover:bg-[#8BFFEA] font-bold"
+                            className="bg-[#B7FF7A] text-[#636363] hover:bg-[#8BFFEA] font-bold"
                           >
                             选择模型
                           </Button>
@@ -347,7 +347,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     ) : (
                       actionHref && (
                         <Link href={actionHref}>
-                          <Button className="bg-[#B7FF7A] text-black hover:bg-[#8BFFEA] font-bold">
+                          <Button className="bg-[#B7FF7A] text-[#636363] hover:bg-[#8BFFEA] font-bold">
                             {currentStep.actionLabel || '进入下一步'}
                           </Button>
                         </Link>

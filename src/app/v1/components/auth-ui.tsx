@@ -11,7 +11,7 @@ export const AuthButton = ({
     <button 
       className={cn(
         "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95",
-        variant === 'primary' && "bg-[#B7FF7A] text-black ",
+        variant === 'primary' && "bg-[#B7FF7A] text-[#636363] ",
         variant === 'secondary' && "bg-white/10 text-white hover:bg-white/20",
         variant === 'outline' && "bg-transparent border border-white/20 text-white hover:border-[#B7FF7A] hover:text-[#B7FF7A]",
         className

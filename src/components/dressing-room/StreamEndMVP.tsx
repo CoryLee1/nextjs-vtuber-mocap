@@ -81,10 +81,10 @@ export const StreamEndMVP = memo(() => {
         {/* 装饰：闪烁星星 */}
         <div className="absolute -top-8 right-[120px] flex gap-2 animate-pulse">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2l2.09 6.26L20.18 10l-6.09 1.74L12 18l-2.09-6.26L3.82 10l6.09-1.74L12 2z" fill="#EEFF00" />
+            <path d="M12 2l2.09 6.26L20.18 10l-6.09 1.74L12 18l-2.09-6.26L3.82 10l6.09-1.74L12 2z" fill="#B7FF7A" />
           </svg>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="mt-1">
-            <path d="M12 2l2.09 6.26L20.18 10l-6.09 1.74L12 18l-2.09-6.26L3.82 10l6.09-1.74L12 2z" fill="#EEFF00" opacity="0.7" />
+            <path d="M12 2l2.09 6.26L20.18 10l-6.09 1.74L12 18l-2.09-6.26L3.82 10l6.09-1.74L12 2z" fill="#B7FF7A" opacity="0.7" />
           </svg>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="mt-3">
             <path d="M12 2l2.09 6.26L20.18 10l-6.09 1.74L12 18l-2.09-6.26L3.82 10l6.09-1.74L12 2z" fill="white" opacity="0.5" />
@@ -93,7 +93,7 @@ export const StreamEndMVP = memo(() => {
 
         {/* 光环+翅膀装饰 */}
         <div className="flex items-center gap-1 mr-[80px]">
-          <span className="text-[#EEFF00] text-xl animate-bounce" style={{ animationDuration: '2s' }}>
+          <span className="text-[#B7FF7A] text-xl animate-bounce" style={{ animationDuration: '2s' }}>
             ○
           </span>
           <span className="text-white/50 text-sm">✦ ✧ ✦</span>
@@ -107,18 +107,18 @@ export const StreamEndMVP = memo(() => {
           <span className="text-white">That </span>
           <span
             className="relative inline-block px-2 py-0.5"
-            style={{ background: '#EEFF00', color: '#000' }}
+            style={{ background: '#B7FF7A', color: '#636363' }}
           >
             Hiiiiit!
             {/* 涂鸦效果小点 */}
-            <span className="absolute -top-1 -right-2 text-[#EEFF00] text-[10px]">···</span>
+            <span className="absolute -top-1 -right-2 text-[#B7FF7A] text-[10px]">···</span>
           </span>
         </h1>
 
         {/* 话题标签 */}
         <div className="flex items-center gap-2">
           <span
-            className="px-3 py-1 bg-[#EEFF00] text-black text-[16px] font-bold"
+            className="px-3 py-1 bg-[#B7FF7A] text-[#636363] text-[16px] font-bold"
             style={{ fontFamily: "'MHTIROGLA', system-ui, sans-serif" }}
           >
             {topic}

@@ -184,7 +184,7 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
 
                   {/* 资源信息 */}
                   <div className="space-y-1">
-                    <h3 className="font-medium text-sm text-gray-900 truncate">
+                    <h3 className="font-medium text-sm text-[#636363] truncate">
                       {resource.name}
                     </h3>
                     <div className="flex items-center justify-between text-xs text-gray-500">

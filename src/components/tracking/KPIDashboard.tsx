@@ -157,7 +157,7 @@ export const KPIDashboard: React.FC = () => {
       {/* 标题和状态 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">KPI 仪表板</h2>
+          <h2 className="text-2xl font-bold text-[#636363]">KPI 仪表板</h2>
           <p className="text-gray-600">实时业务指标监控</p>
         </div>
         <div className="flex items-center space-x-2">
@@ -191,7 +191,7 @@ export const KPIDashboard: React.FC = () => {
             <CardContent>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">{metric.name}</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-[#636363]">
                   {metric.value.toLocaleString()}
                   <span className="text-sm font-normal text-gray-500 ml-1">
                     {metric.unit}

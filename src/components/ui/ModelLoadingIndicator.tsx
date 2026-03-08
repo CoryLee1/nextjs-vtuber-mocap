@@ -40,7 +40,7 @@ export const ModelLoadingIndicator: React.FC<ModelLoadingIndicatorProps> = ({
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-md mx-4 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <div className="text-lg font-medium text-gray-900 mb-2">正在加载模型</div>
+          <div className="text-lg font-medium text-[#636363] mb-2">正在加载模型</div>
           <div className="text-gray-600 mb-2">{modelName}</div>
           <div className="text-sm text-gray-500">
             从 GitHub Releases 下载中，请稍候...

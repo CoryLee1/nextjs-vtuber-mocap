@@ -109,7 +109,7 @@ export const BrandOverlay = memo(() => {
         <img src="/favicon.svg" alt="Echuu" className="w-full h-full object-contain" />
       </div>
       <div className="flex flex-col">
-        <h1 className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">
+        <h1 className="text-sm font-black tracking-tight text-[#636363] dark:text-white leading-none">
           AI Vtuber
         </h1>
       </div>
@@ -200,7 +200,7 @@ export const PowerToggle = memo(({
         {/* Like Button：白底 + 94F6FF 内发光 */}
         <button
           onClick={() => setLikeCount((c) => c + 1)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-slate-900 hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-[#636363] hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
           title={locale === 'zh' ? '点赞' : 'Like'}
         >
           <Heart className="w-4 h-4 fill-current" />
@@ -211,7 +211,7 @@ export const PowerToggle = memo(({
         <DialogUI.Dialog>
           <DialogUI.DialogTrigger asChild>
             <button
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-slate-900 hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-[#636363] hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
               title={locale === 'zh' ? '联系我们' : 'Contact'}
             >
               <Mail className="w-4 h-4" />
@@ -862,7 +862,7 @@ export const StreamRoomSidebar = memo(({
             <img src={accentSmall.src} alt="" className="absolute" style={{ left: '77px', top: '14px', width: '19px', height: '7px', transform: 'rotate(3.04deg)' }} />
             <img src={accentMedium.src} alt="" className="absolute" style={{ left: '73px', top: '8px', width: '26px', height: '8px', transform: 'rotate(3.04deg)' }} />
             <img src={accentLarge.src} alt="" className="absolute" style={{ left: '65px', top: '0px', width: '37px', height: '11px', transform: 'rotate(3.04deg)' }} />
-            <div className="absolute text-[14px] leading-[13px] text-black w-full text-center" style={{ left: '0px', top: '108px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[13px] text-[#636363] w-full text-center" style={{ left: '0px', top: '108px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
               Character Setting
             </div>
           </button>
@@ -878,7 +878,7 @@ export const StreamRoomSidebar = memo(({
               <div className="absolute" style={{ left: '0px', top: '5px', width: '7px', height: '7px', background: '#FF5C5C', borderRadius: '2px' }} />
               <div className="absolute text-[12px] leading-[20px] text-[#FF5C5C]" style={{ left: '11px', top: '0px', fontFamily: 'Dubai', fontWeight: 700 }}>LIVE</div>
             </div>
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '96px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-[#636363] w-full text-center" style={{ left: '0px', top: '96px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
               Live Setting
             </div>
           </button>
@@ -889,7 +889,7 @@ export const StreamRoomSidebar = memo(({
             className={`relative w-[114px] h-[92px] transition-transform ${panelOpen && panelType === 'sound' ? 'scale-105' : 'hover:scale-105'}`}
           >
             <img src={soundSettingIcon.src} alt="" className="absolute" style={{ left: '24px', top: '0px', width: '66px', height: '71px' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '79px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-[#636363] w-full text-center" style={{ left: '0px', top: '79px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
               Sound Setting
             </div>
           </button>
@@ -902,7 +902,7 @@ export const StreamRoomSidebar = memo(({
             <img src={sceneBaseIcon.src} alt="" className="absolute" style={{ left: '12px', top: '54px', width: '131px', height: '81px' }} />
             <img src={sceneOverlayIcon.src} alt="" className="absolute" style={{ left: '14px', top: '8px', width: '127px', height: '127px' }} />
             <img src={sceneRibbonIcon.src} alt="" className="absolute" style={{ left: '58px', top: '42px', width: '59px', height: '59px', transform: 'matrix(0.98, -0.18, 0.18, 0.98, 0, 0)' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '126px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-[#636363] w-full text-center" style={{ left: '0px', top: '126px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
               Scene
             </div>
           </button>
@@ -913,7 +913,7 @@ export const StreamRoomSidebar = memo(({
             className={`relative w-[152px] h-[83px] transition-transform ${panelOpen && panelType === 'calendar' ? 'scale-105' : 'hover:scale-105'}`}
           >
             <img src={calendarIcon.src} alt="" className="absolute" style={{ left: '42px', top: '0px', width: '68px', height: '68px' }} />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '71px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-[#636363] w-full text-center" style={{ left: '0px', top: '71px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
               Calendar Memory
             </div>
           </button>
@@ -924,7 +924,7 @@ export const StreamRoomSidebar = memo(({
             className={`relative w-[152px] h-[118px] transition-transform ${panelOpen && panelType === 'mocap' ? 'scale-105' : 'hover:scale-105'}`}
           >
             <img src={mocapBtnIcon.src} alt="" className="absolute left-1/2 top-0 h-[102px] w-[80px] -translate-x-1/2 object-contain" />
-            <div className="absolute text-[14px] leading-[15px] text-black w-full text-center" style={{ left: '0px', top: '105px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
+            <div className="absolute text-[14px] leading-[15px] text-[#636363] w-full text-center" style={{ left: '0px', top: '105px', fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}>
               Webcam Mocap
             </div>
           </button>
@@ -1732,19 +1732,19 @@ export const StreamRoomChatPanel = memo(() => {
         </button>
 
         {collapsed ? (
-          <div className="absolute inset-0 flex items-center justify-center text-black font-black text-[14px] tracking-tight rotate-90">
+          <div className="absolute inset-0 flex items-center justify-center text-[#636363] font-black text-[14px] tracking-tight rotate-90">
             CHAT
           </div>
         ) : (
           <>
-            <div className="absolute left-5 top-5 text-black font-black text-[18px] tracking-tight">
+            <div className="absolute left-5 top-5 text-[#636363] font-black text-[18px] tracking-tight">
               CHAT PANEL
             </div>
             <div className="absolute left-5 top-14 right-5 bottom-20 rounded-[22px] border-[3px] border-[#B7FF7A] bg-white/40 p-3">
-              <div ref={messageRef} className="h-full overflow-y-auto pr-2 text-[12px] text-black">
+              <div ref={messageRef} className="h-full overflow-y-auto pr-2 text-[12px] text-[#636363]">
                 {recentMessages.map((msg, index) => (
                   <div key={`${msg.user}-${msg.timestamp}-${index}`} className="mb-2">
-                    <span className={msg.isAI ? 'text-black font-bold' : 'text-slate-800 font-semibold'}>
+                    <span className={msg.isAI ? 'text-[#636363] font-bold' : 'text-[#636363] font-semibold'}>
                       {msg.user}：
                     </span>
                     <span className="ml-1">{msg.text}</span>
@@ -1861,7 +1861,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
     ? `正在 Echuu 直播中！欢迎来围观互动：${shareUrl}`
     : `Live now on Echuu! Join and interact: ${shareUrl}`;
   const iconBtnClass =
-    'h-11 w-11 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-slate-900 flex items-center justify-center p-0 overflow-hidden';
+    'h-11 w-11 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-[#636363] flex items-center justify-center p-0 overflow-hidden';
   const iconFillClass = 'w-full h-full object-cover';
 
   const copyLink = async () => {
@@ -1894,7 +1894,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
         disabled={disabled}
         className={cn(
           'absolute right-[4px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
-          disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 hover:text-black hover:bg-black/10'
+          disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 hover:text-[#636363] hover:bg-black/10'
         )}
         title={title}
         aria-label={title}
@@ -2005,11 +2005,11 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                   <input
                     readOnly
                     value={shareUrl}
-                    className="flex-1 h-9 px-2 rounded border text-xs bg-slate-50 text-slate-900"
+                    className="flex-1 h-9 px-2 rounded border text-xs bg-slate-50 text-[#636363]"
                   />
                   <button
                     type="button"
-                    className="h-9 px-2 rounded border bg-white hover:bg-slate-50 text-slate-900"
+                    className="h-9 px-2 rounded border bg-white hover:bg-slate-50 text-[#636363]"
                     onClick={copyLink}
                     title={locale === 'zh' ? '复制链接' : 'Copy'}
                   >
@@ -2029,7 +2029,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
               </div>
               <button
                 type="button"
-                className="h-9 px-3 rounded border bg-white hover:bg-slate-100 text-sm text-slate-900"
+                className="h-9 px-3 rounded border bg-white hover:bg-slate-100 text-sm text-[#636363]"
                 onClick={copyLink}
               >
                 <ExternalLink className="w-4 h-4 inline-block mr-1" />
@@ -2211,7 +2211,7 @@ export const GoLiveButton = memo(() => {
         <ShareRoomButton roomId={roomId} />
         {/* Stream Topic — 与侧边栏「直播主题」一致 */}
         <span
-          className="pl-[46px] pr-[48px] text-[15px] leading-[15px] text-black flex items-center max-w-[300px] truncate"
+          className="pl-[46px] pr-[48px] text-[15px] leading-[15px] text-[#636363] flex items-center max-w-[300px] truncate"
           style={{ fontFamily: "'Zen Maru Gothic', system-ui, sans-serif", fontWeight: 500 }}
           title={topic?.trim() || undefined}
         >

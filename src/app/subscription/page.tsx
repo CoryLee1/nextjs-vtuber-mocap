@@ -27,7 +27,7 @@ export default function SubscriptionPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 页面标题 */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-[#636363] mb-4">
             VTuber 订阅计划
           </h1>
           <p className="text-xl text-gray-600 mb-6">
@@ -48,17 +48,17 @@ export default function SubscriptionPage() {
 
         {/* 功能对比 */}
         <div className="bg-white rounded-lg p-8 mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <h2 className="text-2xl font-bold text-[#636363] mb-6 text-center">
             功能对比
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-4 px-6 font-medium text-gray-900">功能</th>
-                  <th className="text-center py-4 px-6 font-medium text-gray-900">基础版</th>
-                  <th className="text-center py-4 px-6 font-medium text-gray-900">专业版</th>
-                  <th className="text-center py-4 px-6 font-medium text-gray-900">高级版</th>
+                  <th className="text-left py-4 px-6 font-medium text-[#636363]">功能</th>
+                  <th className="text-center py-4 px-6 font-medium text-[#636363]">基础版</th>
+                  <th className="text-center py-4 px-6 font-medium text-[#636363]">专业版</th>
+                  <th className="text-center py-4 px-6 font-medium text-[#636363]">高级版</th>
                 </tr>
               </thead>
               <tbody>
@@ -105,12 +105,12 @@ export default function SubscriptionPage() {
 
         {/* 支付方式说明 */}
         <div className="bg-white rounded-lg p-8 mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <h2 className="text-2xl font-bold text-[#636363] mb-6 text-center">
             支持的支付方式
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">🇨🇳 中国支付方式</h3>
+              <h3 className="text-lg font-semibold text-[#636363] mb-4">🇨🇳 中国支付方式</h3>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">💰</span>
@@ -127,7 +127,7 @@ export default function SubscriptionPage() {
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">🌍 国际支付方式</h3>
+              <h3 className="text-lg font-semibold text-[#636363] mb-4">🌍 国际支付方式</h3>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">💳</span>
@@ -152,12 +152,12 @@ export default function SubscriptionPage() {
 
         {/* 常见问题 */}
         <div className="bg-white rounded-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <h2 className="text-2xl font-bold text-[#636363] mb-6 text-center">
             常见问题
           </h2>
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-[#636363] mb-2">
                 Q: 如何取消订阅？
               </h3>
               <p className="text-gray-600">
@@ -165,7 +165,7 @@ export default function SubscriptionPage() {
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-[#636363] mb-2">
                 Q: 支持哪些货币？
               </h3>
               <p className="text-gray-600">
@@ -173,7 +173,7 @@ export default function SubscriptionPage() {
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-[#636363] mb-2">
                 Q: 如何获得技术支持？
               </h3>
               <p className="text-gray-600">
