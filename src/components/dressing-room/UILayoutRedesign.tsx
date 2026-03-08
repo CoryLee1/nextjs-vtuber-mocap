@@ -968,7 +968,7 @@ export const StreamRoomSidebar = memo(({
       >
         <div className="w-[560px] h-full bg-[#E7ECF3] border border-white/60 p-10 flex flex-col gap-6 pointer-events-auto overflow-y-auto">
           <div className="flex items-center justify-between">
-            <div className="text-[12px] text-slate-500 tracking-widest uppercase">
+            <div className="text-[16px] text-slate-500 tracking-widest uppercase">
               {panelType === 'character' && 'Character Setting'}
               {panelType === 'live' && 'Live Setting'}
               {panelType === 'sound' && 'Sound Setting'}
@@ -987,13 +987,13 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'character' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">{t('vtuber.character.name')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.character.name')}</label>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
                 value={characterDraft.characterName}
                 onChange={(e) => setCharacterDraft((prev) => ({ ...prev, characterName: e.target.value }))}
               />
-              <label className="text-[12px] text-slate-500">{t('vtuber.character.voice')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.character.voice')}</label>
               <Select
                 value={characterDraft.voice || 'Cherry'}
                 onValueChange={(v) => setCharacterDraft((prev) => ({ ...prev, voice: v }))}
@@ -1017,7 +1017,7 @@ export const StreamRoomSidebar = memo(({
                   })}
                 </SelectContent>
               </Select>
-              <label className="text-[12px] text-slate-500">{t('vtuber.character.model')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.character.model')}</label>
               <Select
                 value={characterDraft.modelUrl || ''}
                 onValueChange={(url) => {
@@ -1095,20 +1095,20 @@ export const StreamRoomSidebar = memo(({
                   </label>
                 </>
               )}
-              <label className="text-[12px] text-slate-500">{t('vtuber.character.background')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.character.background')}</label>
               <p className="text-[11px] text-slate-400 -mt-1">{t('vtuber.character.backgroundHint')}</p>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
                 value={characterDraft.background}
                 onChange={(e) => setCharacterDraft((prev) => ({ ...prev, background: e.target.value }))}
               />
-              <label className="text-[12px] text-slate-500">{t('vtuber.character.persona')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.character.persona')}</label>
               <textarea
                 className="h-24 bg-white rounded-lg px-4 py-3 text-slate-800 resize-none"
                 value={characterDraft.persona}
                 onChange={(e) => setCharacterDraft((prev) => ({ ...prev, persona: e.target.value }))}
               />
-              <label className="text-[12px] text-slate-500">{t('vtuber.character.topic')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.character.topic')}</label>
               <input
                 className="h-12 bg-white rounded-lg px-4 text-slate-800"
                 value={characterDraft.topic}
@@ -1119,7 +1119,7 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'live' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '房间链接' : 'Room link'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '房间链接' : 'Room link'}</label>
               {roomId ? (
                 <div className="flex gap-2">
                   <input
@@ -1145,7 +1145,7 @@ export const StreamRoomSidebar = memo(({
                   {locale === 'zh' ? '点击底部「Go Live」开播后，房间链接将显示于此，可分享给观众。' : 'After going live with the bottom Go Live button, the room link will appear here to share with viewers.'}
                 </p>
               )}
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '直播平台' : 'Streaming Platform'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '直播平台' : 'Streaming Platform'}</label>
               <Select
                 value={livePlatform || '__none__'}
                 onValueChange={(v) => setLivePlatform(v === '__none__' ? '' : (v as 'twitch' | 'youtube'))}
@@ -1162,7 +1162,7 @@ export const StreamRoomSidebar = memo(({
                   ))}
                 </SelectContent>
               </Select>
-              <label className="text-[12px] text-slate-500">
+              <label className="text-[16px] text-slate-500">
                 {locale === 'zh' ? '推流密钥 (Stream Key)' : 'Stream Key'}
               </label>
               <input
@@ -1191,7 +1191,7 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'sound' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">{t('vtuber.sound.bgm')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.sound.bgm')}</label>
               <Select value={bgm || '__none__'} onValueChange={(v) => setBgm(v === '__none__' ? '' : v)}>
                 <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
                   <SelectValue placeholder={t('vtuber.sound.bgmPlaceholder')} />
@@ -1213,14 +1213,14 @@ export const StreamRoomSidebar = memo(({
                 {uploadingBgm ? t('vtuber.sound.uploading') : t('vtuber.sound.uploadBgm')}
               </Button>
               <div className="space-y-1">
-                <label className="text-[12px] text-slate-500">{t('vtuber.sound.bgmVolume')}</label>
+                <label className="text-[16px] text-slate-500">{t('vtuber.sound.bgmVolume')}</label>
                 <div className="flex items-center gap-2">
                   <Slider min={0} max={100} step={1} value={bgmVolume} onValueChange={setBgmVolume} showValue={false} className="flex-1" />
                   <span className="text-[12px] text-slate-600 w-8">{bgmVolume}%</span>
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[12px] text-slate-500">{t('vtuber.sound.voiceVolume')}</label>
+                <label className="text-[16px] text-slate-500">{t('vtuber.sound.voiceVolume')}</label>
                 <div className="flex items-center gap-2">
                   <Slider min={0} max={100} step={1} value={voiceVolume} onValueChange={setVoiceVolume} showValue={false} className="flex-1" />
                   <span className="text-[12px] text-slate-600 w-8">{voiceVolume}%</span>
@@ -1231,7 +1231,7 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'scene' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[12px] text-slate-500">{t('vtuber.scene.hdr')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.scene.hdr')}</label>
               <Select value={hdr || '__default__'} onValueChange={(v) => { const u = v === '__default__' ? '' : v; setHdr(u); setHdrUrl(u || null); }}>
                 <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
                   <SelectValue placeholder={t('vtuber.scene.hdrPlaceholder')} />
@@ -1261,7 +1261,7 @@ export const StreamRoomSidebar = memo(({
               <Button type="button" variant="outline" size="sm" className="w-full" disabled={uploadingHdr} onClick={() => hdrInputRef.current?.click()}>
                 {uploadingHdr ? t('vtuber.scene.uploading') : (locale === 'zh' ? '上传 HDR/PNG/JPG 环境图' : 'Upload HDR/PNG/JPG env')}
               </Button>
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '环境/背景亮度' : 'Env brightness'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '环境/背景亮度' : 'Env brightness'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0.2}
@@ -1274,7 +1274,7 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{envBackgroundIntensity.toFixed(1)}</span>
               </div>
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '环境/背景旋转' : 'Env rotation'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '环境/背景旋转' : 'Env rotation'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0}
@@ -1289,7 +1289,7 @@ export const StreamRoomSidebar = memo(({
               </div>
 
               {/* 角色位置：主场景高度 + Gizmo 拖拽 */}
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '角色高度 (Y)' : 'Avatar Height (Y)'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '角色高度 (Y)' : 'Avatar Height (Y)'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
@@ -1303,7 +1303,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{avatarPositionY.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <label className="text-[12px] text-slate-500">{locale === 'zh' ? 'Gizmo 拖拽调整位置' : 'Gizmo Move Avatar'}</label>
+                <label className="text-[16px] text-slate-500">{locale === 'zh' ? 'Gizmo 拖拽调整位置' : 'Gizmo Move Avatar'}</label>
                 <button
                   type="button"
                   onClick={() => setAvatarGizmoEnabled(!avatarGizmoEnabled)}
@@ -1313,7 +1313,7 @@ export const StreamRoomSidebar = memo(({
                 </button>
               </div>
 
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '后期分辨率缩放' : 'Composer Resolution'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '后期分辨率缩放' : 'Composer Resolution'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0.5}
@@ -1331,7 +1331,7 @@ export const StreamRoomSidebar = memo(({
               <div className="mt-2 pt-2 border-t border-slate-200">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '色散' : 'Chromatic'}</p>
                 <div className="flex items-center justify-between">
-                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色散 (Chromatic)' : 'Chromatic Aberration'}</label>
+                  <label className="text-[16px] text-slate-500">{locale === 'zh' ? '色散 (Chromatic)' : 'Chromatic Aberration'}</label>
                   <button
                     type="button"
                     onClick={() => setChromaticEnabled(!chromaticEnabled)}
@@ -1342,7 +1342,7 @@ export const StreamRoomSidebar = memo(({
                 </div>
                 {chromaticEnabled && (
                   <>
-                    <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色散强度 (Offset)' : 'Chromatic Offset'}</label>
+                    <label className="text-[16px] text-slate-500">{locale === 'zh' ? '色散强度 (Offset)' : 'Chromatic Offset'}</label>
                     <div className="flex items-center gap-2">
                       <Slider min={0} max={0.05} step={0.001} value={chromaticOffset} onValueChange={setChromaticOffset} showValue={false} className="flex-1" />
                       <span className="text-xs text-slate-500 w-10 tabular-nums">{chromaticOffset.toFixed(3)}</span>
@@ -1352,7 +1352,7 @@ export const StreamRoomSidebar = memo(({
               </div>
 
               {/* Color Correction Settings */}
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '亮度 (Brightness)' : 'Brightness'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '亮度 (Brightness)' : 'Brightness'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
@@ -1366,7 +1366,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{brightness.toFixed(2)}</span>
               </div>
 
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '对比度 (Contrast)' : 'Contrast'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '对比度 (Contrast)' : 'Contrast'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
@@ -1380,7 +1380,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{contrast.toFixed(2)}</span>
               </div>
 
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '饱和度 (Saturation)' : 'Saturation'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '饱和度 (Saturation)' : 'Saturation'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-1}
@@ -1394,7 +1394,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{saturation.toFixed(2)}</span>
               </div>
 
-              <label className="text-[12px] text-slate-500">{locale === 'zh' ? '色相 (Hue)' : 'Hue'}</label>
+              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '色相 (Hue)' : 'Hue'}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-3.14}
@@ -1410,7 +1410,7 @@ export const StreamRoomSidebar = memo(({
 
               {/* 手部轨迹特效 */}
               <div className="flex items-center justify-between mt-1">
-                <label className="text-[12px] text-slate-500">{locale === 'zh' ? '手部轨迹特效' : 'Hand Trail VFX'}</label>
+                <label className="text-[16px] text-slate-500">{locale === 'zh' ? '手部轨迹特效' : 'Hand Trail VFX'}</label>
                 <button
                   type="button"
                   onClick={() => setHandTrailEnabled(!handTrailEnabled)}
@@ -1424,7 +1424,7 @@ export const StreamRoomSidebar = memo(({
               <div className="mt-3 pt-3 border-t border-slate-200">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '相机编排 (Theatre.js)' : 'Camera Choreography'}</p>
                 <div className="flex items-center justify-between">
-                  <label className="text-[12px] text-slate-500">{locale === 'zh' ? '接管相机' : 'Theatre Camera'}</label>
+                  <label className="text-[16px] text-slate-500">{locale === 'zh' ? '接管相机' : 'Theatre Camera'}</label>
                   <button
                     type="button"
                     onClick={() => setTheatreCameraActive(!theatreCameraActive)}
@@ -1449,7 +1449,7 @@ export const StreamRoomSidebar = memo(({
                 )}
               </div>
 
-              <label className="text-[12px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
+              <label className="text-[16px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
               <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" className="flex-1" disabled={uploadingSceneFbx} onClick={() => sceneFbxInputRef.current?.click()}>
@@ -1491,7 +1491,7 @@ export const StreamRoomSidebar = memo(({
                   />
                 </div>
               </div>
-              <label className="text-[12px] text-slate-500">回忆内容（供下次直播参考）</label>
+              <label className="text-[16px] text-slate-500">回忆内容（供下次直播参考）</label>
               {selectedCalendarDate ? (
                 <div className="flex flex-col gap-2">
                   <input
@@ -1516,7 +1516,7 @@ export const StreamRoomSidebar = memo(({
               ) : (
                 <p className="text-slate-400 text-sm py-2">{locale === 'zh' ? '选择日期查看或添加直播回忆' : 'Select a date to view or add stream memory'}</p>
               )}
-              <label className="text-[12px] text-slate-500 pt-1">备注</label>
+              <label className="text-[16px] text-slate-500 pt-1">备注</label>
               <textarea
                 className="h-20 bg-white dark:bg-slate-800 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-200 resize-none text-sm"
                 placeholder={locale === 'zh' ? '其他备注' : 'Other notes'}
