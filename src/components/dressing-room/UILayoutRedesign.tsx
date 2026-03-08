@@ -1693,8 +1693,10 @@ ChatPanelFooterButtons.displayName = 'ChatPanelFooterButtons';
 const CHAT_RIGHT_COLLAPSED = 128;
 const CHAT_RIGHT_EXPANDED = 412; // 72 + 340
 const CHAT_HIDE_IDLE_MS = 5000;
+/** 视口右边缘热区宽度（px），鼠标进入此区域时弹出 */
+const CHAT_HOT_ZONE_PX = 40;
 
-// 4.6 右侧弹幕 Chat 面板：靠近右边缘弹出，长时间无操作隐藏，未展开时左边缘与 Profile 左边缘竖直对齐
+// 4.6 右侧弹幕 Chat 面板：靠近视口右边缘弹出，长时间无操作隐藏，未展开时左边缘与 Profile 左边缘竖直对齐
 export const StreamRoomChatPanel = memo(() => {
   const { chatMessages, sendDanmaku } = useEchuuWebSocket();
   const [inputValue, setInputValue] = useState('');
@@ -1716,6 +1718,20 @@ export const StreamRoomChatPanel = memo(() => {
     hideTimerRef.current = setTimeout(() => setVisible(false), CHAT_HIDE_IDLE_MS);
   }, [clearHideTimer]);
 
+  // 基于视口坐标：鼠标靠近视口最右边时弹出
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (typeof window === 'undefined') return;
+      const nearRight = e.clientX >= window.innerWidth - CHAT_HOT_ZONE_PX;
+      if (nearRight) {
+        setVisible(true);
+        clearHideTimer();
+      }
+    };
+    window.addEventListener('mousemove', handleMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [clearHideTimer]);
+
   useEffect(() => {
     return () => clearHideTimer();
   }, [clearHideTimer]);
@@ -1735,15 +1751,6 @@ export const StreamRoomChatPanel = memo(() => {
 
   return (
     <>
-      {/* 右边缘热区：鼠标靠近时弹出 */}
-      <div
-        className="fixed right-0 top-28 bottom-8 z-50 w-6"
-        onMouseEnter={() => {
-          setVisible(true);
-          clearHideTimer();
-        }}
-        aria-hidden
-      />
       {visible && (
         <div
           className="fixed top-28 z-40 pointer-events-auto flex flex-col gap-3 transition-all duration-300"
