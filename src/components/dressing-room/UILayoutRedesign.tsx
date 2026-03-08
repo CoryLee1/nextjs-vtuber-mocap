@@ -2246,7 +2246,7 @@ export const GoLiveButton = memo(() => {
             className="absolute -left-1/2 -top-1/2 w-[200%] h-[200%] animate-border-flow"
             style={{
               background:
-                'conic-gradient(from 0deg, transparent 0deg, #B7FF7A 60deg, #8BFFEA 180deg, #FFFFFF 240deg, transparent 300deg)',
+                'conic-gradient(from 0deg, #B7FF7A 0deg, #8BFFEA 120deg, #FFFFFF 240deg, #B7FF7A 360deg)',
             }}
           />
         </div>
