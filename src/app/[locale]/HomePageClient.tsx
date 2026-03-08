@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { getProviders, signIn, useSession } from 'next-auth/react';
@@ -13,9 +13,52 @@ import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { preloadCriticalAssets } from '@/lib/preload-critical-assets';
 import { ModelManager } from '@/components/vtuber/ModelManager';
 
-// 动态导入 VTuber 组件（避免 SSR 问题）
+/** 捕获 ChunkLoadError（动态 chunk 加载超时/失败）时显示重试，其它错误继续上抛 */
+class ChunkLoadErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; isChunkError: boolean; error: unknown }
+> {
+  state: { hasError: boolean; isChunkError: boolean; error: unknown } = {
+    hasError: false,
+    isChunkError: false,
+    error: null,
+  };
+
+  static getDerivedStateFromError(error: unknown) {
+    const isChunkError =
+      error instanceof Error &&
+      (error.name === 'ChunkLoadError' || /loading chunk .* failed|Loading chunk/i.test(error.message));
+    return { hasError: true, isChunkError, error };
+  }
+
+  render() {
+    if (this.state.hasError && this.state.isChunkError) {
+      return (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-black/90 text-white p-4">
+          <p className="text-center">加载失败，请刷新页面重试</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition"
+          >
+            刷新页面
+          </button>
+        </div>
+      );
+    }
+    if (this.state.hasError && this.state.error) throw this.state.error;
+    return this.props.children;
+  }
+}
+
+// 动态导入 VTuber 组件（避免 SSR 问题）；加载中显示占位，chunk 失败时由边界显示重试
 const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), {
   ssr: false,
+  loading: () => (
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-transparent pointer-events-none">
+      <div className="w-10 h-10 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+    </div>
+  ),
 })
 
 export default function HomePageClient() {
@@ -132,11 +175,13 @@ export default function HomePageClient() {
         />
       )}
 
-      {/* 2. 主应用 */}
+      {/* 2. 主应用（chunk 加载失败时显示重试界面） */}
       {!isLoading && (
-        <VTuberApp
-          onOpenModelManager={() => setShowModelManager(true)}
-        />
+        <ChunkLoadErrorBoundary>
+          <VTuberApp
+            onOpenModelManager={() => setShowModelManager(true)}
+          />
+        </ChunkLoadErrorBoundary>
       )}
 
       {/* 2.4 模型管理器：由 page 统一渲染，引导页/主应用都只打开此弹窗，不 redirect */}

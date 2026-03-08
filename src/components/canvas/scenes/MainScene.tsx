@@ -131,10 +131,12 @@ EnvBackgroundFromTexture.displayName = 'EnvBackgroundFromTexture';
 // PERF: 网格地板组件
 const GridFloor = memo(() => (
   <>
-    {/* 透明地面 - 用于接收影子 */}
+    {/* 透明地面 - 用于接收阴影。
+        shadowMaterial 专为此设计：只渲染阴影部分，其余完全透明，且不做完整 PBR 计算。
+        注意：meshBasicMaterial 无光照计算，不能接收阴影。 */}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
       <planeGeometry args={[50, 50]} />
-      <meshBasicMaterial transparent opacity={0} />
+      <shadowMaterial transparent opacity={0.4} />
     </mesh>
     
     {/* 网格地板 */}
@@ -443,8 +445,8 @@ export const MainScene: React.FC = () => {
       <TheatreCamera />
       <TheatreSequenceController />
 
-      {/* 优化的光照系统 — shadow map 尺寸由性能设置控制；shadows 关闭时禁用 castShadow 避免 postprocessing shadowBias undefined */}
-      <Lighting shadowMapSize={perfSettings.shadowMapSize} shadowsEnabled={perfSettings.shadows} />
+      {/* 光照：阴影始终开启（VTuber 场景视觉必需品），低性能档缩小 shadow map 而非关闭 */}
+      <Lighting shadowMapSize={perfSettings.shadowMapSize} shadowsEnabled={true} />
 
       {/* 网格地板 */}
       <GridFloor />

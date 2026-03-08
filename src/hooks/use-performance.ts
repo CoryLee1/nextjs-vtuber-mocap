@@ -70,7 +70,6 @@ const defaultSettings: PerformanceSettings = {
 
 export const usePerformance = () => {
   const [settings, setSettings] = useState<PerformanceSettings>(() => {
-    // 从本地存储加载设置
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem('vtuber-settings');
       if (savedSettings) {
@@ -91,11 +90,9 @@ export const usePerformance = () => {
   const pendingQualityRef = useRef<PerformanceSettings['quality'] | null>(null);
   const pendingCountRef = useRef(0);
 
-  // 更新性能设置
   const updateSettings = useCallback((newSettings: Partial<PerformanceSettings>) => {
-    setSettings(prev => {
+    setSettings((prev) => {
       const updatedSettings = { ...prev, ...newSettings };
-      // 保存到本地存储
       if (typeof window !== 'undefined') {
         localStorage.setItem('vtuber-settings', JSON.stringify(updatedSettings));
       }
@@ -113,23 +110,23 @@ export const usePerformance = () => {
       pendingCountRef.current = 0;
     }
     pendingCountRef.current++;
-    if (pendingCountRef.current < 2) return; // 连续 2 次（约 2 秒）同一档位再应用
+    if (pendingCountRef.current < 2) return;
 
     if (targetQuality === 'low') {
-      setSettings(prev => ({
+      setSettings((prev) => ({
         ...prev,
         quality: 'low',
         ...PERFORMANCE_PRESETS.low,
         postProcessing: true, // 保持开启，避免画面突然变糊
       }));
     } else if (targetQuality === 'medium') {
-      setSettings(prev => ({
+      setSettings((prev) => ({
         ...prev,
         quality: 'medium',
         ...PERFORMANCE_PRESETS.medium,
       }));
     } else if (targetQuality === 'high') {
-      setSettings(prev => ({
+      setSettings((prev) => ({
         ...prev,
         quality: 'high',
         ...PERFORMANCE_PRESETS.high,
@@ -137,9 +134,8 @@ export const usePerformance = () => {
     }
   }, [fps]);
 
-  // PERF: 手动切换性能模式
   const setPerformanceMode = useCallback((mode: 'low' | 'medium' | 'high') => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       quality: mode,
       ...PERFORMANCE_PRESETS[mode],
@@ -236,11 +232,11 @@ export const usePerformance = () => {
     gpuUsage,
     updateSettings,
     autoOptimize,
-    setPerformanceMode, // PERF: 新增手动切换模式
+    setPerformanceMode,
     lazyLoad,
     preloadResource,
     preloadBatch,
-    PERFORMANCE_PRESETS, // PERF: 导出预设配置供其他组件使用
+    PERFORMANCE_PRESETS,
   };
 };
 

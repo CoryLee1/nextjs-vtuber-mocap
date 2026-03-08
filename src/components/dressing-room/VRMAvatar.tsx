@@ -354,18 +354,9 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         }
     }, [modelUrl, vrm]);
 
-    // 设置VRM模型的影子
-    useEffect(() => {
-        if (scene) {
-            // 遍历所有网格，设置影子
-            scene.traverse((child: any) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-        }
-    }, [scene]);
+    // 注意：阴影设置已移至 VRM 初始化 useEffect 末尾（在 VRMUtils.removeUnnecessaryVertices/combineSkeletons 之后）。
+    // 这些工具函数会重建网格节点，之后新网格的 castShadow/receiveShadow 回到默认值 false。
+    // 如果在此处单独设置，执行顺序早于 VRMUtils，设置会被覆盖。
 
     // 新增：监听动画URL变化
     useEffect(() => {
@@ -418,9 +409,13 @@ export const VRMAvatar = forwardRef<Group, VRMAvatarProps>(({
         VRMUtils.combineSkeletons(scene);
         VRMUtils.combineMorphs(vrm);
 
-        // 禁用视锥剔除以提高性能
+        // 禁用视锥剔除 + 设置阴影（必须在 VRMUtils 操作之后，因为它们会重建网格节点）
         scene.traverse((obj: any) => {
             obj.frustumCulled = false;
+            if (obj.isMesh) {
+                obj.castShadow = true;
+                obj.receiveShadow = true;
+            }
         });
 
         // 打印 VRM 模型骨骼结构（仅开发环境），便于与动画 track 名对照
