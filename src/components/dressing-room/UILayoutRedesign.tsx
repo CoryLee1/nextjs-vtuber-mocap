@@ -164,10 +164,10 @@ export const PowerToggle = memo(({
   return (
     <div className="fixed top-8 right-8 z-50 pointer-events-auto">
       <div className="flex items-center gap-4">
-        {/* 全站访问 + 在线人数 + 天使数 + 点赞：合并为一个胶囊，与 CONTACT 上下对齐 */}
+        {/* 全站访问 + 在线人数 + 天使数 + 点赞 + 联系：合并为一个胶囊 */}
         <div
           className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/40 transition-all duration-500 bg-white text-slate-800 shadow-[inset_0_0_40px_rgba(148,246,255,0.35)]"
-          title={locale === 'zh' ? '本站访问 · 当前在线 · 已加入天使数 · 点赞' : 'Views · Online · Angels joined · Like'}
+          title={locale === 'zh' ? '本站访问 · 当前在线 · 已加入天使数 · 点赞 · 联系' : 'Views · Online · Angels joined · Like · Contact'}
         >
           <Eye className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
           <span className="text-xs font-black uppercase tracking-wide text-slate-500">
@@ -201,22 +201,18 @@ export const PowerToggle = memo(({
             <Heart className="w-3.5 h-3.5 fill-current" />
             <span className="text-xs font-black tabular-nums">{likeCount > 0 ? likeCount : (locale === 'zh' ? '点赞' : 'LIKE')}</span>
           </button>
-        </div>
-
-        {/* Contact Button：白底 + 94F6FF 内发光 */}
-        <DialogUI.Dialog>
-          <DialogUI.DialogTrigger asChild>
-            <button
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/50 transition-all duration-300 bg-white text-[#636363] hover:scale-105 active:scale-95 shadow-[inset_0_0_30px_rgba(148,246,255,0.4)]"
-              title={locale === 'zh' ? '联系我们' : 'Contact'}
-            >
-              <Mail className="w-4 h-4" />
-              <span className="text-xs font-black uppercase tracking-widest">
-                {locale === 'zh' ? '联系' : 'CONTACT'}
-              </span>
-            </button>
-          </DialogUI.DialogTrigger>
-          <DialogUI.DialogContent className="sm:max-w-md">
+          <span className="w-px h-3.5 bg-slate-300" aria-hidden />
+          <DialogUI.Dialog>
+            <DialogUI.DialogTrigger asChild>
+              <button
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[#636363] hover:bg-[#8BFFEA]/20 hover:scale-105 active:scale-95 transition-all"
+                title={locale === 'zh' ? '联系我们' : 'Contact'}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span className="text-xs font-black uppercase tracking-wide">{locale === 'zh' ? '联系' : 'CONTACT'}</span>
+              </button>
+            </DialogUI.DialogTrigger>
+            <DialogUI.DialogContent className="sm:max-w-md">
             <DialogUI.DialogHeader>
               <DialogUI.DialogTitle>{locale === 'zh' ? '联系我们' : 'Contact Us'}</DialogUI.DialogTitle>
               <DialogUI.DialogDescription>
@@ -253,6 +249,7 @@ export const PowerToggle = memo(({
             </div>
           </DialogUI.DialogContent>
         </DialogUI.Dialog>
+        </div>
 
         {/* Profile button (only shows when logged-in) */}
         <ProfileButton />
