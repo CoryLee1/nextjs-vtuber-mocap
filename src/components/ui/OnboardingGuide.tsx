@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,53 +41,28 @@ interface OnboardingGuideProps {
   onStep1Upload?: () => void;
 }
 
-const steps = [
-  {
-    id: 1,
-    title: 'SELECT / UPLOAD MODEL',
-    description: '选择或上传 .vrm',
-    icon: Upload,
-    content: '从模型库选择已有模型，或上传新的 VRM 作为直播角色外观。',
-    details: 'Want a customized model? Make it from VRoid Studio.',
-    actionHref: null as string | null,
-  },
-  {
-    id: 2,
-    title: 'CHARACTER PERSONA',
-    description: '填写人设背景',
-    icon: Users,
-    content: '填写角色名字、性格、人设与背景设定。',
-    details: 'Define who your VTuber is before going live.',
-    actionLabel: '设置角色人设',
-    actionHref: '/v1/live/character',
-  },
-  {
-    id: 3,
-    title: 'SET STREAM TOPIC',
-    description: '设定直播主题',
-    icon: Settings,
-    content: '输入本场直播的话题与方向。',
-    details: 'Once ready, jump into the Stream Room.',
-    actionLabel: '进入直播间',
-    actionHref: '/v1/live/1',
-  }
-];
-
 const VROID_STUDIO_URL = 'https://vroid.com/en/studio';
 const STEP1_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Standing Greeting (1).fbx', { proxy: true });
 const STEP2_PREVIEW_ANIMATION_URL = getS3ObjectReadUrlByKey('animations/Thinking.fbx', { proxy: true });
 
-const PRESET_TOPICS = [
-  "Just Chatting: Let's talk about life!",
-  "Singing Stream: Karaoke Night 🎤",
-  "Gaming: Minecraft Hardcore",
-  "Reaction: Watching funny videos",
-  "Study with Me: Pomodoro 25/5",
-  "Late Night Talks: Chill vibes 🌙",
-];
-
 export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onStep1Upload }: OnboardingGuideProps) {
   const { t, locale } = useI18n();
+
+  const steps = useMemo(() => [
+    { id: 1, title: t('onboarding.step1.title'), description: t('onboarding.step1.description'), icon: Upload, content: t('onboarding.step1.content'), details: t('onboarding.step1.details'), actionHref: null as string | null },
+    { id: 2, title: t('onboarding.step2.title'), description: t('onboarding.step2.description'), icon: Users, content: t('onboarding.step2.content'), details: t('onboarding.step2.details'), actionLabel: t('onboarding.step2.actionLabel'), actionHref: '/v1/live/character' },
+    { id: 3, title: t('onboarding.step3.title'), description: t('onboarding.step3.description'), icon: Settings, content: t('onboarding.step3.content'), details: t('onboarding.step3.details'), actionLabel: t('onboarding.step3.actionLabel'), actionHref: '/v1/live/1' },
+  ], [t]);
+
+  const presetTopics = useMemo(() => [
+    t('onboarding.presetTopics.chatting'),
+    t('onboarding.presetTopics.singing'),
+    t('onboarding.presetTopics.gaming'),
+    t('onboarding.presetTopics.reaction'),
+    t('onboarding.presetTopics.study'),
+    t('onboarding.presetTopics.lateNight'),
+  ], [t]);
+
   const echuuConfig = useSceneStore((s) => s.echuuConfig);
   const setEchuuConfig = useSceneStore((s) => s.setEchuuConfig);
   const vrmModelUrl = useSceneStore((s) => s.vrmModelUrl);
@@ -196,7 +171,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
           <img src="/logo.svg" alt="Echuu" className="w-10 h-10 rounded-xl object-contain" />
           <div className="flex flex-col">
             <h1 className="font-pixel text-xl font-black bg-theme-gradient bg-clip-text text-transparent leading-none">Echuu</h1>
-            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-1">AI Vtubing Platform</span>
+            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-1">{t('onboarding.brandTagline')}</span>
           </div>
         </div>
         
@@ -208,7 +183,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
             className="text-white hover:bg-white/10"
           >
             <X className="h-4 w-4 mr-2" />
-            跳过引导
+            {t('onboarding.skipGuide')}
           </Button>
         </div>
       </div>
@@ -273,7 +248,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
               className="w-full text-white/50 hover:text-white hover:bg-white/5 mb-2 justify-start px-0"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
-              上一步
+              {t('app.previous')}
             </Button>
           )}
 
@@ -281,7 +256,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
             onClick={handleNext}
             className="w-full rounded-xl bg-[#B7FF7A] text-[#636363] hover:bg-[#8BFFEA] font-bold"
           >
-            {activeStep === steps.length - 1 ? '完成' : 'Next Step'}
+            {activeStep === steps.length - 1 ? t('common.done') : t('app.next')}
             <ChevronRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
@@ -321,7 +296,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         className="border-white/30 text-white hover:bg-white/10 shrink-0"
                       >
                         <ChevronLeft className="h-4 w-4 mr-1" />
-                        上一步
+                        {t('app.previous')}
                       </Button>
                     )}
                     {currentStep.id === 1 && (onStep1Select || onStep1Upload) ? (
@@ -331,7 +306,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                             onClick={onStep1Select}
                             className="bg-[#B7FF7A] text-[#636363] hover:bg-[#8BFFEA] font-bold"
                           >
-                            选择模型
+                            {t('onboarding.step1.selectModel')}
                           </Button>
                         )}
                         {onStep1Upload && (
@@ -340,7 +315,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                             variant="outline"
                             className="border-[#B7FF7A] text-[#B7FF7A] hover:bg-[#B7FF7A]/10 font-bold"
                           >
-                            上传模型
+                            {t('onboarding.step1.uploadModel')}
                           </Button>
                         )}
                       </>
@@ -348,7 +323,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                       actionHref && (
                         <Link href={actionHref}>
                           <Button className="bg-[#B7FF7A] text-[#636363] hover:bg-[#8BFFEA] font-bold">
-                            {currentStep.actionLabel || '进入下一步'}
+                            {currentStep.actionLabel || t('onboarding.step1.goNext')}
                           </Button>
                         </Link>
                       )
@@ -398,18 +373,18 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                 <div className="space-y-4">
                   {/* Name Input */}
                   <div className="space-y-1">
-                    <label className="text-xs text-white/60 font-medium ml-1">NAME</label>
+                    <label className="text-xs text-white/60 font-medium ml-1">{t('onboarding.step2.nameLabel')}</label>
                     <input
                       value={nameDraft}
                       onChange={(e) => setNameDraft(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B7FF7A]/50 transition-colors"
-                      placeholder="e.g. Cathy"
+                      placeholder={t('onboarding.step2.namePlaceholder')}
                     />
                   </div>
 
                   {/* Voice Select */}
                   <div className="space-y-1">
-                    <label className="text-xs text-white/60 font-medium ml-1">VOICE</label>
+                    <label className="text-xs text-white/60 font-medium ml-1">{t('onboarding.step2.voiceLabel')}</label>
                     <select
                       value={voiceDraft}
                       onChange={(e) => setVoiceDraft(e.target.value)}
@@ -417,9 +392,9 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                     >
                       {/* 优先显示 curated TTS_VOICES，如果 voiceDraft 不在其中，也会通过 ECHUU_AGENT_TTS_VOICES 兜底（这里先合并） */}
                       {TTS_VOICES.map((v) => {
-                        const genderLabel = v.gender === 'female' 
-                          ? (locale === 'zh' ? '女' : 'F') 
-                          : (locale === 'zh' ? '男' : 'M');
+                        const genderLabel = v.gender === 'female'
+                          ? t('layout.genderFemale')
+                          : t('layout.genderMale');
                         const trait = locale === 'zh' ? v.traitZh : v.traitEn;
                         const label = locale === 'zh' ? v.labelZh : v.labelEn;
                         return (
@@ -440,7 +415,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                   {/* Persona Input with AI */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between px-1">
-                      <label className="text-xs text-white/60 font-medium">PERSONA</label>
+                      <label className="text-xs text-white/60 font-medium">{t('onboarding.step2.personaLabel')}</label>
                       <button
                         onClick={async () => {
                           if (aiWritingField === 'persona') return;
@@ -465,21 +440,21 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         ) : (
                           <Sparkles className="h-3 w-3" />
                         )}
-                        AI Write
+                        {t('common.aiWrite')}
                       </button>
                     </div>
                     <textarea
                       value={personaDraft}
                       onChange={(e) => setPersonaDraft(e.target.value)}
                       className="w-full h-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#B7FF7A]/50 transition-colors resize-none"
-                      placeholder="Describe personality, catchphrases..."
+                      placeholder={t('onboarding.step2.personaPlaceholder')}
                     />
                   </div>
 
                   {/* Background Input with AI */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between px-1">
-                      <label className="text-xs text-white/60 font-medium">BACKGROUND</label>
+                      <label className="text-xs text-white/60 font-medium">{t('onboarding.step2.backgroundLabel')}</label>
                       <button
                         onClick={async () => {
                           if (aiWritingField === 'background') return;
@@ -504,14 +479,14 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         ) : (
                           <Sparkles className="h-3 w-3" />
                         )}
-                        AI Write
+                        {t('common.aiWrite')}
                       </button>
                     </div>
                     <textarea
                       value={backgroundDraft}
                       onChange={(e) => setBackgroundDraft(e.target.value)}
                       className="w-full h-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/90 focus:outline-none focus:border-[#B7FF7A]/50 transition-colors resize-none"
-                      placeholder="Lore, origin story..."
+                      placeholder={t('onboarding.step2.backgroundPlaceholder')}
                     />
                   </div>
                 </div>
@@ -519,7 +494,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <div className="flex items-center justify-between px-1">
-                      <label className="text-xs text-white/60 font-medium">STREAM TOPIC</label>
+                      <label className="text-xs text-white/60 font-medium">{t('onboarding.step3.topicLabel')}</label>
                       <button
                         onClick={async () => {
                           if (aiWritingField === 'topic') return;
@@ -544,14 +519,14 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                         ) : (
                           <Sparkles className="h-3 w-3" />
                         )}
-                        AI Idea
+                        {t('common.aiIdea')}
                       </button>
                     </div>
                     <textarea
                       value={topicDraft}
                       onChange={(e) => setTopicDraft(e.target.value)}
                       className="w-full h-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B7FF7A]/50 transition-colors resize-none"
-                      placeholder="What are we doing today?"
+                      placeholder={t('onboarding.step3.topicPlaceholder')}
                     />
                   </div>
 
@@ -561,12 +536,12 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                       className="flex items-center text-xs text-white/60 hover:text-white mb-2 transition-colors"
                     >
                       <ChevronRight className={`h-3 w-3 mr-1 transition-transform ${topicPresetsOpen ? 'rotate-90' : ''}`} />
-                      Choose from Presets
+                      {t('common.choosePresets')}
                     </button>
                     
                     {topicPresetsOpen && (
                       <div className="grid grid-cols-1 gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
-                        {PRESET_TOPICS.map((topic) => (
+                        {presetTopics.map((topic) => (
                           <button
                             key={topic}
                             onClick={() => setTopicDraft(topic)}
@@ -604,12 +579,12 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
             className="bg-black/80 border-white/20 text-white hover:bg-white/10"
           >
             <SlidersHorizontal className="h-4 w-4 mr-2" />
-            {previewPanelOpen ? '收起镜头' : '镜头参数'}
+            {previewPanelOpen ? t('onboarding.debugCollapse') : t('onboarding.debugCameraParams')}
           </Button>
           {previewPanelOpen && (
             <Card className="w-[280px] bg-black/90 border-white/20 backdrop-blur">
               <CardContent className="p-3 text-xs space-y-2 max-h-[70vh] overflow-y-auto">
-                <div className="font-bold text-white/90 mb-2">引导页 3D 预览</div>
+                <div className="font-bold text-white/90 mb-2">{t('onboarding.debugTitle')}</div>
                 {([
                   { key: 'cameraX' as const, label: '相机 X', step: 0.1 },
                   { key: 'cameraY' as const, label: '相机 Y', step: 0.1 },
@@ -642,7 +617,7 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
                   className="mt-2 text-white/70"
                   onClick={() => setPreviewConfig(DEFAULT_ONBOARDING_PREVIEW_CONFIG)}
                 >
-                  重置默认
+                  {t('onboarding.debugReset')}
                 </Button>
               </CardContent>
             </Card>

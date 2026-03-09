@@ -3,6 +3,7 @@
 import React, { memo, useMemo } from 'react';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useI18n } from '@/hooks/use-i18n';
 import { memoryToDiaryEntries, saveDiaryHistory } from '@/lib/memory-diary';
 
 function formatTime(ts: number | null): string {
@@ -36,6 +37,7 @@ export const StreamEndMVP = memo(() => {
     reset,
   } = useEchuuWebSocket();
 
+  const { t } = useI18n();
   const echuuConfig = useSceneStore((s) => s.echuuConfig);
   const topic = echuuConfig.topic || 'Stream';
 
@@ -104,12 +106,12 @@ export const StreamEndMVP = memo(() => {
           className="text-[48px] leading-none font-black tracking-tight"
           style={{ fontFamily: "'MHTIROGLA', system-ui, sans-serif" }}
         >
-          <span className="text-white">That </span>
+          <span className="text-white">{t('streamEnd.titlePrefix')}</span>
           <span
             className="relative inline-block px-2 py-0.5"
             style={{ background: '#B7FF7A', color: '#636363' }}
           >
-            Hiiiiit!
+            {t('streamEnd.titleHighlight')}
             {/* 涂鸦效果小点 */}
             <span className="absolute -top-1 -right-2 text-[#B7FF7A] text-[10px]">···</span>
           </span>
@@ -137,10 +139,10 @@ export const StreamEndMVP = memo(() => {
           {/* 持续时长 & 互动数 */}
           <div className="mt-1.5 text-white/90 text-[13px] space-y-0.5">
             <div>
-              You stayed · <span className="text-white font-bold">{durationMinutes} min</span>
+              {t('streamEnd.durationLabel')}<span className="text-white font-bold">{durationMinutes} {t('streamEnd.durationUnit')}</span>
             </div>
             <div>
-              Interactions · <span className="text-white font-bold">{interactionCount}</span>
+              {t('streamEnd.interactionLabel')}<span className="text-white font-bold">{interactionCount}</span>
             </div>
           </div>
         </div>
@@ -152,14 +154,14 @@ export const StreamEndMVP = memo(() => {
             onClick={handleResume}
             className="text-white/60 hover:text-white transition tracking-wider"
           >
-            [ Resume later ]
+            {t('streamEnd.resume')}
           </button>
           <button
             type="button"
             onClick={handleLeave}
             className="text-white/60 hover:text-white transition tracking-wider"
           >
-            [ Leave ]
+            {t('streamEnd.leave')}
           </button>
         </div>
       </div>

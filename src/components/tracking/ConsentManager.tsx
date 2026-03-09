@@ -129,10 +129,10 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
           <div className="flex items-center space-x-2">
             <Shield className="h-6 w-6 text-blue-600" />
             <CardTitle className="text-xl">
-              {settings.region === 'china' ? '隐私设置' : 'Cookie 和隐私设置'}
+              {settings.region === 'china' ? t('consent.titlePrivacy') : t('consent.titleCookie')}
             </CardTitle>
             <Badge variant={settings.region === 'china' ? 'destructive' : 'secondary'}>
-              {settings.region === 'china' ? 'PIPL' : settings.region === 'eu' ? 'GDPR' : '国际'}
+              {settings.region === 'china' ? 'PIPL' : settings.region === 'eu' ? 'GDPR' : t('consent.badgeInternational')}
             </Badge>
           </div>
         </CardHeader>
@@ -142,18 +142,18 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
           <div className="text-sm text-gray-600 space-y-2">
             {settings.region === 'china' ? (
               <>
-                <p>根据《个人信息保护法》(PIPL)，我们需要您的明确同意才能收集和使用您的个人信息。</p>
-                <p>我们承诺保护您的隐私，只收集必要的个人信息来提供和改进我们的服务。</p>
+                <p>{t('consent.piplDescription1')}</p>
+                <p>{t('consent.piplDescription2')}</p>
               </>
             ) : settings.region === 'eu' ? (
               <>
-                <p>根据《通用数据保护条例》(GDPR)，我们需要您的明确同意才能使用 cookies 和收集数据。</p>
-                <p>您可以随时更改这些设置或撤回同意。</p>
+                <p>{t('consent.gdprDescription1')}</p>
+                <p>{t('consent.gdprDescription2')}</p>
               </>
             ) : (
               <>
-                <p>我们使用 cookies 和类似技术来改善您的体验、分析网站使用情况并提供个性化内容。</p>
-                <p>您可以选择接受或拒绝某些类型的 cookies。</p>
+                <p>{t('consent.internationalDescription1')}</p>
+                <p>{t('consent.internationalDescription2')}</p>
               </>
             )}
           </div>
@@ -164,9 +164,9 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
               <div className="flex items-center space-x-3">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <div>
-                  <Label className="font-medium">必要的 Cookies</Label>
+                  <Label className="font-medium">{t('consent.necessaryCookies')}</Label>
                   <p className="text-sm text-gray-600">
-                    这些 cookies 对于网站的基本功能是必需的，无法禁用。
+                    {t('consent.necessaryDescription')}
                   </p>
                 </div>
               </div>
@@ -178,9 +178,9 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
               <div className="flex items-center space-x-3">
                 <Eye className="h-5 w-5 text-blue-600" />
                 <div>
-                  <Label className="font-medium">分析 Cookies</Label>
+                  <Label className="font-medium">{t('consent.analyticsCookies')}</Label>
                   <p className="text-sm text-gray-600">
-                    帮助我们了解网站使用情况，改进用户体验。
+                    {t('consent.analyticsDescription')}
                   </p>
                 </div>
               </div>
@@ -195,9 +195,9 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
               <div className="flex items-center space-x-3">
                 <Settings className="h-5 w-5 text-purple-600" />
                 <div>
-                  <Label className="font-medium">营销 Cookies</Label>
+                  <Label className="font-medium">{t('consent.marketingCookies')}</Label>
                   <p className="text-sm text-gray-600">
-                    用于个性化广告和内容推荐。
+                    {t('consent.marketingDescription')}
                   </p>
                 </div>
               </div>
@@ -212,7 +212,7 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
           <div className="flex items-center space-x-2 text-sm text-blue-600">
             <Info className="h-4 w-4" />
             <a href="/privacy" className="hover:underline">
-              查看完整的隐私政策
+              {t('consent.privacyLink')}
             </a>
           </div>
 
@@ -224,7 +224,7 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
               className="flex-1"
             >
               <XCircle className="h-4 w-4 mr-2" />
-              拒绝所有
+              {t('consent.rejectAll')}
             </Button>
             
             <Button
@@ -233,7 +233,7 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
               className="flex-1"
             >
               <Settings className="h-4 w-4 mr-2" />
-              保存设置
+              {t('consent.saveSettings')}
             </Button>
             
             <Button
@@ -241,7 +241,7 @@ export const ConsentManager: React.FC<ConsentManagerProps> = ({
               className="flex-1"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              接受所有
+              {t('consent.acceptAll')}
             </Button>
           </div>
         </CardContent>
