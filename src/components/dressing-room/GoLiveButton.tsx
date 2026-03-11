@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/hooks/use-i18n';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { toast } from '@/hooks/use-toast';
 import { TwitterShare, RedditShare } from 'react-share-lite';
 import { QRCodeSVG } from 'qrcode.react';
@@ -34,7 +35,7 @@ const CaptionTypewriter = memo(({ fullText }: { fullText: string }) => {
   const sentences = useMemo(() => splitSentences(fullText), [fullText]);
   const [sentenceIndex, setSentenceIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
-  const echuuSegmentDurationMs = useSceneStore((s) => s.echuuSegmentDurationMs);
+  const echuuSegmentDurationMs = useEchuuConfigStore((s) => s.echuuSegmentDurationMs);
 
   useEffect(() => {
     if (sentences.length === 0) return;
@@ -269,7 +270,7 @@ ShareRoomButton.displayName = 'ShareRoomButton';
 // 5. Go Live bar (Figma: Frame 1261157366) — 仅房主可开播；观众只能看+发弹幕
 export const GoLiveButton = memo(() => {
   const streamPanelOpen = useSceneStore((state) => state.streamPanelOpen);
-  const echuuConfig = useSceneStore((state) => state.echuuConfig);
+  const echuuConfig = useEchuuConfigStore((state) => state.echuuConfig);
   const topic = echuuConfig.topic;
   const { connect, connectionState, currentStep, streamState, infoMessage, roomId, ownerToken, setRoom, lastEventType, lastEventAt } = useEchuuWebSocket();
   const { t, locale } = useI18n();
@@ -337,7 +338,7 @@ export const GoLiveButton = memo(() => {
   };
 
   // 字幕由 EchuuLiveAudio 在音频真正开始播放时同步写入 echuuCaptionText
-  const captionFullText = useSceneStore((s) => s.echuuCaptionText);
+  const captionFullText = useEchuuConfigStore((s) => s.echuuCaptionText);
 
   useEffect(() => {
     if (!phaseOpen) {

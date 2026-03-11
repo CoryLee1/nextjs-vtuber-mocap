@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 
 /**
  * 根据 store 的 bgmUrl / bgmVolume 播放 BGM，循环播放。
  * 需在直播页等需要 BGM 的页面挂载。
  */
 export function BGMPlayer() {
-  const bgmUrl = useSceneStore((s) => s.bgmUrl);
-  const bgmVolume = useSceneStore((s) => s.bgmVolume);
+  const bgmUrl = useEchuuConfigStore((s) => s.bgmUrl);
+  const bgmVolume = useEchuuConfigStore((s) => s.bgmVolume);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {

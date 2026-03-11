@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import {
   DEFAULT_IDLE_URL,
   DEFAULT_SPEAKING_URL,
@@ -56,7 +56,7 @@ export interface VTuberAnimationStateResult {
  * idle 时每隔 IDLE_ROTATE_SEC 秒随机选下一个 idle 动画。
  */
 export function useVTuberAnimationState(): VTuberAnimationStateResult {
-  const echuuAudioPlaying = useSceneStore((s) => s.echuuAudioPlaying);
+  const echuuAudioPlaying = useEchuuConfigStore((s) => s.echuuAudioPlaying);
 
   // 进入 idle 时第一个动作为 Standing Greeting，之后随机轮播
   const [currentIdleUrl, setCurrentIdleUrl] = useState(

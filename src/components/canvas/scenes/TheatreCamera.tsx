@@ -12,13 +12,13 @@
  *   - 开发模式：自动加载 Studio 编辑器（Alt+\ 切换显示）
  *   - 生产模式：仅播放保存在 JSON 的序列，无编辑器
  *
- * 触发播放：useSceneStore().playTheatreSequence(true/false)
+ * 触发播放：useRenderingConfigStore().playTheatreSequence(true/false)
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { getProject } from '@theatre/core';
 import { SheetProvider, PerspectiveCamera as TheatrePerspectiveCamera } from '@theatre/r3f';
-import { useSceneStore } from '@/hooks/use-scene-store';
+import { useRenderingConfigStore } from '@/stores/use-rendering-config-store';
 
 // ─── Minimal project state (required when @theatre/studio is not loaded) ───────
 // Theatre.js throws when config.state is empty and Studio is not loaded.
@@ -93,7 +93,7 @@ export function TheatreCameraProvider({ children }: { children: React.ReactNode 
 // When `active` is true, this camera takes over from OrbitControls.
 // theatreKey="Camera" registers it with the Studio editor.
 export const TheatreCamera = React.memo(function TheatreCamera() {
-  const { theatreCameraActive } = useSceneStore();
+  const { theatreCameraActive } = useRenderingConfigStore();
   if (!theatreCameraActive) return null;
 
   return (
@@ -111,7 +111,7 @@ export const TheatreCamera = React.memo(function TheatreCamera() {
 // ─── Sequence play controller ─────────────────────────────────────────────────
 // Watches store.theatreSequencePlaying and calls sheet.sequence.play()/pause().
 export function TheatreSequenceController() {
-  const { theatreSequencePlaying, setTheatreSequencePlaying } = useSceneStore();
+  const { theatreSequencePlaying, setTheatreSequencePlaying } = useRenderingConfigStore();
   const prevRef = useRef(false);
 
   useEffect(() => {

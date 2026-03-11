@@ -21,6 +21,7 @@ import {
 import { useI18n } from '@/hooks/use-i18n';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { aiSuggest } from '@/lib/echuu-client';
 import { ECHUU_AGENT_TTS_VOICES } from '@/lib/ai-tag-taxonomy';
 import { TTS_VOICES } from '@/config/tts-voices';
@@ -63,8 +64,8 @@ export default function OnboardingGuide({ onComplete, onSkip, onStep1Select, onS
     t('onboarding.presetTopics.lateNight'),
   ], [t]);
 
-  const echuuConfig = useSceneStore((s) => s.echuuConfig);
-  const setEchuuConfig = useSceneStore((s) => s.setEchuuConfig);
+  const echuuConfig = useEchuuConfigStore((s) => s.echuuConfig);
+  const setEchuuConfig = useEchuuConfigStore((s) => s.setEchuuConfig);
   const vrmModelUrl = useSceneStore((s) => s.vrmModelUrl);
   const searchParams = useSearchParams();
   const showPreviewDebug = searchParams.get('previewDebug') === '1' || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');

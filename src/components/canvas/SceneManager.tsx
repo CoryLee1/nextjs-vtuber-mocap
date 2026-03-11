@@ -4,6 +4,7 @@ import React, { memo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useRenderingConfigStore } from '@/stores/use-rendering-config-store';
 import { useWebGLContextGuard } from '@/hooks/use-webgl-context-guard';
 import { MainScene } from './scenes/MainScene';
 
@@ -16,8 +17,8 @@ const TONE_MAP = {
 /** 同步 store 的色调映射模式与曝光到 renderer；天空饱和度可由 toneMappingMode 切换（linear/reinhard 更艳）. */
 const ToneMappingSync = memo(function ToneMappingSync() {
   const gl = useThree((s) => s.gl);
-  const toneMappingExposure = useSceneStore((s) => s.toneMappingExposure);
-  const toneMappingMode = useSceneStore((s) => s.toneMappingMode);
+  const toneMappingExposure = useRenderingConfigStore((s) => s.toneMappingExposure);
+  const toneMappingMode = useRenderingConfigStore((s) => s.toneMappingMode);
 
   useEffect(() => {
     gl.toneMapping = TONE_MAP[toneMappingMode];

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
-import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { createEchuuAudioQueue } from '@/lib/echuu-audio';
 
 /**
@@ -16,11 +16,11 @@ import { createEchuuAudioQueue } from '@/lib/echuu-audio';
  */
 export function EchuuLiveAudio() {
   const { currentStep } = useEchuuWebSocket();
-  const setEchuuCue = useSceneStore((s) => s.setEchuuCue);
-  const setEchuuAudioPlaying = useSceneStore((s) => s.setEchuuAudioPlaying);
-  const setEchuuSegmentDurationMs = useSceneStore((s) => s.setEchuuSegmentDurationMs);
-  const setEchuuCaptionText = useSceneStore((s) => s.setEchuuCaptionText);
-  const echuuConfig = useSceneStore((s) => s.echuuConfig);
+  const setEchuuCue = useEchuuConfigStore((s) => s.setEchuuCue);
+  const setEchuuAudioPlaying = useEchuuConfigStore((s) => s.setEchuuAudioPlaying);
+  const setEchuuSegmentDurationMs = useEchuuConfigStore((s) => s.setEchuuSegmentDurationMs);
+  const setEchuuCaptionText = useEchuuConfigStore((s) => s.setEchuuCaptionText);
+  const echuuConfig = useEchuuConfigStore((s) => s.echuuConfig);
 
   /** 等待音频开始时要展示的字幕（含角色名前缀） */
   const pendingCaptionRef = useRef('');

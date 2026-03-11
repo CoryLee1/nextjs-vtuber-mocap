@@ -21,6 +21,8 @@ import { Vector3 } from 'three';
 import { CameraController } from '@/components/dressing-room/CameraController';
 import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useRenderingConfigStore } from '@/stores/use-rendering-config-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { usePerformance } from '@/hooks/use-performance';
 import { TheatreCamera, TheatreSequenceController } from './TheatreCamera';
 
@@ -238,6 +240,7 @@ export const MainScene: React.FC = () => {
   const { settings: perfSettings } = usePerformance();
   
   // 从 store 读取状态和更新方法
+  // Core scene state
   const {
     vrmModelUrl,
     preloadedPreviewModelUrl,
@@ -246,16 +249,22 @@ export const MainScene: React.FC = () => {
     cameraSettings,
     debugSettings,
     vrmModel,
-    echuuCue,
-    echuuAudioPlaying,
-    hdrUrl,
-    envBackgroundIntensity,
-    envBackgroundRotation,
     isOnboardingActive,
     setVrmRef,
     setAnimationManagerRef,
     setHandDetectionStateRef,
     updateDebugSettings,
+  } = useSceneStore();
+
+  // Echuu live state
+  const echuuCue = useEchuuConfigStore((s) => s.echuuCue);
+  const echuuAudioPlaying = useEchuuConfigStore((s) => s.echuuAudioPlaying);
+
+  // Rendering config
+  const {
+    hdrUrl,
+    envBackgroundIntensity,
+    envBackgroundRotation,
     composerResolutionScale,
     postProcessingEnabled,
     chromaticEnabled,
@@ -270,7 +279,7 @@ export const MainScene: React.FC = () => {
     setAvatarPositionY,
     avatarGizmoEnabled,
     setAvatarGizmoEnabled,
-  } = useSceneStore();
+  } = useRenderingConfigStore();
 
   const chromaticOffsetVec = useMemo(
     () => new Vector2(chromaticOffset, chromaticOffset * 0.1),

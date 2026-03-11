@@ -16,6 +16,8 @@ import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useRenderingConfigStore } from '@/stores/use-rendering-config-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { toast } from '@/hooks/use-toast';
 import characterIcon from '@/app/v1/assets/ECHUU V1 UX_img/Gemini_Generated_Image_unppndunppndunpp (1) 1.png';
@@ -59,7 +61,12 @@ export const StreamRoomSidebar = memo(({
   useSyncRoomIdToUrl();
   const { roomId } = useEchuuWebSocket();
   const pathname = usePathname() || '/zh';
-  const { echuuConfig, setEchuuConfig, vrmModelUrl, setVRMModelUrl, setBgmUrl, setBgmVolume: setStoreBgmVolume, setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, composerResolutionScale, setComposerResolutionScale, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, animationStateMachinePaused, setAnimationStateMachinePaused, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled } = useSceneStore();
+  // Core scene state
+  const { vrmModelUrl, setVRMModelUrl, animationStateMachinePaused, setAnimationStateMachinePaused } = useSceneStore();
+  // Echuu live config
+  const { echuuConfig, setEchuuConfig, setBgmUrl, setBgmVolume: setStoreBgmVolume } = useEchuuConfigStore();
+  // Rendering config
+  const { setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, composerResolutionScale, setComposerResolutionScale, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled } = useRenderingConfigStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);

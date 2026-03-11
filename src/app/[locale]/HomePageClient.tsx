@@ -9,6 +9,7 @@ import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui';
 import { useI18n } from '@/hooks/use-i18n';
 import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { preloadCriticalAssets } from '@/lib/preload-critical-assets';
@@ -150,7 +151,7 @@ export default function HomePageClient() {
             const name = model?.name ?? '';
             useSceneStore.getState().setVRMModelUrl(url);
             // 保持角色配置与当前主场景选模一致，避免后续流程读取到旧模型信息
-            useSceneStore.getState().setEchuuConfig({
+            useEchuuConfigStore.getState().setEchuuConfig({
               modelUrl: url,
               modelName: name,
             });

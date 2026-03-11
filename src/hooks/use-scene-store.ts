@@ -346,7 +346,4 @@ export function useMediaPipeCallback(
   );
 }
 
-// ========== Barrel re-exports for backwards compatibility ==========
-export { useRenderingConfigStore } from '@/stores/use-rendering-config-store';
-export { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 

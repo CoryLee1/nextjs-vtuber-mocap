@@ -2,7 +2,7 @@
 
 import React, { memo, useMemo } from 'react';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
-import { useSceneStore } from '@/hooks/use-scene-store';
+import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
 import { useI18n } from '@/hooks/use-i18n';
 import { memoryToDiaryEntries, saveDiaryHistory } from '@/lib/memory-diary';
 
@@ -38,7 +38,7 @@ export const StreamEndMVP = memo(() => {
   } = useEchuuWebSocket();
 
   const { t } = useI18n();
-  const echuuConfig = useSceneStore((s) => s.echuuConfig);
+  const echuuConfig = useEchuuConfigStore((s) => s.echuuConfig);
   const topic = echuuConfig.topic || 'Stream';
 
   // 计算互动数（观众发送的弹幕 = 非 AI 消息）
