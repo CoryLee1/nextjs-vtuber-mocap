@@ -70,6 +70,7 @@ import { TTS_VOICES } from '@/config/tts-voices';
 import accentMedium from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 263 (Stroke).svg';
 import accentLarge from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 264 (Stroke).svg';
 import { StreamMemory, StreamRoomPanel, ECHUU_CONFIG_KEY, ECHUU_LIVE_SETTINGS_KEY, ECHUU_SOUND_SETTINGS_KEY, ECHUU_SCENE_SETTINGS_KEY, ECHUU_CALENDAR_SETTINGS_KEY, LIVE_PLATFORMS, BGM_PRESETS } from './ui-layout-types';
+import { useRoomIdFromUrl, useSyncRoomIdToUrl } from '@/hooks/use-room-id-url';
 export type { StreamMemory };
 
 // 1. Top Left Branding（与右侧胶囊按钮上下平齐）
@@ -337,71 +338,6 @@ export const ActionButtonStack = memo(({
 });
 
 ActionButtonStack.displayName = 'ActionButtonStack';
-
-// 4.4 打开分享链接时：URL 带 room_id 则自动进入该直播间（观众）
-function useRoomIdFromUrl() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname() || '/zh';
-  const { setRoom, connect, ownerToken } = useEchuuWebSocket();
-  const appliedRef = useRef(false);
-  useEffect(() => {
-    if (appliedRef.current) return;
-    const urlRoomId = searchParams?.get('room_id')?.trim();
-    if (!urlRoomId) return;
-    if (ownerToken) return;
-    appliedRef.current = true;
-    let cancelled = false;
-    (async () => {
-      const { checkRoomExists, createRoom } = await import('@/lib/echuu-client');
-      const exists = await checkRoomExists(urlRoomId);
-      if (cancelled) return;
-      if (exists) {
-        setRoom(urlRoomId, null);
-        connect(urlRoomId);
-        return;
-      }
-
-      // room 失效时自动重建，避免 WS 4004 无限重连
-      try {
-        const room = await createRoom();
-        if (cancelled || !room?.room_id) return;
-        setRoom(room.room_id, room.owner_token ?? null);
-        connect(room.room_id);
-        const params = new URLSearchParams(searchParams?.toString() || '');
-        params.set('room_id', room.room_id);
-        const query = params.toString();
-        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-      } catch {
-        // ignore and keep current state
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams, setRoom, connect, ownerToken, router, pathname]);
-}
-
-// 4.4.1 房主开播或进入房间后，把 room_id 同步到地址栏，这样分享/复制链接会带房间号
-function useSyncRoomIdToUrl() {
-  const pathname = usePathname() || '/zh';
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { roomId } = useEchuuWebSocket();
-  useEffect(() => {
-    const currentInUrl = searchParams?.get('room_id')?.trim() || null;
-    if (currentInUrl === roomId) return; // 已同步，避免重复 replace
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    if (roomId) {
-      params.set('room_id', roomId);
-    } else {
-      params.delete('room_id');
-    }
-    const query = params.toString();
-    const url = query ? `${pathname}?${query}` : pathname;
-    router.replace(url, { scroll: false });
-  }, [roomId, pathname, searchParams, router]);
-}
 
 // 4.5 左侧 StreamRoom 控制 + 面板
 export const StreamRoomSidebar = memo(({
