@@ -7,6 +7,7 @@ import { getProviders, signIn, useSession } from 'next-auth/react';
 import LoadingPage from '@/components/ui/LoadingPage';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import { AuthButton, AuthInput, SocialButton } from '@/app/v1/components/auth-ui';
+import { useI18n } from '@/hooks/use-i18n';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
@@ -19,6 +20,7 @@ const VTuberApp = dynamic(() => import('@/components/dressing-room/VTuberApp'), 
 })
 
 export default function HomePageClient() {
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -233,7 +235,7 @@ export default function HomePageClient() {
                       });
                       const data = await res.json().catch(() => ({}));
                       if (!res.ok) {
-                        setAuthError(data?.error || '注册失败');
+                        setAuthError(data?.error || t('auth.registerFailed'));
                         return;
                       }
                     }
@@ -246,11 +248,11 @@ export default function HomePageClient() {
                         callbackUrl: '/zh',
                       });
                       if (!result || result.error) {
-                        setAuthError('邮箱或密码不正确');
+                        setAuthError(t('auth.wrongCredentials'));
                         return;
                       }
                     } catch {
-                      setAuthError('登录请求失败，请稍后重试');
+                      setAuthError(t('auth.loginRequestFailed'));
                       return;
                     }
                   } finally {
@@ -278,7 +280,7 @@ export default function HomePageClient() {
               />
               {!googleEnabled && (
                 <div className="text-[10px] text-white/40">
-                  未检测到 Google OAuth 配置，请设置 `GOOGLE_CLIENT_ID/SECRET` 和 `NEXTAUTH_URL`。
+                  {t('auth.googleNotConfigured')}
                 </div>
               )}
             </div>

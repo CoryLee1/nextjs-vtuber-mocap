@@ -484,5 +484,11 @@
   },
   "loading": {
     "defaultMessage": "正在准备中..."
+  },
+  "auth": {
+    "registerFailed": "注册失败",
+    "wrongCredentials": "邮箱或密码不正确",
+    "loginRequestFailed": "登录请求失败，请稍后重试",
+    "googleNotConfigured": "未检测到 Google OAuth 配置，请设置 GOOGLE_CLIENT_ID/SECRET 和 NEXTAUTH_URL。"
   }
 }

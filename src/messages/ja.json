@@ -477,5 +477,11 @@
   },
   "loading": {
     "defaultMessage": "準備中..."
+  },
+  "auth": {
+    "registerFailed": "登録に失敗しました",
+    "wrongCredentials": "メールアドレスまたはパスワードが正しくありません",
+    "loginRequestFailed": "ログインに失敗しました。しばらくしてからもう一度お試しください",
+    "googleNotConfigured": "Google OAuth が設定されていません。GOOGLE_CLIENT_ID/SECRET と NEXTAUTH_URL を設定してください。"
   }
 }

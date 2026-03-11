@@ -484,5 +484,11 @@
   },
   "loading": {
     "defaultMessage": "Initializing..."
+  },
+  "auth": {
+    "registerFailed": "Registration failed",
+    "wrongCredentials": "Email or password is incorrect",
+    "loginRequestFailed": "Login request failed, please try again later",
+    "googleNotConfigured": "Google OAuth not configured. Set GOOGLE_CLIENT_ID/SECRET and NEXTAUTH_URL."
   }
 }
