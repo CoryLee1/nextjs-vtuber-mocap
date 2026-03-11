@@ -284,7 +284,8 @@
     "downloaded": "已下载：{fileName}",
     "linkCopied": "链接已复制",
     "copyFailed": "复制失败",
-    "selectOrUploadFirst": "请先选择或上传模型"
+    "selectOrUploadFirst": "请先选择或上传模型",
+    "startFailed": "启动失败"
   },
   "onboarding": {
     "brandTagline": "AI 虚拟主播平台",
@@ -436,7 +437,29 @@
     "genderFemale": "女",
     "genderMale": "男",
     "langSupport": "支持语种",
-    "multiLang": "中/英/日等"
+    "multiLang": "中/英/日等",
+    "characterSetting": "Character Setting",
+    "liveSetting": "Live Setting",
+    "soundSetting": "Sound Setting",
+    "scenePanel": "Scene",
+    "calendarMemory": "Calendar Memory",
+    "webcamMocap": "Webcam Mocap",
+    "memoryContent": "回忆内容（供下次直播参考）",
+    "memoryNotesLabel": "备注",
+    "shareLiveRoom": "分享直播间",
+    "shareDescription": "支持 X、Reddit，及微信/小红书/B站二维码分享。",
+    "quickDistribution": "快速分发",
+    "recommendedCaption": "推荐文案（可直接复制）",
+    "globalPlatforms": "海外平台",
+    "chinesePlatforms": "中文平台（复制链接 + 扫码）",
+    "liveUrl": "直播链接",
+    "qrShare": "微信/小红书/B站扫码分享",
+    "copyPost": "复制链接并发布",
+    "wechatTip": "微信分享建议",
+    "wechatTipDesc": "已复制链接，请用微信扫码区或粘贴到会话发送。",
+    "shareLiveCaption": "正在 Echuu 直播中！欢迎来围观互动：{url}",
+    "red": "小红书",
+    "bilibili": "B站"
   },
   "consent": {
     "titlePrivacy": "隐私设置",

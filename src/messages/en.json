@@ -284,7 +284,8 @@
     "downloaded": "Downloaded: {fileName}",
     "linkCopied": "Link copied",
     "copyFailed": "Copy failed",
-    "selectOrUploadFirst": "Select or upload a model first"
+    "selectOrUploadFirst": "Select or upload a model first",
+    "startFailed": "Failed to start"
   },
   "onboarding": {
     "brandTagline": "AI Vtubing Platform",
@@ -436,7 +437,29 @@
     "genderFemale": "F",
     "genderMale": "M",
     "langSupport": "Languages",
-    "multiLang": "EN/ZH/JP etc."
+    "multiLang": "EN/ZH/JP etc.",
+    "characterSetting": "Character Setting",
+    "liveSetting": "Live Setting",
+    "soundSetting": "Sound Setting",
+    "scenePanel": "Scene",
+    "calendarMemory": "Calendar Memory",
+    "webcamMocap": "Webcam Mocap",
+    "memoryContent": "Memory (for next stream reference)",
+    "memoryNotesLabel": "Notes",
+    "shareLiveRoom": "Share Live Room",
+    "shareDescription": "Share to X, Reddit, and QR-based channels (WeChat, RED, Bilibili).",
+    "quickDistribution": "Quick Distribution",
+    "recommendedCaption": "Recommended caption",
+    "globalPlatforms": "Global Platforms",
+    "chinesePlatforms": "Chinese Platforms (Copy + QR)",
+    "liveUrl": "Live URL",
+    "qrShare": "WeChat / RED / Bilibili QR",
+    "copyPost": "Copy & Post",
+    "wechatTip": "WeChat share tip",
+    "wechatTipDesc": "Link copied. Use QR panel or paste into WeChat chat.",
+    "shareLiveCaption": "Live now on Echuu! Join and interact: {url}",
+    "red": "RED",
+    "bilibili": "Bilibili"
   },
   "consent": {
     "titlePrivacy": "Privacy Settings",

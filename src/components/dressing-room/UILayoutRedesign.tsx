@@ -125,7 +125,7 @@ export const PowerToggle = memo(({
   onToggle: () => void 
 }) => {
   const { onlineCount, connectionState, connect, disconnect, roomId } = useEchuuWebSocket();
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [angelCount, setAngelCount] = useState<number | null>(null);
   const [likeCount, setLikeCount] = useState(0);
@@ -167,11 +167,11 @@ export const PowerToggle = memo(({
         {/* 全站访问 + 在线人数 + 天使数 + 点赞 + 联系：合并为一个胶囊 */}
         <div
           className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#8BFFEA]/40 transition-all duration-500 bg-white text-slate-800 shadow-[inset_0_0_40px_rgba(148,246,255,0.35)]"
-          title={locale === 'zh' ? '本站访问 · 当前在线 · 已加入天使数 · 点赞 · 联系' : 'Views · Online · Angels joined · Like · Contact'}
+          title={t('layout.statsTooltip')}
         >
           <Eye className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
           <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-            {locale === 'zh' ? '访问' : 'VIEWS'}
+            {t('layout.views')}
           </span>
           <span className="text-xs font-black tabular-nums text-slate-800">
             {viewCount === null ? '—' : viewCount.toLocaleString()}
@@ -184,11 +184,11 @@ export const PowerToggle = memo(({
             )}
             aria-hidden
           />
-          <span className="text-xs font-black uppercase tracking-wide text-slate-500">{locale === 'zh' ? '在线' : 'ONLINE'}</span>
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">{t('layout.online')}</span>
           <span className="text-xs font-black tabular-nums text-slate-800">{onlineCount}</span>
           <span className="w-px h-3.5 bg-slate-300" aria-hidden />
           <SparklesIcon className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
-          <span className="text-xs font-black uppercase tracking-wide text-slate-500">{locale === 'zh' ? '天使' : 'ANGELS'}</span>
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">{t('layout.angels')}</span>
           <span className="text-xs font-black tabular-nums text-slate-800">
             {angelCount === null ? '—' : angelCount.toLocaleString()}
           </span>
@@ -196,27 +196,27 @@ export const PowerToggle = memo(({
           <button
             onClick={() => setLikeCount((c) => c + 1)}
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[#636363] hover:bg-[#8BFFEA]/20 hover:scale-105 active:scale-95 transition-all"
-            title={locale === 'zh' ? '点赞' : 'Like'}
+            title={t('layout.like')}
           >
             <Heart className="w-3.5 h-3.5 fill-current" />
-            <span className="text-xs font-black tabular-nums">{likeCount > 0 ? likeCount : (locale === 'zh' ? '点赞' : 'LIKE')}</span>
+            <span className="text-xs font-black tabular-nums">{likeCount > 0 ? likeCount : t('layout.like')}</span>
           </button>
           <span className="w-px h-3.5 bg-slate-300" aria-hidden />
           <DialogUI.Dialog>
             <DialogUI.DialogTrigger asChild>
               <button
                 className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[#636363] hover:bg-[#8BFFEA]/20 hover:scale-105 active:scale-95 transition-all"
-                title={locale === 'zh' ? '联系我们' : 'Contact'}
+                title={t('layout.contactUs')}
               >
                 <Mail className="w-3.5 h-3.5" />
-                <span className="text-xs font-black uppercase tracking-wide">{locale === 'zh' ? '联系' : 'CONTACT'}</span>
+                <span className="text-xs font-black uppercase tracking-wide">{t('layout.contact')}</span>
               </button>
             </DialogUI.DialogTrigger>
             <DialogUI.DialogContent className="sm:max-w-md">
             <DialogUI.DialogHeader>
-              <DialogUI.DialogTitle>{locale === 'zh' ? '联系我们' : 'Contact Us'}</DialogUI.DialogTitle>
+              <DialogUI.DialogTitle>{t('layout.contactUs')}</DialogUI.DialogTitle>
               <DialogUI.DialogDescription>
-                {locale === 'zh' ? '如有商务合作或反馈，请联系以下邮箱：' : 'For business inquiries or feedback, please contact:'}
+                {t('layout.contactDescription')}
               </DialogUI.DialogDescription>
             </DialogUI.DialogHeader>
             <div className="flex flex-col gap-4 py-4">
@@ -227,7 +227,7 @@ export const PowerToggle = memo(({
                   variant="ghost"
                   onClick={() => {
                     navigator.clipboard.writeText('cory@anngel.live');
-                    toast({ title: locale === 'zh' ? '已复制' : 'Copied' });
+                    toast({ title: t('common.copied') });
                   }}
                 >
                   <Copy className="h-4 w-4" />
@@ -240,7 +240,7 @@ export const PowerToggle = memo(({
                   variant="ghost"
                   onClick={() => {
                     navigator.clipboard.writeText('cory958014884@gmail.com');
-                    toast({ title: locale === 'zh' ? '已复制' : 'Copied' });
+                    toast({ title: t('common.copied') });
                   }}
                 >
                   <Copy className="h-4 w-4" />
@@ -293,6 +293,7 @@ export const ActionButtonStack = memo(({
   isBonesVisible: boolean,
   isCameraActive: boolean
 }) => {
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname() || '/';
   const isZh = pathname.startsWith('/zh');
@@ -308,7 +309,7 @@ export const ActionButtonStack = memo(({
       {/* Model Manager */}
       <button 
         onClick={onOpenModelManager}
-        title="模型管理"
+        title={t('layout.modelManagement')}
         className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center text-white  hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Users className="h-6 w-6" />
@@ -317,7 +318,7 @@ export const ActionButtonStack = memo(({
       {/* Camera Toggle */}
       <button
         onClick={onCameraToggle}
-        title={isCameraActive ? '停止摄像头' : '开启摄像头'}
+        title={isCameraActive ? t('layout.stopCamera') : t('layout.startCamera')}
         className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95",
           isCameraActive
@@ -331,7 +332,7 @@ export const ActionButtonStack = memo(({
       {/* Bones Toggle */}
       <button 
         onClick={onToggleBones}
-        title={isBonesVisible ? '隐藏骨骼' : '显示骨骼'}
+        title={isBonesVisible ? t('layout.hideBones') : t('layout.showBones')}
         className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95",
           isBonesVisible 
@@ -345,7 +346,7 @@ export const ActionButtonStack = memo(({
       {/* Settings Toggle */}
       <button 
         onClick={onOpenSettings}
-        title="设置"
+        title={t('layout.settings')}
         className="w-14 h-14 bg-amber-400 rounded-2xl flex items-center justify-center text-white  hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Layout className="h-6 w-6" />
@@ -354,7 +355,7 @@ export const ActionButtonStack = memo(({
       {/* Language Toggle */}
       <button
         onClick={() => router.push(nextLocalePath)}
-        title={isZh ? '切换到 English' : '切换到中文'}
+        title={t('layout.switchLang')}
         className="w-14 h-14 bg-slate-900/80 text-white rounded-2xl flex items-center justify-center border border-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
       >
         <Languages className="h-6 w-6" />
@@ -753,7 +754,7 @@ export const StreamRoomSidebar = memo(({
     if (!file) return;
     const errors = s3Uploader.validateBGMFile(file);
     if (errors.length > 0) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: errors.join(' '), variant: 'destructive' });
       return;
     }
     setUploadingBgm(true);
@@ -761,9 +762,9 @@ export const StreamRoomSidebar = memo(({
       const result = await s3Uploader.uploadFile(file);
       setBgm(result.url);
       setBgmUrl(result.url);
-      toast({ title: locale === 'zh' ? 'BGM 已上传并应用' : 'BGM uploaded and applied' });
+      toast({ title: t('layout.bgmUploaded') });
     } catch (err) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: String(err), variant: 'destructive' });
     } finally {
       setUploadingBgm(false);
     }
@@ -775,7 +776,7 @@ export const StreamRoomSidebar = memo(({
     if (!file) return;
     const errors = s3Uploader.validateHDRFile(file);
     if (errors.length > 0) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: errors.join(' '), variant: 'destructive' });
       return;
     }
     setUploadingHdr(true);
@@ -783,9 +784,9 @@ export const StreamRoomSidebar = memo(({
       const result = await s3Uploader.uploadFile(file, null, { purpose: 'hdr' });
       setHdr(result.url);
       setHdrUrl(result.url);
-      toast({ title: locale === 'zh' ? 'HDR 已上传，场景将更新' : 'HDR uploaded, scene will update' });
+      toast({ title: t('layout.hdrUploaded') });
     } catch (err) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: String(err), variant: 'destructive' });
     } finally {
       setUploadingHdr(false);
     }
@@ -797,7 +798,7 @@ export const StreamRoomSidebar = memo(({
     if (!file) return;
     const errors = s3Uploader.validateSceneModelFile(file);
     if (errors.length > 0) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: errors.join(' '), variant: 'destructive' });
       return;
     }
     setUploadingSceneFbx(true);
@@ -806,9 +807,9 @@ export const StreamRoomSidebar = memo(({
       setSceneFbxUrlState(result.url);
       setSceneFbxUrl(result.url);
       setSceneName(file.name.replace(/\.(glb|gltf)$/i, ''));
-      toast({ title: locale === 'zh' ? '场景模型已上传' : 'Scene model uploaded' });
+      toast({ title: t('layout.sceneModelUploaded') });
     } catch (err) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: String(err), variant: 'destructive' });
     } finally {
       setUploadingSceneFbx(false);
     }
@@ -820,7 +821,7 @@ export const StreamRoomSidebar = memo(({
     if (!file) return;
     const errors = s3Uploader.validateVRMFile(file);
     if (errors.length > 0) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: errors.join(' '), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: errors.join(' '), variant: 'destructive' });
       return;
     }
     setUploadingVrm(true);
@@ -836,9 +837,9 @@ export const StreamRoomSidebar = memo(({
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(ECHUU_CONFIG_KEY, JSON.stringify(nextConfig));
       }
-      toast({ title: locale === 'zh' ? '模型已上传并应用' : 'Model uploaded and applied' });
+      toast({ title: t('layout.modelUploaded') });
     } catch (err) {
-      toast({ title: locale === 'zh' ? '上传失败' : 'Upload failed', description: String(err), variant: 'destructive' });
+      toast({ title: t('common.uploadFailed'), description: String(err), variant: 'destructive' });
     } finally {
       setUploadingVrm(false);
     }
@@ -847,7 +848,7 @@ export const StreamRoomSidebar = memo(({
   const handleDownloadCurrentVrm = async () => {
     const url = vrmModelUrl || characterDraft.modelUrl || '';
     if (!url) {
-      toast({ title: locale === 'zh' ? '请先选择或上传模型' : 'Select or upload a model first', variant: 'destructive' });
+      toast({ title: t('common.selectOrUploadFirst'), variant: 'destructive' });
       return;
     }
     setDownloadingVrm(true);
@@ -861,9 +862,9 @@ export const StreamRoomSidebar = memo(({
       a.download = name.endsWith('.vrm') ? name : `${name}.vrm`;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast({ title: locale === 'zh' ? '已开始下载' : 'Download started' });
+      toast({ title: t('common.downloadStarted') });
     } catch (err) {
-      toast({ title: locale === 'zh' ? '下载失败' : 'Download failed', description: String(err), variant: 'destructive' });
+      toast({ title: t('common.downloadFailed'), description: String(err), variant: 'destructive' });
     } finally {
       setDownloadingVrm(false);
     }
@@ -969,12 +970,12 @@ export const StreamRoomSidebar = memo(({
         <div className="w-[560px] h-full bg-[#E7ECF3] border border-white/60 p-10 flex flex-col gap-6 pointer-events-auto overflow-y-auto">
           <div className="flex items-center justify-between">
             <div className="text-[16px] text-slate-500 tracking-widest uppercase">
-              {panelType === 'character' && 'Character Setting'}
-              {panelType === 'live' && 'Live Setting'}
-              {panelType === 'sound' && 'Sound Setting'}
-              {panelType === 'scene' && 'Scene'}
-              {panelType === 'calendar' && 'Calendar Memory'}
-              {panelType === 'mocap' && 'Webcam Mocap'}
+              {panelType === 'character' && t('layout.characterSetting')}
+              {panelType === 'live' && t('layout.liveSetting')}
+              {panelType === 'sound' && t('layout.soundSetting')}
+              {panelType === 'scene' && t('layout.scenePanel')}
+              {panelType === 'calendar' && t('layout.calendarMemory')}
+              {panelType === 'mocap' && t('layout.webcamMocap')}
             </div>
             <button
               type="button"
@@ -1003,13 +1004,13 @@ export const StreamRoomSidebar = memo(({
                 </SelectTrigger>
                 <SelectContent>
                   {TTS_VOICES.map((v) => {
-                    const genderTag = v.gender === 'female' ? (locale === 'zh' ? '女' : 'F') : (locale === 'zh' ? '男' : 'M');
+                    const genderTag = v.gender === 'female' ? t('layout.genderFemale') : t('layout.genderMale');
                     const name = locale === 'zh' ? v.labelZh : v.labelEn;
                     const trait = locale === 'zh' ? v.traitZh : v.traitEn;
-                    const langShort = locale === 'zh' ? '中/英/日等' : 'EN/ZH/JP etc.';
+                    const langShort = t('layout.multiLang');
                     return (
                       <SelectItem key={v.value} value={v.value}>
-                        <span className="block truncate" title={`${locale === 'zh' ? '支持语种' : 'Languages'}: ${v.languages} · ${trait}`}>
+                        <span className="block truncate" title={`${t('layout.langSupport')}: ${v.languages} · ${trait}`}>
                           {name} ({genderTag}) {langShort} · {trait}
                         </span>
                       </SelectItem>
@@ -1060,7 +1061,7 @@ export const StreamRoomSidebar = memo(({
                 disabled={uploadingVrm}
                 onClick={() => uploadInputRef.current?.click()}
               >
-                {uploadingVrm ? (locale === 'zh' ? '上传中…' : 'Uploading…') : (locale === 'zh' ? '上传 .vrm 模型' : 'Upload .vrm model')}
+                {uploadingVrm ? t('common.uploading') : t('layout.uploadVrm')}
               </Button>
               <Button
                 type="button"
@@ -1070,7 +1071,7 @@ export const StreamRoomSidebar = memo(({
                 disabled={downloadingVrm}
                 onClick={handleDownloadCurrentVrm}
               >
-                {downloadingVrm ? (locale === 'zh' ? '下载中…' : 'Downloading…') : (locale === 'zh' ? '下载当前 VRM (导入 Blender 用)' : 'Download current VRM (for Blender)')}
+                {downloadingVrm ? t('layout.downloading') : t('layout.downloadVrm')}
               </Button>
               {onOpenAnimationLibrary && (
                 <>
@@ -1082,7 +1083,7 @@ export const StreamRoomSidebar = memo(({
                     onClick={() => { setPanelOpen(false); onOpenAnimationLibrary(); }}
                   >
                     <Film className="h-4 w-4" />
-                    {locale === 'zh' ? '动画库' : 'Animation Library'}
+                    {t('layout.animationLibrary')}
                   </Button>
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
                     <input
@@ -1091,7 +1092,7 @@ export const StreamRoomSidebar = memo(({
                       onChange={(e) => setAnimationStateMachinePaused(e.target.checked)}
                       className="rounded border-slate-300"
                     />
-                    {locale === 'zh' ? '暂停状态机（仅播当前选的动画，便于试 KAWAII 等）' : 'Pause state machine (play only selected animation, e.g. KAWAII)'}
+                    {t('layout.pauseStateMachine')}
                   </label>
                 </>
               )}
@@ -1119,7 +1120,7 @@ export const StreamRoomSidebar = memo(({
 
           {panelType === 'live' && (
             <div className="flex flex-col gap-4">
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '房间链接' : 'Room link'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.roomLink')}</label>
               {roomId ? (
                 <div className="flex gap-2">
                   <input
@@ -1134,27 +1135,27 @@ export const StreamRoomSidebar = memo(({
                     className="shrink-0"
                     onClick={() => {
                       const url = typeof window !== 'undefined' ? `${window.location.origin}${pathname}${pathname.includes('?') ? '&' : '?'}room_id=${roomId}` : '';
-                      navigator.clipboard?.writeText(url).then(() => toast({ title: locale === 'zh' ? '已复制' : 'Copied' }));
+                      navigator.clipboard?.writeText(url).then(() => toast({ title: t('common.copied') }));
                     }}
                   >
-                    {locale === 'zh' ? '复制' : 'Copy'}
+                    {t('common.copy')}
                   </Button>
                 </div>
               ) : (
                 <p className="text-[11px] text-slate-400">
-                  {locale === 'zh' ? '点击底部「Go Live」开播后，房间链接将显示于此，可分享给观众。' : 'After going live with the bottom Go Live button, the room link will appear here to share with viewers.'}
+                  {t('layout.roomLinkHint')}
                 </p>
               )}
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '直播平台' : 'Streaming Platform'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.streamPlatform')}</label>
               <Select
                 value={livePlatform || '__none__'}
                 onValueChange={(v) => setLivePlatform(v === '__none__' ? '' : (v as 'twitch' | 'youtube'))}
               >
                 <SelectTrigger className="h-12 bg-white dark:bg-slate-800 rounded-lg px-4 text-slate-800 dark:text-slate-200">
-                  <SelectValue placeholder={locale === 'zh' ? '选择平台' : 'Select platform'} />
+                  <SelectValue placeholder={t('layout.selectPlatform')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">{locale === 'zh' ? '请选择' : 'Select…'}</SelectItem>
+                  <SelectItem value="__none__">{t('layout.selectPrompt')}</SelectItem>
                   {LIVE_PLATFORMS.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {locale === 'zh' ? p.labelZh : p.labelEn}
@@ -1163,7 +1164,7 @@ export const StreamRoomSidebar = memo(({
                 </SelectContent>
               </Select>
               <label className="text-[16px] text-slate-500">
-                {locale === 'zh' ? '推流密钥 (Stream Key)' : 'Stream Key'}
+                {t('layout.streamKey')}
               </label>
               <input
                 type="password"
@@ -1171,10 +1172,10 @@ export const StreamRoomSidebar = memo(({
                 className="h-12 bg-white dark:bg-slate-800 rounded-lg px-4 text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
                 placeholder={
                   livePlatform === 'twitch'
-                    ? (locale === 'zh' ? 'Twitch 主推流密钥' : 'Twitch primary stream key')
+                    ? t('layout.twitchKeyPlaceholder')
                     : livePlatform === 'youtube'
-                      ? (locale === 'zh' ? 'YouTube 推流密钥' : 'YouTube stream key')
-                      : (locale === 'zh' ? '请先选择平台' : 'Select a platform first')
+                      ? t('layout.youtubeKeyPlaceholder')
+                      : t('layout.selectPlatformFirst')
                 }
                 value={liveKey}
                 onChange={(e) => setLiveKey(e.target.value)}
@@ -1182,8 +1183,8 @@ export const StreamRoomSidebar = memo(({
               />
               {livePlatform && (
                 <p className="text-[11px] text-slate-400">
-                  {livePlatform === 'twitch' && (locale === 'zh' ? '在 Twitch 创作者后台 → 设置 → 直播 中获取主推流密钥。' : 'Get your primary stream key from Twitch Creator Dashboard → Settings → Stream.')}
-                  {livePlatform === 'youtube' && (locale === 'zh' ? '在 YouTube 工作室 → 推流 中创建并复制推流密钥。' : 'Create and copy your stream key from YouTube Studio → Go live.')}
+                  {livePlatform === 'twitch' && t('layout.twitchKeyHint')}
+                  {livePlatform === 'youtube' && t('layout.youtubeKeyHint')}
                 </p>
               )}
             </div>
@@ -1204,7 +1205,7 @@ export const StreamRoomSidebar = memo(({
                     </SelectItem>
                   ))}
                   {bgm && !BGM_PRESETS.some((p) => p.url === bgm) && (
-                    <SelectItem value={bgm}>{locale === 'zh' ? '已上传的 BGM' : 'Uploaded BGM'}</SelectItem>
+                    <SelectItem value={bgm}>{t('layout.uploadedBgm')}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -1241,7 +1242,7 @@ export const StreamRoomSidebar = memo(({
                   <SelectItem value="/images/sky (3).png">sky (3).png</SelectItem>
                   <SelectItem value="/images/SKY.hdr">SKY.hdr</SelectItem>
                   {hdr && hdr !== '/images/SKY.hdr' && hdr !== '/images/sky (3).png' && (
-                    <SelectItem value={hdr}>{locale === 'zh' ? '已上传的环境图' : 'Uploaded env'}</SelectItem>
+                    <SelectItem value={hdr}>{t('layout.uploadedEnv')}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -1253,15 +1254,15 @@ export const StreamRoomSidebar = memo(({
                   <img src="/images/HDRSky.png" alt="HDR preview" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-300 to-slate-400 text-slate-600 text-xs font-medium">
-                    {locale === 'zh' ? '自定义环境图' : 'Custom env'}
+                    {t('layout.customEnv')}
                   </div>
                 )}
               </div>
               <input ref={hdrInputRef} type="file" accept=".hdr,.png,.jpg,.jpeg" className="hidden" onChange={handleHdrUpload} />
               <Button type="button" variant="outline" size="sm" className="w-full" disabled={uploadingHdr} onClick={() => hdrInputRef.current?.click()}>
-                {uploadingHdr ? t('vtuber.scene.uploading') : (locale === 'zh' ? '上传 HDR/PNG/JPG 环境图' : 'Upload HDR/PNG/JPG env')}
+                {uploadingHdr ? t('vtuber.scene.uploading') : t('layout.uploadEnvFile')}
               </Button>
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '环境/背景亮度' : 'Env brightness'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.envBrightness')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0.2}
@@ -1274,7 +1275,7 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{envBackgroundIntensity.toFixed(1)}</span>
               </div>
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '环境/背景旋转' : 'Env rotation'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.envRotation')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0}
@@ -1289,7 +1290,7 @@ export const StreamRoomSidebar = memo(({
               </div>
 
               {/* 角色位置：主场景高度 + Gizmo 拖拽 */}
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '角色高度 (Y)' : 'Avatar Height (Y)'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.avatarHeight')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
@@ -1303,7 +1304,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{avatarPositionY.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <label className="text-[16px] text-slate-500">{locale === 'zh' ? 'Gizmo 拖拽调整位置' : 'Gizmo Move Avatar'}</label>
+                <label className="text-[16px] text-slate-500">{t('layout.gizmoMove')}</label>
                 <button
                   type="button"
                   onClick={() => setAvatarGizmoEnabled(!avatarGizmoEnabled)}
@@ -1313,7 +1314,7 @@ export const StreamRoomSidebar = memo(({
                 </button>
               </div>
 
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '后期分辨率缩放' : 'Composer Resolution'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.composerRes')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={0.5}
@@ -1329,9 +1330,9 @@ export const StreamRoomSidebar = memo(({
 
               {/* Chromatic Aberration */}
               <div className="mt-2 pt-2 border-t border-slate-200">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '色散' : 'Chromatic'}</p>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('layout.chromatic')}</p>
                 <div className="flex items-center justify-between">
-                  <label className="text-[16px] text-slate-500">{locale === 'zh' ? '色散 (Chromatic)' : 'Chromatic Aberration'}</label>
+                  <label className="text-[16px] text-slate-500">{t('layout.chromaticAberration')}</label>
                   <button
                     type="button"
                     onClick={() => setChromaticEnabled(!chromaticEnabled)}
@@ -1342,7 +1343,7 @@ export const StreamRoomSidebar = memo(({
                 </div>
                 {chromaticEnabled && (
                   <>
-                    <label className="text-[16px] text-slate-500">{locale === 'zh' ? '色散强度 (Offset)' : 'Chromatic Offset'}</label>
+                    <label className="text-[16px] text-slate-500">{t('layout.chromaticOffset')}</label>
                     <div className="flex items-center gap-2">
                       <Slider min={0} max={0.05} step={0.001} value={chromaticOffset} onValueChange={setChromaticOffset} showValue={false} className="flex-1" />
                       <span className="text-xs text-slate-500 w-10 tabular-nums">{chromaticOffset.toFixed(3)}</span>
@@ -1352,7 +1353,7 @@ export const StreamRoomSidebar = memo(({
               </div>
 
               {/* Color Correction Settings */}
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '亮度 (Brightness)' : 'Brightness'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.brightness')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
@@ -1366,7 +1367,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{brightness.toFixed(2)}</span>
               </div>
 
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '对比度 (Contrast)' : 'Contrast'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.contrast')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
@@ -1380,7 +1381,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{contrast.toFixed(2)}</span>
               </div>
 
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '饱和度 (Saturation)' : 'Saturation'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.saturation')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-1}
@@ -1394,7 +1395,7 @@ export const StreamRoomSidebar = memo(({
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{saturation.toFixed(2)}</span>
               </div>
 
-              <label className="text-[16px] text-slate-500">{locale === 'zh' ? '色相 (Hue)' : 'Hue'}</label>
+              <label className="text-[16px] text-slate-500">{t('layout.hue')}</label>
               <div className="flex items-center gap-2">
                 <Slider
                   min={-3.14}
@@ -1410,7 +1411,7 @@ export const StreamRoomSidebar = memo(({
 
               {/* 手部轨迹特效 */}
               <div className="flex items-center justify-between mt-1">
-                <label className="text-[16px] text-slate-500">{locale === 'zh' ? '手部轨迹特效' : 'Hand Trail VFX'}</label>
+                <label className="text-[16px] text-slate-500">{t('layout.handTrailVfx')}</label>
                 <button
                   type="button"
                   onClick={() => setHandTrailEnabled(!handTrailEnabled)}
@@ -1422,9 +1423,9 @@ export const StreamRoomSidebar = memo(({
 
               {/* Theatre.js 相机编排 */}
               <div className="mt-3 pt-3 border-t border-slate-200">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{locale === 'zh' ? '相机编排 (Theatre.js)' : 'Camera Choreography'}</p>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('layout.cameraChoreography')}</p>
                 <div className="flex items-center justify-between">
-                  <label className="text-[16px] text-slate-500">{locale === 'zh' ? '接管相机' : 'Theatre Camera'}</label>
+                  <label className="text-[16px] text-slate-500">{t('layout.theatreCamera')}</label>
                   <button
                     type="button"
                     onClick={() => setTheatreCameraActive(!theatreCameraActive)}
@@ -1440,24 +1441,24 @@ export const StreamRoomSidebar = memo(({
                       onClick={() => setTheatreSequencePlaying(!theatreSequencePlaying)}
                       className={`flex-1 h-8 rounded-lg text-xs font-semibold transition-colors ${theatreSequencePlaying ? 'bg-red-500 text-white' : 'bg-violet-500 text-white hover:bg-violet-600'}`}
                     >
-                      {theatreSequencePlaying ? (locale === 'zh' ? '⏹ 停止' : '⏹ Stop') : (locale === 'zh' ? '▶ 播放序列' : '▶ Play Sequence')}
+                      {theatreSequencePlaying ? t('layout.theatreStop') : t('layout.theatrePlay')}
                     </button>
                   </div>
                 )}
                 {process.env.NODE_ENV === 'development' && (
-                  <p className="text-[10px] text-slate-400 mt-1">{locale === 'zh' ? '开发模式：Alt+\\ 打开 Studio 编辑器' : 'Dev: Alt+\\ to open Studio editor'}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{t('layout.theatreDevHint')}</p>
                 )}
               </div>
 
               <label className="text-[16px] text-slate-500">{t('vtuber.scene.sceneModel')}</label>
-              <div className="text-[11px] text-slate-500 truncate">{sceneName || (locale === 'zh' ? '未上传' : 'None')}</div>
+              <div className="text-[11px] text-slate-500 truncate">{sceneName || t('layout.sceneModelNone')}</div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" className="flex-1" disabled={uploadingSceneFbx} onClick={() => sceneFbxInputRef.current?.click()}>
                   {uploadingSceneFbx ? t('vtuber.scene.uploading') : t('vtuber.scene.uploadSceneModel')}
                 </Button>
                 {sceneFbxUrl && (
                   <Button type="button" variant="ghost" size="sm" onClick={() => { setSceneFbxUrlState(''); setSceneName(''); setSceneFbxUrl(null); }}>
-                    {locale === 'zh' ? '清除' : 'Clear'}
+                    {t('common.clear')}
                   </Button>
                 )}
               </div>
@@ -1491,35 +1492,35 @@ export const StreamRoomSidebar = memo(({
                   />
                 </div>
               </div>
-              <label className="text-[16px] text-slate-500">回忆内容（供下次直播参考）</label>
+              <label className="text-[16px] text-slate-500">{t('layout.memoryContent')}</label>
               {selectedCalendarDate ? (
                 <div className="flex flex-col gap-2">
                   <input
                     className="h-9 bg-white dark:bg-slate-800 rounded-lg px-3 text-slate-800 dark:text-slate-200 text-sm placeholder:text-slate-400"
-                    placeholder={locale === 'zh' ? '直播主题' : 'Stream topic'}
+                    placeholder={t('layout.memoryTopic')}
                     value={memoryDraft.topic}
                     onChange={(e) => setMemoryDraft((p) => ({ ...p, topic: e.target.value }))}
                   />
                   <textarea
                     className="min-h-[60px] bg-white dark:bg-slate-800 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-200 text-sm resize-none placeholder:text-slate-400"
-                    placeholder={locale === 'zh' ? '讲了什么、互动亮点' : 'What was covered, highlights'}
+                    placeholder={t('layout.memorySummary')}
                     value={memoryDraft.summary}
                     onChange={(e) => setMemoryDraft((p) => ({ ...p, summary: e.target.value }))}
                   />
                   <input
                     className="h-9 bg-white dark:bg-slate-800 rounded-lg px-3 text-slate-800 dark:text-slate-200 text-sm placeholder:text-slate-400"
-                    placeholder={locale === 'zh' ? '谁被记住了（多人用顿号、逗号分隔）' : 'Who was remembered (comma-separated)'}
+                    placeholder={t('layout.memoryPeople')}
                     value={memoryDraft.participants}
                     onChange={(e) => setMemoryDraft((p) => ({ ...p, participants: e.target.value }))}
                   />
                 </div>
               ) : (
-                <p className="text-slate-400 text-sm py-2">{locale === 'zh' ? '选择日期查看或添加直播回忆' : 'Select a date to view or add stream memory'}</p>
+                <p className="text-slate-400 text-sm py-2">{t('layout.memoryHint')}</p>
               )}
-              <label className="text-[16px] text-slate-500 pt-1">备注</label>
+              <label className="text-[16px] text-slate-500 pt-1">{t('layout.memoryNotesLabel')}</label>
               <textarea
                 className="h-20 bg-white dark:bg-slate-800 rounded-lg px-4 py-3 text-slate-800 dark:text-slate-200 resize-none text-sm"
-                placeholder={locale === 'zh' ? '其他备注' : 'Other notes'}
+                placeholder={t('layout.memoryNotes')}
                 value={calendarMemo}
                 onChange={(e) => setCalendarMemo(e.target.value)}
               />
@@ -1529,18 +1530,14 @@ export const StreamRoomSidebar = memo(({
           {panelType === 'mocap' && (
             <div className="flex flex-col gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                {locale === 'zh'
-                  ? '开启后，摄像头会捕捉你的人脸与身体动作，主画面中的 3D 形象将实时跟随（puppetry）。'
-                  : 'When enabled, the webcam captures your face and body; the 3D avatar in the main view will follow in real time (puppetry).'}
+                {t('layout.mocapDescription')}
               </p>
               {onCameraToggle && (
                 <>
                   <div className="flex items-center gap-2 text-sm">
                     <span className={cn('inline-block h-2 w-2 rounded-full', isCameraActive ? 'bg-green-500' : 'bg-slate-300')} />
                     <span className="text-slate-600 dark:text-slate-400">
-                      {isCameraActive
-                        ? (locale === 'zh' ? '动捕已开启' : 'Mocap active')
-                        : (locale === 'zh' ? '动捕未开启' : 'Mocap off')}
+                      {isCameraActive ? t('layout.mocapActive') : t('layout.mocapOff')}
                     </span>
                   </div>
                   <Button
@@ -1549,9 +1546,7 @@ export const StreamRoomSidebar = memo(({
                     className="w-full"
                     onClick={onCameraToggle}
                   >
-                    {isCameraActive
-                      ? (locale === 'zh' ? '关闭摄像头动捕' : 'Stop Webcam Mocap')
-                      : (locale === 'zh' ? '开启摄像头动捕' : 'Start Webcam Mocap')}
+                    {isCameraActive ? t('layout.stopMocap') : t('layout.startMocap')}
                   </Button>
                 </>
               )}
@@ -1575,7 +1570,7 @@ StreamRoomSidebar.displayName = 'StreamRoomSidebar';
 
 // 聊天面板底部按钮：语言切换 + 直播拍照（仅截 3D 画布，可选社交尺寸+控制文件大小）
 const ChatPanelFooterButtons = memo(() => {
-  const { locale, changeLocale } = useI18n();
+  const { t, locale, changeLocale } = useI18n();
   const canvasReady = useSceneStore((s) => s.canvasReady);
   const lastCaptureBlobUrl = useSceneStore((s) => s.lastCaptureBlobUrl);
   const setLastCaptureBlobUrl = useSceneStore((s) => s.setLastCaptureBlobUrl);
@@ -1586,7 +1581,7 @@ const ChatPanelFooterButtons = memo(() => {
   // 发请求：由 Canvas 内 TakePhotoCapture 在 useFrame 中截帧并写回 lastCaptureBlobUrl；preset 存到 ref 供消费时使用
   const handleTakePhoto = (preset: SocialCapturePreset | null) => {
     if (!canvasReady) {
-      toast({ title: '无法截图', description: '3D 场景未就绪，请稍后再试', variant: 'destructive' });
+      toast({ title: t('layout.cannotCapture'), description: t('layout.sceneNotReady'), variant: 'destructive' });
       return;
     }
     pendingPresetRef.current = preset;
@@ -1611,7 +1606,7 @@ const ChatPanelFooterButtons = memo(() => {
       a.click();
       const w = window.open(finalUrl, '_blank', 'noopener');
       if (w) w.document.title = fileName;
-      toast({ title: '已保存', description: `已下载：${fileName}` });
+      toast({ title: t('common.saved'), description: t('common.downloaded', { fileName }) });
       // Revoke after a short delay so browser finishes consuming the blob
       setTimeout(() => {
         if (finalUrl.startsWith('blob:')) try { URL.revokeObjectURL(finalUrl); } catch (_) {}
@@ -1631,7 +1626,7 @@ const ChatPanelFooterButtons = memo(() => {
             finish(blobUrl, name, 'image/jpeg', url);
           })
           .catch(() => {
-            toast({ title: '处理失败', description: '已按原图下载', variant: 'destructive' });
+            toast({ title: t('common.processFailed'), description: t('common.originalDownloaded'), variant: 'destructive' });
             const name = `stream-photo-${Date.now()}.png`;
             finish(url, name, 'image/png');
           });
@@ -1656,7 +1651,7 @@ const ChatPanelFooterButtons = memo(() => {
           type="button"
           onClick={() => setLangOpen((o) => !o)}
           className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#B7FF7A] text-[#B7FF7A] text-[11px] font-bold w-full"
-          aria-label="语言 / Language"
+          aria-label={t('layout.langLabel')}
         >
           <Languages className="h-4 w-4" />
         </button>
@@ -1689,7 +1684,7 @@ const ChatPanelFooterButtons = memo(() => {
           disabled={!canvasReady}
           className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full bg-black/90 border-2 border-[#B7FF7A] text-[#B7FF7A] text-[11px] font-bold w-full disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Take photo (3D view only)"
-          title={canvasReady ? '截取 3D 画面（可选平台尺寸）' : '3D 场景就绪后可用'}
+          title={canvasReady ? t('layout.captureReady') : t('layout.captureNotReady')}
         >
           <Camera className="h-4 w-4" />
         </button>
@@ -1701,7 +1696,7 @@ const ChatPanelFooterButtons = memo(() => {
                 onClick={() => handleTakePhoto(null)}
                 className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10"
               >
-                {locale === 'zh' ? '原始 (PNG)' : 'Original (PNG)'}
+                {t('layout.originalPng')}
               </button>
               {SOCIAL_CAPTURE_PRESETS.map((p) => (
                 <button
@@ -1805,7 +1800,7 @@ export const StreamRoomChatPanel = memo(() => {
         type="button"
         onClick={() => setCollapsed((prev) => !prev)}
         className="absolute right-2 top-2 left-[9px] z-10 h-8 w-8 rounded-full bg-black/90 text-[#B7FF7A] text-xs font-black"
-        aria-label={collapsed ? '展开聊天' : '收起聊天'}
+        aria-label={collapsed ? t('layout.expandChat') : t('layout.collapseChat')}
       >
         {collapsed ? '<<' : '>>'}
       </button>
@@ -1925,7 +1920,7 @@ CaptionTypewriter.displayName = 'CaptionTypewriter';
 /** 分享直播间：自定义分享卡片（桌面/移动一致），支持 X/Reddit + 微信/小红书/B站二维码与复制 */
 const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const pathname = usePathname();
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const disabled = !roomId;
 
@@ -1934,11 +1929,9 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const shareUrl = roomId
     ? `${base}${path}${path.includes('?') ? '&' : '?'}room_id=${encodeURIComponent(roomId)}`
     : `${base}${path}`;
-  const shareTitle = locale === 'zh' ? 'Echuu 直播间' : 'Echuu Live Room';
-  const shareText = locale === 'zh' ? '来看看我的 Echuu 直播间' : 'Join my Echuu live room';
-  const shareCaption = locale === 'zh'
-    ? `正在 Echuu 直播中！欢迎来围观互动：${shareUrl}`
-    : `Live now on Echuu! Join and interact: ${shareUrl}`;
+  const shareTitle = t('layout.shareTitle');
+  const shareText = t('layout.shareText');
+  const shareCaption = t('layout.shareLiveCaption', { url: shareUrl });
   const iconBtnClass =
     'h-11 w-11 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-[#636363] flex items-center justify-center p-0 overflow-hidden';
   const iconFillClass = 'w-full h-full object-cover';
@@ -1946,9 +1939,9 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
   const copyLink = async () => {
     try {
       await navigator.clipboard?.writeText(shareUrl);
-      toast({ title: locale === 'zh' ? '链接已复制' : 'Link copied', description: shareUrl });
+      toast({ title: t('common.linkCopied'), description: shareUrl });
     } catch {
-      toast({ title: locale === 'zh' ? '复制失败' : 'Copy failed', description: shareUrl, variant: 'destructive' });
+      toast({ title: t('common.copyFailed'), description: shareUrl, variant: 'destructive' });
     }
   };
 
@@ -1956,14 +1949,12 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
     await copyLink();
     window.open(url, '_blank', 'noopener');
     toast({
-      title: locale === 'zh' ? `${platformName} 已打开` : `${platformName} opened`,
-      description: locale === 'zh' ? '已复制链接，可在该平台粘贴发布' : 'Link copied, paste it in the platform post editor.',
+      title: t('layout.platformOpened', { platform: platformName }),
+      description: t('layout.linkCopiedPaste'),
     });
   };
 
-  const title = disabled
-    ? (locale === 'zh' ? '开播后可用' : 'Available after going live')
-    : (locale === 'zh' ? '分享直播间' : 'Share room');
+  const title = disabled ? t('layout.shareNotReady') : t('layout.shareRoom');
 
   return (
     <>
@@ -1984,22 +1975,20 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
       <DialogUI.Dialog open={open} onOpenChange={setOpen}>
         <DialogUI.DialogContent className="max-w-[760px]">
           <DialogUI.DialogHeader>
-            <DialogUI.DialogTitle>{locale === 'zh' ? '分享直播间' : 'Share Live Room'}</DialogUI.DialogTitle>
+            <DialogUI.DialogTitle>{t('layout.shareLiveRoom')}</DialogUI.DialogTitle>
             <DialogUI.DialogDescription>
-              {locale === 'zh'
-                ? '支持 X、Reddit，及微信/小红书/B站二维码分享。'
-                : 'Share to X, Reddit, and QR-based channels (WeChat, RED, Bilibili).'}
+              {t('layout.shareDescription')}
             </DialogUI.DialogDescription>
           </DialogUI.DialogHeader>
 
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4">
             <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900 space-y-3">
-              <div className="text-sm font-semibold">{locale === 'zh' ? '快速分发' : 'Quick Distribution'}</div>
+              <div className="text-sm font-semibold">{t('layout.quickDistribution')}</div>
               <div className="rounded-lg border bg-white p-3">
-                <div className="text-xs text-slate-500 mb-2">{locale === 'zh' ? '推荐文案（可直接复制）' : 'Recommended caption'}</div>
+                <div className="text-xs text-slate-500 mb-2">{t('layout.recommendedCaption')}</div>
                 <div className="text-xs leading-5 text-slate-700 break-all">{shareCaption}</div>
               </div>
-              <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '海外平台' : 'Global Platforms'}</div>
+              <div className="text-xs font-medium text-slate-500">{t('layout.globalPlatforms')}</div>
               <div className="flex flex-wrap gap-4">
                 <div className="flex flex-col items-center gap-1">
                   <TwitterShare
@@ -2035,7 +2024,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                   <span className="text-[11px] text-slate-600">Instagram</span>
                 </div>
               </div>
-              <div className="text-xs font-medium text-slate-500">{locale === 'zh' ? '中文平台（复制链接 + 扫码）' : 'Chinese Platforms (Copy + QR)'}</div>
+              <div className="text-xs font-medium text-slate-500">{t('layout.chinesePlatforms')}</div>
               <div className="flex flex-wrap gap-4">
                 <div className="flex flex-col items-center gap-1">
                   <button
@@ -2044,8 +2033,8 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     onClick={async () => {
                       await copyLink();
                       toast({
-                        title: locale === 'zh' ? '微信分享建议' : 'WeChat share tip',
-                        description: locale === 'zh' ? '已复制链接，请用微信扫码区或粘贴到会话发送。' : 'Link copied. Use QR panel or paste into WeChat chat.',
+                        title: t('layout.wechatTip'),
+                        description: t('layout.wechatTipDesc'),
                       });
                     }}
                     title="WeChat"
@@ -2058,28 +2047,28 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                   <button
                     type="button"
                     className={iconBtnClass}
-                    onClick={() => openPostPage(locale === 'zh' ? '小红书' : 'RED', 'https://www.xiaohongshu.com/')}
-                    title={locale === 'zh' ? '小红书' : 'RED'}
+                    onClick={() => openPostPage(t('layout.red'), 'https://www.xiaohongshu.com/')}
+                    title={t('layout.red')}
                   >
                     <img src="/images/Xiaohongshu.svg" alt="Xiaohongshu" className={`${iconFillClass} scale-[1.5]`} />
                   </button>
-                  <span className="text-[11px] text-slate-600">{locale === 'zh' ? '小红书' : 'RED'}</span>
+                  <span className="text-[11px] text-slate-600">{t('layout.red')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   <button
                     type="button"
                     className={iconBtnClass}
-                    onClick={() => openPostPage(locale === 'zh' ? 'B站' : 'Bilibili', 'https://www.bilibili.com/')}
-                    title={locale === 'zh' ? 'B站' : 'Bilibili'}
+                    onClick={() => openPostPage(t('layout.bilibili'), 'https://www.bilibili.com/')}
+                    title={t('layout.bilibili')}
                   >
                     <img src="/images/bilibili.svg" alt="Bilibili" className={`${iconFillClass} scale-[1.75]`} />
                   </button>
-                  <span className="text-[11px] text-slate-600">{locale === 'zh' ? 'B站' : 'Bilibili'}</span>
+                  <span className="text-[11px] text-slate-600">{t('layout.bilibili')}</span>
                 </div>
               </div>
 
               <div className="rounded-lg border bg-white p-3">
-                <div className="text-xs text-slate-500 mb-2">{locale === 'zh' ? '直播链接' : 'Live URL'}</div>
+                <div className="text-xs text-slate-500 mb-2">{t('layout.liveUrl')}</div>
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
@@ -2090,7 +2079,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                     type="button"
                     className="h-9 px-2 rounded border bg-white hover:bg-slate-50 text-[#636363]"
                     onClick={copyLink}
-                    title={locale === 'zh' ? '复制链接' : 'Copy'}
+                    title={t('common.linkCopied')}
                   >
                     <Copy className="w-4 h-4" />
                   </button>
@@ -2101,7 +2090,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
             <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center gap-3">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <QrCode className="w-4 h-4" />
-                {locale === 'zh' ? '微信/小红书/B站扫码分享' : 'WeChat / RED / Bilibili QR'}
+                {t('layout.qrShare')}
               </div>
               <div className="bg-white p-3 rounded-lg border">
                 <QRCodeSVG value={shareUrl} size={180} includeMargin />
@@ -2112,7 +2101,7 @@ const ShareRoomButton = memo(({ roomId }: { roomId: string | null }) => {
                 onClick={copyLink}
               >
                 <ExternalLink className="w-4 h-4 inline-block mr-1" />
-                {locale === 'zh' ? '复制链接并发布' : 'Copy & Post'}
+                {t('layout.copyPost')}
               </button>
             </div>
           </div>
@@ -2129,7 +2118,7 @@ export const GoLiveButton = memo(() => {
   const echuuConfig = useSceneStore((state) => state.echuuConfig);
   const topic = echuuConfig.topic;
   const { connect, connectionState, currentStep, streamState, infoMessage, roomId, ownerToken, setRoom, lastEventType, lastEventAt } = useEchuuWebSocket();
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const [isStarting, setIsStarting] = useState(false);
   const [phaseOpen, setPhaseOpen] = useState(false);
   const [startError, setStartError] = useState('');
@@ -2187,7 +2176,7 @@ export const GoLiveButton = memo(() => {
         token!
       );
     } catch (err: any) {
-      setStartError(err?.message || '启动失败');
+      setStartError(err?.message || t('common.startFailed'));
     } finally {
       setIsStarting(false);
     }
@@ -2261,7 +2250,7 @@ export const GoLiveButton = memo(() => {
             type="button"
             onClick={handleStopLive}
             disabled={isStopping}
-            title={locale === 'zh' ? '停止直播' : 'Stop stream'}
+            title={t('layout.stopStream')}
             className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               background: 'rgba(255,60,60,0.15)',
@@ -2269,7 +2258,7 @@ export const GoLiveButton = memo(() => {
                 '-11.15px -10.39px 48px -12px rgba(0,0,0,0.15), inset 2.15px 2px 9.24px rgba(255,255,255,0.126)',
               backdropFilter: 'blur(7.58px)',
             }}
-            aria-label={locale === 'zh' ? '停止直播' : 'Stop stream'}
+            aria-label={t('layout.stopStream')}
           >
             <span className="flex items-center justify-center w-5 h-5 rounded-sm border border-red-400 text-red-400">
               <Square className="h-3 w-3" fill="currentColor" strokeWidth={0} />
@@ -2281,7 +2270,7 @@ export const GoLiveButton = memo(() => {
             type="button"
             onClick={handleGoLive}
             disabled={isStarting || isAudience}
-            title={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : undefined}
+            title={isAudience ? t('layout.hostOnly') : undefined}
             className="absolute left-[5px] top-[7px] z-[1] w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed border-[3px] border-[#d1d1d1]"
             style={{
               background: 'rgba(220, 246, 254, 0.7)',
@@ -2289,7 +2278,7 @@ export const GoLiveButton = memo(() => {
                 '-11.15px -10.39px 48px -12px rgba(0, 0, 0, 0.15), inset 2.15px 2px 9.24px rgba(255, 255, 255, 0.126), inset 1.22px 1.13px 4.62px rgba(255, 255, 255, 0.126)',
               backdropFilter: 'blur(7.58px)',
             }}
-            aria-label={isAudience ? (locale === 'zh' ? '仅房主可开播' : 'Only host can go live') : 'Go Live'}
+            aria-label={isAudience ? t('layout.hostOnly') : t('layout.goLive')}
           >
             <span className="flex items-center justify-center w-5 h-5 rounded-sm text-[#878787]">
               <Play className="h-3 w-3" strokeWidth={2} />

@@ -277,7 +277,8 @@
     "downloaded": "ダウンロード完了：{fileName}",
     "linkCopied": "リンクをコピーしました",
     "copyFailed": "コピーに失敗しました",
-    "selectOrUploadFirst": "先にモデルを選択またはアップロードしてください"
+    "selectOrUploadFirst": "先にモデルを選択またはアップロードしてください",
+    "startFailed": "開始に失敗しました"
   },
   "onboarding": {
     "brandTagline": "AI Vtubing プラットフォーム",
@@ -429,7 +430,29 @@
     "genderFemale": "♀",
     "genderMale": "♂",
     "langSupport": "対応言語",
-    "multiLang": "EN/ZH/JP等"
+    "multiLang": "EN/ZH/JP等",
+    "characterSetting": "キャラクター設定",
+    "liveSetting": "配信設定",
+    "soundSetting": "サウンド設定",
+    "scenePanel": "シーン",
+    "calendarMemory": "カレンダーメモリー",
+    "webcamMocap": "Webカメラ モーキャプ",
+    "memoryContent": "記録（次回の配信参考用）",
+    "memoryNotesLabel": "メモ",
+    "shareLiveRoom": "配信ルームを共有",
+    "shareDescription": "X、Reddit、QRコードチャンネル（WeChat、RED、Bilibili）で共有。",
+    "quickDistribution": "クイック配信",
+    "recommendedCaption": "おすすめキャプション",
+    "globalPlatforms": "海外プラットフォーム",
+    "chinesePlatforms": "中国プラットフォーム（コピー + QR）",
+    "liveUrl": "配信URL",
+    "qrShare": "WeChat / RED / Bilibili QR",
+    "copyPost": "コピーして投稿",
+    "wechatTip": "WeChat共有のヒント",
+    "wechatTipDesc": "リンクをコピーしました。QRパネルを使うか、WeChatチャットに貼り付けてください。",
+    "shareLiveCaption": "Echuuで配信中！参加してね：{url}",
+    "red": "RED",
+    "bilibili": "Bilibili"
   },
   "consent": {
     "titlePrivacy": "プライバシー設定",
