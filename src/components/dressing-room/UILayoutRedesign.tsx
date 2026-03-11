@@ -1,34 +1,9 @@
 "use client";
 
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  Settings,
-  Users,
-  Play,
-  Square,
-  CheckCircle,
-  HelpCircle,
-  Info,
-  ChevronRight,
-  Monitor,
-  Layout,
-  Camera,
-  Languages,
-  Share2,
-  Film,
-  Copy,
-  ExternalLink,
-  QrCode,
-  Heart,
-  Mail,
-  Eye,
-  Circle,
-  Sparkles as SparklesIcon
-} from 'lucide-react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { Film } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -37,12 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Sparkles, Environment } from '@react-three/drei';
-import * as DialogUI from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/use-i18n';
 import { cn } from '@/lib/utils';
 import { useEchuuWebSocket } from '@/hooks/use-echuu-websocket';
-import { ProfileButton } from '@/components/auth/ProfileButton';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { useVideoRecognition } from '@/hooks/use-video-recognition';
 import { toast } from '@/hooks/use-toast';
@@ -57,15 +29,10 @@ import accentSmall from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 262 (Stroke).sv
 import mocapBtnIcon from '@/app/v1/assets/ECHUU V1 UX_icon/mocap btn.svg';
 import type { VRMModel } from '@/types';
 import { getModels } from '@/lib/resource-manager';
-import { SOCIAL_CAPTURE_PRESETS } from '@/config/social-capture-presets';
-import type { SocialCapturePreset } from '@/config/social-capture-presets';
 import { s3Uploader } from '@/lib/s3-uploader';
 import { useS3ResourcesStore } from '@/stores/s3-resources-store';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { TwitterShare, RedditShare } from 'react-share-lite';
-import { QRCodeSVG } from 'qrcode.react';
-
 import { TTS_VOICES } from '@/config/tts-voices';
 import accentMedium from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 263 (Stroke).svg';
 import accentLarge from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 264 (Stroke).svg';
