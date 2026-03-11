@@ -66,39 +66,11 @@ import 'react-day-picker/style.css';
 import { TwitterShare, RedditShare } from 'react-share-lite';
 import { QRCodeSVG } from 'qrcode.react';
 
-/** 单次直播回忆：供 agent 下次直播参考 */
-export type StreamMemory = {
-  date: string; // YYYY-MM-DD
-  topic: string;
-  summary?: string;
-  participantsRemembered?: string[]; // 被记住的观众/互动者
-};
-
 import { TTS_VOICES } from '@/config/tts-voices';
 import accentMedium from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 263 (Stroke).svg';
 import accentLarge from '@/app/v1/assets/ECHUU V1 UX_icon/Vector 264 (Stroke).svg';
-
-const ECHUU_CONFIG_KEY = 'echuu_config';
-const ECHUU_LIVE_SETTINGS_KEY = 'echuu_live_settings';
-
-/** 支持的直播推流平台 */
-const LIVE_PLATFORMS: { id: 'twitch' | 'youtube'; labelZh: string; labelEn: string }[] = [
-  { id: 'twitch', labelZh: 'Twitch', labelEn: 'Twitch' },
-  { id: 'youtube', labelZh: 'YouTube', labelEn: 'YouTube' },
-];
-const ECHUU_SOUND_SETTINGS_KEY = 'echuu_sound_settings';
-const ECHUU_SCENE_SETTINGS_KEY = 'echuu_scene_settings';
-const ECHUU_CALENDAR_SETTINGS_KEY = 'echuu_calendar_settings';
-
-// BGM 预设：4 首转为 MP3 后命名为 xxx-Cynthia-xmyri.mp3，放在 public/sounds/bgm/
-const BGM_PRESETS: { id: string; url: string; nameZh: string; nameEn: string }[] = [
-  { id: 'cold-background', url: '/sounds/bgm/cold-background-Cynthia-xmyri.mp3', nameZh: 'Cold Background', nameEn: 'Cold Background' },
-  { id: 'deep-sleep-wip', url: '/sounds/bgm/deep-sleep-wip-Cynthia-xmyri.mp3', nameZh: 'Deep Sleep WIP', nameEn: 'Deep Sleep WIP' },
-  { id: 'reboot-background-wip', url: '/sounds/bgm/reboot-background-wip-Cynthia-xmyri.mp3', nameZh: 'Reboot Background WIP', nameEn: 'Reboot Background WIP' },
-  { id: 'absent-wip', url: '/sounds/bgm/absent-wip-Cynthia-xmyri.mp3', nameZh: 'Absent WIP', nameEn: 'Absent WIP' },
-];
-
-type StreamRoomPanel = 'character' | 'live' | 'sound' | 'scene' | 'calendar' | 'mocap';
+import { StreamMemory, StreamRoomPanel, ECHUU_CONFIG_KEY, ECHUU_LIVE_SETTINGS_KEY, ECHUU_SOUND_SETTINGS_KEY, ECHUU_SCENE_SETTINGS_KEY, ECHUU_CALENDAR_SETTINGS_KEY, LIVE_PLATFORMS, BGM_PRESETS } from './ui-layout-types';
+export type { StreamMemory };
 
 // 1. Top Left Branding（与右侧胶囊按钮上下平齐）
 export const BrandOverlay = memo(() => {
