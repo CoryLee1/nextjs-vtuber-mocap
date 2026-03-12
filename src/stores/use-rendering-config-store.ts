@@ -52,7 +52,7 @@ interface RenderingConfigState {
   /** 色散强度，约 0–0.05 */
   chromaticOffset: number;
   setChromaticOffset: (v: number) => void;
-  /** 亮度 (-0.5 - 0.5) */
+  /** 亮度 (-0.5 - 1.5)，默认 1 */
   brightness: number;
   setBrightness: (v: number) => void;
   /** 对比度 (-0.5 - 0.5) */
@@ -94,6 +94,15 @@ interface RenderingConfigState {
   /** 是否显示 Gizmo 拖拽调整角色位置（主场景） */
   avatarGizmoEnabled: boolean;
   setAvatarGizmoEnabled: (v: boolean) => void;
+  /** 相机视野 FOV（度），越小越像长焦，越大越广角。默认 50 */
+  cameraFov: number;
+  setCameraFov: (v: number) => void;
+  /** 镜头模糊（景深/虚化），对焦在角色头部，默认关（耗 GPU） */
+  depthOfFieldEnabled: boolean;
+  setDepthOfFieldEnabled: (v: boolean) => void;
+  /** 景深虚化强度（bokeh scale），约 4–24 */
+  depthOfFieldBokehScale: number;
+  setDepthOfFieldBokehScale: (v: number) => void;
 }
 
 export const useRenderingConfigStore = create<RenderingConfigState>()(
@@ -129,7 +138,7 @@ export const useRenderingConfigStore = create<RenderingConfigState>()(
       setChromaticEnabled: (v) => set({ chromaticEnabled: v }),
       chromaticOffset: 0.002,
       setChromaticOffset: (v) => set({ chromaticOffset: Math.max(0, Math.min(0.1, v)) }),
-      brightness: -0.12,
+      brightness: 1,
       setBrightness: (v) => set({ brightness: v }),
       contrast: 0.20,
       setContrast: (v) => set({ contrast: v }),
@@ -157,6 +166,12 @@ export const useRenderingConfigStore = create<RenderingConfigState>()(
       setAvatarPositionY: (v) => set({ avatarPositionY: v }),
       avatarGizmoEnabled: false,
       setAvatarGizmoEnabled: (v) => set({ avatarGizmoEnabled: v }),
+      cameraFov: 50,
+      setCameraFov: (v) => set({ cameraFov: Math.max(15, Math.min(90, v)) }),
+      depthOfFieldEnabled: false,
+      setDepthOfFieldEnabled: (v) => set({ depthOfFieldEnabled: v }),
+      depthOfFieldBokehScale: 10,
+      setDepthOfFieldBokehScale: (v) => set({ depthOfFieldBokehScale: Math.max(4, Math.min(24, v)) }),
     })),
     {
       name: 'vtuber-rendering-config-storage',
@@ -175,6 +190,9 @@ export const useRenderingConfigStore = create<RenderingConfigState>()(
         sceneFbxUrl: state.sceneFbxUrl,
         avatarPositionY: state.avatarPositionY,
         avatarGizmoEnabled: state.avatarGizmoEnabled,
+        cameraFov: state.cameraFov,
+        depthOfFieldEnabled: state.depthOfFieldEnabled,
+        depthOfFieldBokehScale: state.depthOfFieldBokehScale,
       }),
     }
   )

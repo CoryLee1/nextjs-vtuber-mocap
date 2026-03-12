@@ -6,7 +6,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SceneFbxWithGizmo } from './SceneFbxWithGizmo';
 import { PRELOAD_ANIMATION_URLS, DEFAULT_IDLE_URL, DEFAULT_PREVIEW_MODEL_URL } from '@/config/vtuber-animations';
-import { EffectComposer, BrightnessContrast, HueSaturation, ChromaticAberration } from '@react-three/postprocessing';
+import { EffectComposer, BrightnessContrast, HueSaturation, ChromaticAberration, Autofocus } from '@react-three/postprocessing';
 import { Vector2 } from 'three';
 /** Shared zero Vector2 for disabled ChromaticAberration (avoid allocating per render) */
 const _zeroVec2 = new Vector2(0, 0);
@@ -18,8 +18,8 @@ const PreloadFbx = memo(({ url }: { url: string }) => {
 });
 PreloadFbx.displayName = 'PreloadFbx';
 import { Vector3 } from 'three';
-import { CameraController } from '@/components/dressing-room/CameraController';
-import { VRMAvatar } from '@/components/dressing-room/VRMAvatar';
+import { CameraController } from '@/components/three/CameraController';
+import { VRMAvatar } from '@/components/three/VRMAvatar';
 import { useSceneStore } from '@/hooks/use-scene-store';
 import { useRenderingConfigStore } from '@/stores/use-rendering-config-store';
 import { useEchuuConfigStore } from '@/stores/use-echuu-config-store';
@@ -279,6 +279,8 @@ export const MainScene: React.FC = () => {
     setAvatarPositionY,
     avatarGizmoEnabled,
     setAvatarGizmoEnabled,
+    depthOfFieldEnabled,
+    depthOfFieldBokehScale,
   } = useRenderingConfigStore();
 
   const chromaticOffsetVec = useMemo(
@@ -482,6 +484,10 @@ export const MainScene: React.FC = () => {
               Conditional {flag && <Effect>} returns false/null which crashes
               EffectComposer's addPass (reads .alpha on null). */}
           <ChromaticAberration offset={chromaticEnabled ? chromaticOffsetVec : _zeroVec2} radialModulation={false} modulationOffset={0} />
+          <Autofocus
+            target={headPositionVec3Ref.current}
+            bokehScale={depthOfFieldEnabled ? depthOfFieldBokehScale : 0}
+          />
           <BrightnessContrast
             brightness={brightness}
             contrast={contrast}

@@ -66,7 +66,7 @@ export const StreamRoomSidebar = memo(({
   // Echuu live config
   const { echuuConfig, setEchuuConfig, setBgmUrl, setBgmVolume: setStoreBgmVolume } = useEchuuConfigStore();
   // Rendering config
-  const { setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, composerResolutionScale, setComposerResolutionScale, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled } = useRenderingConfigStore();
+  const { setHdrUrl, setSceneFbxUrl, envBackgroundIntensity, setEnvBackgroundIntensity, envBackgroundRotation, setEnvBackgroundRotation, composerResolutionScale, setComposerResolutionScale, chromaticEnabled, setChromaticEnabled, chromaticOffset, setChromaticOffset, brightness, setBrightness, contrast, setContrast, saturation, setSaturation, hue, setHue, handTrailEnabled, setHandTrailEnabled, theatreCameraActive, setTheatreCameraActive, theatreSequencePlaying, setTheatreSequencePlaying, avatarPositionY, setAvatarPositionY, avatarGizmoEnabled, setAvatarGizmoEnabled, cameraFov, setCameraFov, depthOfFieldEnabled, setDepthOfFieldEnabled, depthOfFieldBokehScale, setDepthOfFieldBokehScale } = useRenderingConfigStore();
   const { t, locale } = useI18n();
   const isCameraActive = useVideoRecognition((s) => s.isCameraActive);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -173,6 +173,9 @@ export const StreamRoomSidebar = memo(({
         if (typeof parsed.handTrailEnabled === 'boolean') setHandTrailEnabled(parsed.handTrailEnabled);
         if (typeof parsed.avatarPositionY === 'number') setAvatarPositionY(parsed.avatarPositionY);
         if (typeof parsed.avatarGizmoEnabled === 'boolean') setAvatarGizmoEnabled(parsed.avatarGizmoEnabled);
+        if (typeof parsed.cameraFov === 'number') setCameraFov(parsed.cameraFov);
+        if (typeof parsed.depthOfFieldEnabled === 'boolean') setDepthOfFieldEnabled(parsed.depthOfFieldEnabled);
+        if (typeof parsed.depthOfFieldBokehScale === 'number') setDepthOfFieldBokehScale(parsed.depthOfFieldBokehScale);
         // LUT removed — unstable .cube loading + GPU overhead
       } catch {
         // ignore invalid storage
@@ -189,7 +192,7 @@ export const StreamRoomSidebar = memo(({
         // ignore invalid storage
       }
     }
-  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity, setEnvBackgroundRotation]);
+  }, [setEchuuConfig, setVRMModelUrl, setEnvBackgroundIntensity, setEnvBackgroundRotation, setCameraFov, setDepthOfFieldEnabled, setDepthOfFieldBokehScale]);
 
   useEffect(() => {
     onPanelOpenChange?.(panelOpen);
@@ -333,7 +336,7 @@ export const StreamRoomSidebar = memo(({
       if (panelType === 'scene') {
         window.localStorage.setItem(
           ECHUU_SCENE_SETTINGS_KEY,
-          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, composerResolutionScale, chromaticEnabled, chromaticOffset, handTrailEnabled, avatarPositionY, avatarGizmoEnabled })
+          JSON.stringify({ hdr, scene: sceneName, sceneFbxUrl, envBackgroundIntensity, envBackgroundRotation, composerResolutionScale, chromaticEnabled, chromaticOffset, handTrailEnabled, avatarPositionY, avatarGizmoEnabled, cameraFov, depthOfFieldEnabled, depthOfFieldBokehScale })
         );
         setHdrUrl(hdr || null);
         setSceneFbxUrl(sceneFbxUrl || null);
@@ -812,7 +815,7 @@ export const StreamRoomSidebar = memo(({
           {panelType === 'sound' && (
             <div className="flex flex-col gap-4">
               <label className="text-[16px] text-slate-500">{t('vtuber.sound.bgm')}</label>
-              <Select value={bgm || '__none__'} onValueChange={(v) => setBgm(v === '__none__' ? '' : v)}>
+              <Select value={bgm || '__none__'} onValueChange={(v) => { const u = v === '__none__' ? '' : v; setBgm(u); setBgmUrl(u || null); }}>
                 <SelectTrigger className="h-12 bg-white rounded-lg px-4 text-slate-800">
                   <SelectValue placeholder={t('vtuber.sound.bgmPlaceholder')} />
                 </SelectTrigger>
@@ -835,7 +838,7 @@ export const StreamRoomSidebar = memo(({
               <div className="space-y-1">
                 <label className="text-[16px] text-slate-500">{t('vtuber.sound.bgmVolume')}</label>
                 <div className="flex items-center gap-2">
-                  <Slider min={0} max={100} step={1} value={bgmVolume} onValueChange={setBgmVolume} showValue={false} className="flex-1" />
+                  <Slider min={0} max={100} step={1} value={bgmVolume} onValueChange={(v) => { setBgmVolume(v); setStoreBgmVolume(v); }} showValue={false} className="flex-1" />
                   <span className="text-[12px] text-slate-600 w-8">{bgmVolume}%</span>
                 </div>
               </div>
@@ -922,6 +925,49 @@ export const StreamRoomSidebar = memo(({
                 />
                 <span className="text-xs text-slate-500 w-10 tabular-nums">{avatarPositionY.toFixed(2)}</span>
               </div>
+              {/* 相机视野 FOV（度）：越小越像长焦，越大越广角 */}
+              <label className="text-[16px] text-slate-500">{t('layout.cameraFov')}</label>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={15}
+                  max={90}
+                  step={1}
+                  value={cameraFov}
+                  onValueChange={setCameraFov}
+                  showValue={false}
+                  className="flex-1"
+                />
+                <span className="text-xs text-slate-500 w-10 tabular-nums">{cameraFov}°</span>
+              </div>
+              {/* 镜头模糊（景深），对焦在角色头部 */}
+              <div className="flex items-center justify-between">
+                <label className="text-[16px] text-slate-500">{t('layout.depthOfField')}</label>
+                <button
+                  type="button"
+                  onClick={() => setDepthOfFieldEnabled(!depthOfFieldEnabled)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${depthOfFieldEnabled ? 'bg-amber-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${depthOfFieldEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {depthOfFieldEnabled && (
+                <>
+                  <label className="text-[16px] text-slate-500">{t('layout.bokehScale')}</label>
+                  <div className="flex items-center gap-2">
+                    <Slider
+                      min={4}
+                      max={24}
+                      step={1}
+                      value={depthOfFieldBokehScale}
+                      onValueChange={setDepthOfFieldBokehScale}
+                      showValue={false}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-slate-500 w-10 tabular-nums">{depthOfFieldBokehScale}</span>
+                  </div>
+                </>
+              )}
+
               <div className="flex items-center justify-between">
                 <label className="text-[16px] text-slate-500">{t('layout.gizmoMove')}</label>
                 <button
@@ -976,7 +1022,7 @@ export const StreamRoomSidebar = memo(({
               <div className="flex items-center gap-2">
                 <Slider
                   min={-0.5}
-                  max={0.5}
+                  max={1.5}
                   step={0.01}
                   value={brightness}
                   onValueChange={setBrightness}
