@@ -206,7 +206,14 @@ export const useSceneStore = create<SceneState>()(
   preloadedPreviewModelUrl: null,
   setPreloadedPreviewModelUrl: (url: string | null) => {
     const prev = get().preloadedPreviewModelUrl;
-    if (prev && prev !== url) try { URL.revokeObjectURL(prev); } catch (_) {}
+    if (prev && prev !== url) {
+      if (prev.startsWith('blob:')) {
+        // 延迟 revoke，避免 useGLTF.preload(prev) 仍在排队 fetch 时 blob 已失效（如 Strict Mode 双跑）
+        setTimeout(() => { try { URL.revokeObjectURL(prev); } catch (_) { /* ignore */ } }, 8000);
+      } else {
+        try { URL.revokeObjectURL(prev); } catch (_) {}
+      }
+    }
     set({ preloadedPreviewModelUrl: url });
   },
 

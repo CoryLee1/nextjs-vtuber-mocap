@@ -5,7 +5,6 @@
  * S3 模型/动画列表在 loading 内请求并写入 s3-resources-store，避免进入引导页后再发请求。
  */
 import {
-  DEFAULT_PREVIEW_MODEL_URL,
   ONBOARDING_PREVIEW_ANIMATION_URLS,
   PRELOAD_ANIMATION_URLS,
 } from '@/config/vtuber-animations';
@@ -39,8 +38,12 @@ async function fetchAndCache(url: string): Promise<void> {
   }
 }
 
-/** 预加载失败时依次尝试：models/ 路径 → 桶根公有 URL */
+/** 预加载首选：带 proxy=1，API 直接返回 body，避免 presigned URL 的 x-amz-checksum-mode 导致 403 */
+const PRELOAD_PRIMARY_MODEL_URL = getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm', { proxy: true });
+
+/** 预加载失败时依次尝试：无 proxy 的 API URL、models/、桶根（可能仍 403，仅作兜底） */
 const FALLBACK_PREVIEW_MODEL_URLS = [
+  getS3ObjectReadUrlByKey('vrm/AvatarSample_A.vrm'),
   getS3ObjectReadUrlByKey('models/AvatarSample_A.vrm'),
   'https://nextjs-vtuber-assets.s3.us-east-2.amazonaws.com/AvatarSample_A.vrm',
 ];
@@ -54,17 +57,19 @@ async function preloadPreviewModelAndStore(
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), PRELOAD_TIMEOUT_MS);
   const urls = [primaryUrl, ...fallbackUrls].filter((u, i, arr) => arr.indexOf(u) === i);
+  const isDev = process.env.NODE_ENV === 'development';
   try {
     let lastErr: unknown = null;
-    for (const url of urls) {
+    for (let urlIndex = 0; urlIndex < urls.length; urlIndex++) {
+      const url = urls[urlIndex];
       try {
+        const t0 = isDev ? performance.now() : 0;
         const res = await fetch(url, { mode: 'cors', signal: controller.signal, cache: 'force-cache' });
         if (!res.ok) throw new Error(`preload model: ${res.status}`);
         const blob = await res.blob();
+        const t1 = isDev ? performance.now() : 0;
         const objectUrl = URL.createObjectURL(blob);
-        useSceneStore.getState().setPreloadedPreviewModelUrl(objectUrl);
-        // Populate drei's GLTF cache with the VRM plugin so useGLTF() resolves
-        // instantly inside the Canvas (no re-parse delay on first render).
+        // 先 preload 再写 store，避免 store 更新触发 revoke 时 preload 尚未 fetch 当前 blob
         try {
           const [{ useGLTF }, { VRMLoaderPlugin }] = await Promise.all([
             import('@react-three/drei'),
@@ -73,9 +78,20 @@ async function preloadPreviewModelAndStore(
           useGLTF.preload(objectUrl, undefined, undefined, (loader: any) => {
             loader.register((parser: any) => new VRMLoaderPlugin(parser));
           });
+          const t2 = isDev ? performance.now() : 0;
+          if (isDev) {
+            const fetchMs = Math.round(t1 - t0);
+            const parseMs = Math.round(t2 - t1);
+            const urlLabel = urlIndex === 0 ? 'primary' : `fallback_${urlIndex}`;
+            console.log(`[Preload VRM] fetch ${fetchMs} ms, parse(preload) ${parseMs} ms, url=${urlLabel}`);
+          }
         } catch {
-          // Non-fatal — canvas will just parse on first render
+          if (isDev) {
+            const fetchMs = Math.round(t1 - t0);
+            console.log(`[Preload VRM] fetch ${fetchMs} ms, parse(preload) failed, url=${urlIndex === 0 ? 'primary' : `fallback_${urlIndex}`}`);
+          }
         }
+        useSceneStore.getState().setPreloadedPreviewModelUrl(objectUrl);
         emitProgress(70);
         return;
       } catch (e) {
@@ -114,9 +130,9 @@ export async function preloadCriticalAssets(options?: PreloadOptions): Promise<v
     img.src = DEFAULT_ENV_BACKGROUND_URL;
   });
 
-  // 默认 VRM：下载并转为 Object URL 写入 store，引导页直接用；vrm/ 失败时依次试 models/、桶根
+  // 默认 VRM：优先用 proxy=1（API 直返 body，避免 presigned 403）；失败再试 fallback
   const modelPreload = preloadPreviewModelAndStore(
-    DEFAULT_PREVIEW_MODEL_URL,
+    PRELOAD_PRIMARY_MODEL_URL,
     FALLBACK_PREVIEW_MODEL_URLS,
     emitProgress
   );
